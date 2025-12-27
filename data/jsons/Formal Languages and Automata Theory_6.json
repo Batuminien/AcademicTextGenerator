@@ -1,0 +1,722 @@
+{
+  "title": "One-sided Hom shifts",
+  "authors": [
+    {
+      "firstname": "Marie-Pierre",
+      "surname": "Béal",
+      "email": ""
+    },
+    {
+      "firstname": "Alexi",
+      "surname": "Gorman",
+      "email": ""
+    }
+  ],
+  "abstract": "We prove that it is decidable whether a one-sided shift of finite type is conjugate to a one-sided Hom-shift, and whether a tree-shift of finite type is conjugate to a Hom tree-shift. The proof uses Williams's theory for one-sided shifts.",
+  "sections": [
+    {
+      "title": "Introduction",
+      "paragraphs": [
+        "We consider two types of shift spaces, shifts of sequences and tree-shifts. A shift of sequences is a set of one-or two-sided infinite sequences of symbols defined by a collection of finite words called forbidden blocks. A tree-shift is a set of infinite trees defined by a collection of forbidden blocks. A shift space of sequences is equipped with a shift transformation, whereas a tree-shift is equipped with multiple directional shift transformations. A conjugacy between shift spaces is a continuous bijection that commutes with the shift transformations. Shifts spaces defined by a finite set of forbidden blocks are called shifts of finite type. Note that a one-sided shift of sequences can be seen as a tree-shift with arity 1.",
+        "The problem of deciding whether two-sided finite-type shifts of sequences are conjugate remains open (see, for example, [14]). By contrast, the situation is significantly simpler for one-sided shifts: Williams [18] proved that conjugacy is decidable for one-sided shifts of finite type. This decidability also extends to tree-shifts [2], a consequence of the inherently one-sided structure of trees.",
+        "Tree-shifts are, however, more complex than one-sided shifts. Petersen and Salama [15], [16] introduced the topological entropy for such spaces as an analog to topological entropy for traditional shift spaces to investigate their complexity. Their results were generalized to asymptotic pressure for a broad class of systems in [17]. Properties of tree-shifts like entropy, transitivity, Hausdorff dimensions have been explored in [4], [5], [6].",
+        "In this paper, we consider a particular class of shifts called Hom shifts. A Hom shift is defined by an undirected, simple graph G (where self-loops are allowed). We also consider the class of directed Hom tree-shifts defined by a simple directed graph G (again with self-loops). Directed Hom tree-shifts are called hom tree-SFT in [3]. A Hom shift (resp. a directed Hom shift) of sequences is the set of all sequences of symbols where the consecutive pair ab is forbidden whenever (a, b) is not an edge in the undirected (resp. directed) graph G.",
+        "A Hom shift of trees (resp. a directed Hom tree-shift) is the set of all trees avoiding all blocks of height 2 with a root labeled a and having at least one child labeled b such that (a, b) is not an edge in the undirected (resp. directed) graph G.",
+        "Alternatively, a Hom shift can be described as a nearest neighbour shift of finite type that is symmetric and isotropic. Hom shifts can be defined and studied in the multidimensional context (see [9], [10], [12]). They form a natural subclass of shifts of finite type that arise in various contexts. For example, the hard square shift and the n-coloured chessboard shifts are both two-dimensional Hom shifts. Chandgotia and Marcus [10] studied the mixing properties of Hom shifts and related them to some questions in graph theory therein.",
+        "In this paper, we prove that it is decidable whether a one-sided shift of finite type is conjugate to a one-sided Hom shift, and whether a tree-shift of finite type is conjugate to a Hom tree-shift.",
+        "The proof uses Williams's theory for one-sided shifts. The total amalgamation of a directed multi-graph is the unique directed multi-graph obtained after a sequence of out-merging operations. In [18], Williams proved that if G and H are irreducible directed graphs that define irreducible one-sided edge shifts, then these shifts are conjugate if and only if G and H have the same total amalgamation. We prove that a one-sided shift of finite type, or a tree-shift of finite type, is conjugate to a one-sided Hom shift if and only if its total amalgamation satisfies some regularity conditions that are decidable.",
+        "For tree-shifts, it was proved in [2] that two irreducible edge tree shifts defined by a bottom-up tree automaton are conjugate if and only if they have the same total amalgamation (a bottom-up tree automaton obtained through merging operations). We give another proof of this result using trim top-down tree automata, and we define the total amalgamation of a top-down edge tree automaton similarly. A top-down tree automaton is trim if there is at least one (top-down) transition starting at any state. The irreducibility is not required. We prove that, if A and B are trim top-down edge tree automata defining two tree-shifts of finite type, then these shifts are conjugate if and only if A and B have the same total amalgamation.",
+        "We prove that a tree-shift of finite type defined by a trim edge tree automaton is conjugate to a Hom tree-shift if the total amalgamation of this tree automaton satisfies some regularity conditions. The property is decidable in polynomial space and time. We also show that if two Hom tree shifts defined by undirected graphs G and H, respectively, are conjugate, then G is equal to H, up to a graph isomorphism.",
+        "We prove that a tree-shift of finite type defined by a trim edge tree automaton is conjugate to a directed Hom tree-shift if the total amalgamation of this tree automaton satisfies some symmetry conditions. The property is also decidable in polynomial space and time.",
+        "The paper is organized as follows. We recall basic definitions of symbolic dynamics in Section 2, including Williams's results on one-sided shifts of sequences. Basic definitions on tree shifts and the decidability of conjugacy for this class of shifts are presented in Section 4. One-sided Hom shifts of sequences and Hom tree-shifts are studied in Section 3 and 5. Directed Hom tree shifts are studied in Section 6."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Symbolic dynamics",
+      "paragraphs": [
+        "We briefly recall some basic definitions of symbolic dynamics. For a more complete presentation, see [14], [13], and [7]."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Words and sequences",
+      "paragraphs": [
+        "Let A be a finite set, called the alphabet. The elements of A are called letters. A word on A is a finite sequence of elements of A. The set of words on A is denoted by A * .",
+        "We consider the set A Z of two-sided infinite sequences of elements of A, equipped with the product of the discrete topology on A.",
+        "For x = (x n ) n∈Z ∈ A Z with x n ∈ A and i ≤ j, we write",
+        "A word u occurs in a sequence x if u = x [i,j) for some i, j. One also says that u is a block of x.",
+        "Let S denote the shift transformation defined for x ∈ A Z by S(x) = y if y n = x n+1 for n ∈ Z. It is continuous and one-to-one from A Z to itself.",
+        "We also consider the corresponding sets A N of right-infinite sequences. The one-sided shift transformation is defined similarly. For x ∈ A N , one has y = S(x) if y n = x n+1 for n ≥ 0. It is continuous, but not one-to-one (except when Card(A) = 1)."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Shift spaces",
+      "paragraphs": [
+        "For a language F ⊆ A * , the set of sequences x ∈ A Z such that no element of F occurs in it is denoted by X F . It is well known that a set X ⊆ A Z is a shift space if and only if X = X F for some F ⊆ A * . A block of X is a word occurring in some sequence of X.",
+        "A shift of finite type is a shift X = X F for some finite set F .",
+        "In the sequel, we consider labeled directed graphs (with labeled edges) and unlabeled directed graphs. We say graph for multigraph. A labeled or unlabeled directed graph G is denoted by G = (V, E), where V is its set of vertices and E its set of edges. In a labeled directed graph, an edge from a state s to a state t labeled by a is denoted by (s, a, t).",
+        "An edge shift is the set of two-sided infinite paths in a finite directed graph. An edge shift is a shift of finite type.",
+        "A shift space X is irreducible if and only if for any two blocks u, v of X, there is a word w such that uwv is a block of X.",
+        "If X is a shift space, we let B n (X) denote the set of blocks of X of length n."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "One-sided shift spaces",
+      "paragraphs": [
+        "A one-sided shift space is a closed subset X of A N such that S(X) ⊆ X.",
+        "Note that one-sided shift spaces are usually defined as closed subsets such that S(X) = X, but we do not require this stronger condition here. The set A N itself is a one-sided shift space, called the one-sided full shift.",
+        "For a two-sided sequence x ∈ A Z , we define",
+        "A one-sided shift space is of finite type if it is the set X F of one-sided sequences over A avoiding all words of some finite set F ⊆ A * . A one-sided edge shift is the set X G of right-infinite paths in a finite directed graph G. Note that the paths may start at any state.",
+        "The adjacency matrix of a labeled or unlabeled directed graph G with a set of vertices E is the matrix M = (M st ) s,t∈E such that M st is the number of edges going from s to t in G. Thus, an edge shift is also defined by a square matrix with coefficients in N. is also defined by the adjacency matrix of G, that is, by the matrix"
+      ],
+      "subsections": []
+    },
+    {
+      "title": "One-sided conjugacy",
+      "paragraphs": [
+        "where X is a one-sided shift space, is a continuous map commuting with the shift transformation: S(φ(x)) = φ(S(x)), for each x ∈ X.",
+        "Let X be a one-sided shift space on the alphabet A, and let B be another alphabet. Given a nonnegative integer n, a block map is a map f : B n+1 (X) → B. The (one-sided)-sliding block code defined by f is the map φ : X → B N defined by φ(x) = y if for every i ∈ N,",
+        "Thus, y is computed from x by sliding a window of length n + 1 on x as in Figure 2.2. The integer n is the anticipation of φ.",
+        "The set φ(X) is a one-sided shift space.",
+        "It is a classical result that φ is a morphism if and only if it is a (onesided) sliding block code. A (one-sided) conjugacy is an invertible (one-sided) morphism. Its inverse is also a (one-sided) sliding block code, perhaps defined with a block map having a different anticipation. If φ : X ⊆ A N → B N , where X is a one-sided shift space, is a conjugacy, we say that X and Y = φ(X) are conjugate. Any one-sided shift of finite type is conjugate to a one-sided edge shift (see for instance [14])."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Out-splitting and out-merging",
+      "paragraphs": [
+        "In this section, we recall the notion of transformations on directed graphs called out-splittings and out-mergings. The transformation can be defined either for labeled directed graphs or for directed graphs. Let X G be a one-sided edge shift defined by a directed graph G = (V, E). We may assume that the graph is trim, that is, that each vertex has at least one outgoing edge. An out-splitting of G is a local transformation of G into a graph G ′ = (V ′ , E ′ ) obtained by selecting a vertex s and partitioning the set of edges going out of s into two non-empty sets E 1 and E 2 . The graph G ′ is defined as follows:",
+        "• E ′ contains all edges of E neither starting at or ending in s,",
+        "• E ′ contains the edge (s 1 , a, t) for each edge (s, a, t) ∈ E 1 , and the edge (s 2 , a, t) for each edge (s, a, t) ∈ E 2 , so long as t ̸ = s, Note that for each self-loop from s to s in E, if this loop is in E 1 , then E ′ has a self-loop from s 1 to s 1 and an edge from s 1 to s 2 . Informally, an outsplitting operation involves splitting a vertex in G into two distinct vertices, partitioning its outgoing edges between them, while preserving the incoming edges by duplicating them for each new vertex (see Figure 2.4).  Let X G be the one-sided edge shift defined by G and X G ′ be the one-sided edge shift defined by G ′ . Then X G and X G ′ are conjugate. Indeed, let φ : : E N → E ′N be the sliding block code defined by the 2-block map f :",
+        "defines a conjugacy from X G onto X G ′ . Its inverse is the sliding block code defined by the 1-block map g :",
+        "Following [14], we define the notion of general out-splitting: the outgoing edges from a given state can be partitioned into arbitrary many subsets instead of just two, and the partitioning can occur simultaneously at all of the states instead of just one. This procedure also accommodates self-loops.",
+        "The inverse operation of an out-splitting is referred to as an out-merging. An out-merging of a directed graph G ′ = (V ′ , E ′ ) can be performed if there are two vertices s 1 , s 2 of G ′ such that the adjacency matrix M ′ satisfies:",
+        "The adjacency matrix of G is thus the matrix M obtained by adding the rows of index s 2 to the row of index s 1 of M ′ and then removing the column of index s 2 afterward. The graph G is called an elementary amalgamation of G ′ . Notice that even if M ′ has 0-1 entries, M may not have 0-1 entries.",
+        "Let M ′ be the adjacency matrix of a directed graph G ′ , and (V 1 , V 2 , . . . , V k ) be a partition of V ′ into classes such that if s, t belong to the same class, then the columns of indices s and t of M ′ are identical. When at least one set of the partition has a size greater than 1, we can perform a general merging. We define a graph K of adjacency matrix N obtained by merging all states of each",
+        "The row in N corresponding to s i,1 is obtained by summing the rows of the states of V i in M ′ and removing the columns",
+        "A directed graph G that can be obtained from G ′ by a sequence of elementary out-mergings is called an amalgamation of G.",
+        "The following proposition, due to R. F. Williams [18], shows that two outmerging transformations commute (see also [8] for a proof). Proposition 2.4 (Williams [18]) If G and H are amalgamations of a common directed graph L, then they have a common amalgamation K.",
+        "As a consequence, given a directed graph G, there is a unique graph, up to a renaming of the vertices, obtained by performing elementary out-mergings until we cannot perform anymore. This graph is called the total amalgamation of G. Proposition 2.5 (Williams [18]) Let G and H be irreducible directed graphs that define one-sided edge shifts X G and X H . Then X G and X H are conjugate if and only if G and H have the same total amalgamation. Proposition 2.5 also holds for one-sided edge shifts defined by trim directed graphs. We will demonstrate this fact in section 4, as it follows directly from the propositions therein."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Hom shifts",
+      "paragraphs": [
+        "In this section, we consider shift spaces defined by undirected graphs, which we assume to be simple, that is, with at most one (undirected) edge between two vertices, and where loops are allowed. We will consider shift spaces defined by simple directed graphs in Section 6."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Hom shifts of sequences",
+      "paragraphs": [
+        ") is an edge of G. In this way, each sequence x can be viewed as a graph homomorphism x : Z → G. The shift X(G) can be seen as the set of graph homomorphisms, which explains the name 'Hom shift', coined by Chandgotia in [9]. A one-sided Hom shift is a sequence",
+        "To a simple undirected graph G = (V, E) corresponds its underlying directed graph",
+        "Lemma 3.1 A one-sided Hom shift defined by an undirected graph is conjugate to the one-sided edge shift defined by its underlying directed graph.",
+        "Proof. Let G = (V, E) be an undirected graph and G ′ = (V, E ′ ) its underlying directed graph. Let φ be the sliding block code defined by the 1-block map f :",
+        "Its inverse is the sliding block code defined by the 2-block map g : Notice that X G ′ itself is not a Hom shift. Indeed, (a, a)(a, b) is a block of X G ′ while (a, b)(a, a) is not. Thus, the Hom shift property is not invariant under conjugacy.",
+        "We say that a directed graph G is regular if",
+        "• for each vertex s of G, there is a positive integer n s such that for each vertex t of G the number of edges going from s to t is either 0 or n s . Equivalently, for each state s, the nonzero values of the row of index s in the adjacency matrix of G are identical.",
+        "• whenever there is at least one edge from s to t in G, then there is at least one edge from t to s in G.",
+        "Note that the underlying directed graph of a Hom shift is regular. Indeed, the two conditions follow directly from the definitions since the adjacency matrix is a symmetrical 0-1-matrix. Proposition 3.3 Any amalgamation of a regular directed graph is a regular directed graph.",
+        "Proof. Without loss of generality, we may consider only an elementary amalgamation. We show that the definition of an elementary amalgamation implies that the two conditions of regularity are maintained.",
+        "Let s 1 and s 2 be two vertices of a regular directed graph G = (V, E) with adjacency matrix M . Let N be the adjacency matrix of the amalgamation G ′ after merging s 1 and s 2 into a state s 12 . Let n 1 (resp. n 2 ) be the value of the nonzero entries of the row of M of index s 1 (resp. s 2 ).",
+        "Suppose that s 1 and s 2 satisfy the prerequisites for an out-merging, i.e. the columns corresponding to s 1 and s 2 in M are identical. For s ∈ V , we define π(s) as s if s ̸ = s 1 , s 2 , and π(s 1 ) = π(s 2 ) = s 12 .",
+        "Let us now show that the second condition of regularity is verified. If N π(s),π(t) > 0, then there exist s ′ with π(s ′ ) = π(s) such that for each t ′ with π(t ′ ) = π(t), one has M s ′ ,t ′ > 0. This implies that M t ′ ,s ′ > 0 by regularity of G, and thus N π(t),π(s) > 0.",
+        "We now show that the first condition of regularity is verified. If N π(s),π(t) > 0, then there exist s ′ with π(s ′ ) = π(s) such that for each t ′ with π(t",
+        "Note that the graph obtained after an out-splitting of a regular graph is not necessarily regular, as one can see in Figure 2.4. Indeed, there is an edge from 1 1 to 1 2 and there is no edge from 1 2 to 1 1 in the graph in the right part of the figure.",
+        "Proposition 3.4 Any one-sided edge shift defined by a regular directed graph is conjugate to a one-sided Hom shift.",
+        "Proof. Let G be a regular directed graph with adjacency matrix M , and X G be the one-sided edge shift defined by G. We construct a new directed graph G ′ = (V ′ , E ′ ) with adjacency matrix M ′ as follows. For each vertex s of G whose corresponding row in M has all its nonzero entries equal to n s , we define n s vertices s 1 , • • • s ns in the graph G ′ , and add exactly one edge from each s i to each t j when M s,t = n s .",
+        "By construction, the adjacency matrix",
+        "Let H be the undirected graph whose set of vertices is V ′ , and where (s i , t j ) is an (undirected) edge of H if and only if M ′ si,tj = 1. The one-sided edge shift X G ′ is the one-sided edge shift defined by the underlying directed graph of H. By Lemma 3.1, the edge shift X G ′ is conjugate to the Hom shift X(H). Thus, X G is conjugate to a Hom shift as a one-sided shift.",
+        "We now give an effective characterization of one-sided edge shifts conjugate to a one-sided Hom shift. In the sequel, we will assume that the directed graphs are trim. Proposition 3.5 A one-sided edge shift defined by a trim directed graph G is conjugate to a Hom shift if and only if the total amalgamation of G is regular.",
+        "Proof. Let X G be the one-sided edge shift defined by a trim directed graph G. Assume that X G is conjugate to a Hom shift X(H), where H is an undirected graph.",
+        "The one-sided shift X G is thus conjugate to the edge shift X H ′ defined by the underlying directed graph H ′ of H, which is regular. As a consequence of Proposition 2.5 and since G and H ′ are trim, the total amalgamations of G and H ′ are the same, up to a renaming of the vertices. By Proposition 3.3, this total amalgamation is regular.",
+        "Conversely, if G has a total amalgamation K that is regular, then the onesided shift X G is conjugate to the one-sided edge shift X K , which is conjugate to a Hom shift by Proposition 3.4.",
+        "Corollary 3.6 It is decidable whether a one-sided shift of sequences of finite type is conjugate to a one-sided Hom shift.",
+        "Proof. Let X = X F be a one-sided shift of finite type over A. We may assume that all words of F have the same length n. Then X F is conjugate to X G , where G is the trim part of the directed graph whose set of states is A n-1 , and the edges (au, ub) with that a, b ∈ A and aub / ∈ F . Thus, we may assume that X is the one-sided edge shift defined by a trim directed graph G. We apply the construction of Proposition 2.5 to build the total amalgamation of G. We conclude with Proposition 3.3 by checking whether this total amalgamation is regular.",
+        "If the input is a trim directed graph G that defines the one-sided edge shift, the time and space complexity are polynomial. Indeed, if G has n vertices, the total amalgamation can be performed in time O(n 2 ) with a linear lexicographical sort of the columns of the adjacency matrix of G for each general amalgamation.",
+        "Example 3.7 Let X G be the one-sided edge shift defined by the graph G with the following adjacency matrix M :",
+        "The first and the second columns corresponding to states 1 and 2 are identical. Thus, states 1 and 2 can be merged and the amalgamation is the graph K with the following adjacency matrix N :",
+        "After this out-merging, no other out-merging is possible. Hence, the total amalgamation of G is the graph K. Since K is regular, X G is conjugate to a one-sided Hom shift, the shift X(H) defined by the undirected graph of Figure 3.2. The following proposition shows that two one-sided Hom shifts defined by distinct undirected graphs are never conjugate. Proposition 3.8 Let X(G) and X(H) be two one-sided Hom shifts defined by the undirected graphs G and H, respectively. If X(G) and X(H) are conjugate, then the undirected graphs G and H are isomorphic as undirected graphs.",
+        "Proof. Let G ′ and H ′ be the underlying directed graphs of G and H, respectively. The graphs G ′ and H ′ are regular and trim by construction. By Lemma 3.1, X(G) (resp. X(H)) is conjugate to X G ′ (resp. X H ′ ). Let M (resp. M ′ ) be the adjacency matrix of G ′ (reps. H ′ ). The matrices M and M ′ have 0-1 entries. By Proposition 3.5, if X(G) and X(H) are conjugate, then there is a regular directed graph K such that K is the total amalgamation of G ′ and is the total amalgamation of H ′ .",
+        "We define the partition (V 1 , . . . , V ℓ ) of the vertices of G ′ where the sets V i are the equivalence classes of the equivalence relation t ∼ u if and only if the columns of M corresponding to t and u are identical. Let us compute an initial general amalgamation K ′ of G ′ defined by this partition. All states of V i are merged into a single state s i in K ′ . Since G ′ is regular and M has 0-1 entries, if M s,t = 1 for some s ∈ V i , t ∈ V j , then M s,t ′ = 1 for all t ′ ∈ V j , and M t,s ′ = 1 for all s ′ ∈ V i . Thus, whenever M s,t = 1 for some s",
+        "Hence, the adjacency matrix N of the general amalgamation",
+        "Assume that the two (distinct) states s i and s j of K ′ can be merged through another out-merging after this first round. This implies that N s k ,si = N s k ,sj for each state s k of K ′ . Hence, M s,t = M s,u for each state s of G ′ , each state t of V i , and each state u of V j . This implies s i = s j by definition of the partition (V 1 , . . . , V ℓ ). As a consequence, no other merging can be performed, and",
+        "Similarly, if (W 1 , . . . , W ℓ ′ ) is the partition of the vertices of H ′ corresponding to the equivalence classes of the equivalence relation t ∼ u if and only the columns of M ′ corresponding to t and u are identical. The total amalgamation K of H ′ is obtained by merging all states in each W i . After renumbering the sets W i , we may assume that all states of W i are merged into s i in K.",
+        "Hence, ℓ = ℓ ′ . Further,",
+        "After renaming the states, we may thus assume that V k = W k for each k. As a consequence, M = M ′ , implying G ′ = H ′ ."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Tree-shifts",
+      "paragraphs": [
+        "Let Σ = {0, 1, . . . , d -1} be a finite alphabet of cardinality d. An (infinite) tree t, with nodes labeled on a finite alphabet A, is a total function from Σ * to A. A node is a word of Σ * . The empty word, denoted by ε, corresponds to the root of the tree. If x is a node, its children are xi with i ∈ Σ. If t is a tree and x is a node, t(x) is sometimes denoted by t x . A (infinite) path in a tree t is a sequence (t xn ) n≥0 where x n+1 ∈ x n Σ for any n ≥ 0. We let T (A) denote the set of all infinite trees labeled on A.",
+        "For each i ∈ Σ, we define the shift transformation σ i : T (A) → T (A) as follows. If t is a tree, σ i (t) is the tree rooted at the i-th child of t, i.e. σ i (t) x = t ix for any x ∈ Σ * . The set T (A) equipped with these shift transformations is called the full shift of infinite trees over A.",
+        "A pattern of a tree t is a restriction of t to a subset L of Σ * , where L is called the support of the pattern. A block of height k ≥ 1 on A is a function b : Σ k-1 → A. We allow the block of height 0 denoted by ε. If b is a block of height k, we let b (k ′ ) denote the subblock of b of height k ′ rooted at the root of b, if k ′ ≤ k.",
+        "If t is a tree on A and x ∈ Σ * is a node, we let t",
+        "x denote the block of height k rooted at x, that is, the block b such that t(xy) = b(y) for any y ∈ Σ k-1 . We let t (k) denote the block of height k at the root of t. We say that a block b is a block of height k of a tree t if there is a node x ∈ Σ * such that b = t (k)",
+        "x ; otherwise, b avoids t. The empty block is a block of any tree. If X is a tree-shift, let B k (X) be the set of blocks of height k of all trees of X.",
+        "If b is a block of height k ≥ 2 and i ∈ Σ, we let σ i (b) denote its subblock of height k-1",
+        "A tree-shift X on A is the set X F , where F is a set of blocks, consisting of all trees that avoid each block in F . A tree-shift of finite type X in T (A) is a tree-shift X F where F is a finite set of blocks.",
+        "Let X be a tree-shift on the alphabet A, and let B be another alphabet. Given a nonnegative integer n, a block map is a map f : B n (X) → B. The sliding block code defined by f is the map φ :",
+        "x ). The integer n-1 is the height anticipation of φ. The set φ(X) is tree-shift. A conjugacy is an invertible sliding block code. Its inverse is also a sliding block code.",
+        "Let X be a tree-shift on A and let k ≥ 1 be an integer. The map γ k : X → T (B k (X)) defined for t ∈ X by t ′ = γ k (t) if for every x ∈ Σ * ,",
+        "is the k-th higher block code on X. One also says that γ k is a coding by overlapping blocks of length k. The set X (k) = γ k (X) is a tree-shift on B k (X), called the k-th higher block shift of X, or the k-th higher block presentation of X.",
+        "The following result is well known."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Top-down tree automata and out-splitting",
+      "paragraphs": [
+        "To simplify the notation, we consider binary trees below, i.e., we assume that Σ = {0, 1}. However, all results hold for any d, particularly for d = 1, extending the results for one-sided shifts of sequences. A (top-down) tree automaton on an alphabet A is a structure A = (Q, ∆), where Q is a finite set of states and ∆ a finite set of transitions (p, a) → (q, r), with p, q, r ∈ Q, a ∈ A, a being the label of the transition (see for instance [11]). A transition (p, a) → (q, r), also denoted p a -→ (q, r), is said to be an outgoing transition of p, a left incoming transition of q and a right incoming transition of r.",
+        "A tree t labeled on A is accepted by A if there is a tree u on Q such that, for any x ∈ Σ * , (u x , t x ) → (u x1 , u x0 ) belongs to ∆. Such a tree u is called a computation tree for t. A tree is a computation tree of A if it is a computation tree of some tree accepted by A. The set of trees accepted by A is a tree-shift denoted by X A .",
+        "A tree automaton is trim if each state of the automaton has at least one outgoing transition.",
+        "An edge tree automaton is a tree automaton such that all transitions have distinct labels. An edge tree-shift is the set of trees accepted by an edge tree automaton.",
+        "The following result is well known.",
+        "Proposition 4.3 A tree-shift of finite type is conjugate to an edge tree shift.",
+        "Proof. Let X = X F be a tree shift of finite type, where F is a set of blocks of height k+1 with k ≥ 1. It is conjugate to the tree shift Y = γ k (X) on B k (X).",
+        "Let us show that Y is an edge tree shift. Let A = (B k (X), ∆) be the tree automaton defined as follows. The automaton A is an edge tree automaton that accepts X F .",
+        "Since an edge tree automaton has all its transitions having distinct labels, we may represent all transitions (p, a) → (q, r) going from a state p to a pair of states (q, r) by p n -→ (q, r), where n ≥ 1 is the number of transitions from p to (q, r). We define the transition matrix M of such an automaton by M p,(q,r) = n if there is a transition p n -→ (q, r). We define the notion of out-splitting of an edge tree automaton as follows. An out-splitting transforms an edge tree automaton A = (Q, ∆) into an edge tree automaton A ′ = (Q ′ , ∆ ′ ) that is obtained from a partition of the set of transitions going out of a state s into two nonempty sets ∆ 1 and ∆ 2 . The set of states of automaton A ′ is Q ′ = Q \\ {s} ∪ {s 1 , s 2 }. Let µ(q) denote the set {q} if q ̸ = s, and µ(s) denotes {s 1 , s 2 }. The transitions of ∆ ′ are the following:",
+        "Note that all transitions have distinct labels.",
+        "The inverse operation is called an out-merging. We define the notion of general out-splitting similarly. The outgoing transitions from a given state can be partitioned into arbitrary many subsets instead of just two, and the partitioning can occur simultaneously at all of the states instead of just one.",
+        "Let A ′ = (Q ′ , ∆ ′ ) be an edge tree automaton and M ′ its transition matrix.",
+        ") be a partition of Q ′ into classes such that if q i , q j belong to the same class, then for each state p of Q ′ 1. the columns of indices (q i , p) and (q j , p) of M ′ are identical, 2. the columns of indices (p, q i ) and (p, q j ) of M ′ are identical.",
+        "We can define an edge tree automaton A = (Q, ∆) of transition matrix M obtained by merging all states of each Q ′ i = {q i,1 , . . . q i,ki } into a single state q i,1 whose row in M is obtained by summing of the rows q i,1 , . . . q i,ki of M ′ and removing the columns (p, q i,2 ), • • • , (p, q i,ki ) and (q i,2 , p), • • • , (q i,ki , p) for each p ∈ Q ′ .",
+        "Note that the labels of the transitions of A ′ are all distinct since the labels of the transitions of A are all distinct, and A is defined up to a renaming of these labels. The automaton A is called a general amalgamation of A ′ . Proposition 4.4 Suppose X is the edge tree-shift defined by an edge tree automaton A, and Y is the edge tree-shift defined by the edge tree automaton A ′ that is an out-splitting automaton of A. Then X and Y are conjugate."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Proof. Let us assume that",
+      "paragraphs": [
+        ") by splitting a state s into two states s 1 , s 2 , and partitioning the transitions going out of s into ∆ 1 and ∆ 2 . Recall that all transitions of A and A ′ have distinct labels.",
+        "We define a sliding block code φ : X → Y from a block map f : B 2 (X) → B(Y ) as follows.",
+        "For each block (a, b, c) of height 2 of X, there are unique transitions (p, a) → (q, r), (q, b) → (t, u), and (r, c) → (v, w) in A. Below, let i, j ∈ {1, 2}.",
+        "If p, q, r ̸ = s, then we set f (a, b, c) = a (q,r) . If p, q ̸ = s, r = s and (s, c) → (v, w) ∈ ∆ i , then we set f (a, b, c) = a (q,si) . If p, r ̸ = s, q = s and (s, b)",
+        "The 2-block map f when p, q, r ̸ = s.",
+        "The sliding block map φ is clearly a conjugacy whose inverse is the sliding block map ψ defined by the 1-block map g : B(Y ) → B(X) as follows: g(a (q ′ ,r ′ ) ) = a.",
+        "Let us show that φ(X) = Y . Let z ∈ X. We first check that φ(z) is accepted by A ′ . By construction, for each x ∈ Σ * , if z",
+        "r ′ ) for some letter a of the alphabet of A and some states q ′ , r ′ ∈ Q ′ . By construction, this implies that (u and(π(u ′ x ), a) → (π(q ′ ), π(r ′ )) belongs to ∆, where π(q",
+        "For tree-shifts, William's theory for one-sided shifts of finite type holds. The same result was obtained in [2] with top-down tree automata. Proposition 4.5 If A and B are amalgamations of a common edge tree-automaton, then they have a common amalgamation.",
+        "Proof. Assume that A (respectively B) is obtained by merging states q i , q j (respectively q ′ i , q ′ j ) of an edge tree-automaton C into a state denoted q ij (respectively q ′ ij ). Thus, the columns of indices (q i , p) and (q j , p) (respectively (p, q i ) and (p, q j )) of the adjacency matrix of C are identical, and the columns of indices (q ′ i , p) and (q ′ j , p) (respectively (p, q ′ i ) and (p, q ′ j )) of the adjacency matrix of C are identical.",
+        "Assume that q ′ i ̸ = q i , q j , q ′ j ̸ = q i , q j . If p ̸ = q i , q j , then the columns of indices (q ′ i , p) and (q ′ j , p) (respectively (p, q ′ i ) and (p, q ′ j )) remain identical in the adjacency matrix of A. If p = q i , the columns of indices (q ′ i , q i ) and (q ′ j , q i ) (respectively (q i , q ′ i ) and (q i , q ′ j )) become the columns of indices (q ′ i , q ij ) and (q ′ j , q ij ) (respectively (q ij , q ′ i ) and (q ij , q ′ j )) in A and remain identical. Thus, one can merge the states q ′ i , q ′ j in A leading to an automaton D. Let M be the adjacency matrix of C and N the adjacency matrix of D. If q ̸ = q ij , q ′ ij , we have N q,(r,t) = M q,(r ′ ,t ′ ) for each r ′ , t ′ such that π(r ′ ) = r, π(t ′ ) = t, where π(s) = s for each s ̸ = q i , q j , q ′ i , q ′ j , π(q i ) = π(q j ) = q ij , and π(q",
+        "Similarly, one can merge the states q i , q j in B and get an automaton D ′ with the same transition matrix as D.",
+        "Assume now that q ′ i = q i (and q ′ j ̸ = q i , q j ), the columns of indices (q i , p), (q j , p) and (q ′ j , p) (respectively (p, q i ), (p, q j ) and (p, q ′ j )) are equal. Thus, in A, the columns of indices (q ij , p) and (q ′ j , p) (respectively (p, q ij ) and (p, q ′ j )) are equal. Therefore, it is possible to merge the states q ij and q ′ j of A into a state denoted (q ij , q ′ j ) and get an automaton D. If q ̸ = (q ij , q ′ j ), we have N q,(r,t) = M q,(r ′ ,t ′ ) for all r ′ , t ′ such that π(r ′ ) = r, π(t ′ ) = t, where π(s) = s for each s ̸ = q i , q j , q ′ j , π(q i ) = π(q j ) = π(q ′ j ) = (q ij , q ′ j ). We also have N (qij ,q ′ j ),(r,t) = M qi,(r ′ ,t ′ ) + M qj ,(r ′ ,t ′ ) + M q ′ j ,(r ′ ,t ′ ) , for all q ′ , r ′ such that π(r ′ ) = r, π(t ′ ) = t.",
+        "Similarly, it is possible to merge the states q ′ ij and q j of B into a state denoted (q ′ ij , q j ) and obtain an automaton D ′ identical to D after renaming (q ′ ij , q j ) by (q ij , q ′ j ). All other cases run identically to the one above, or are trivial.",
+        "As a consequence, given an edge tree automaton C, there is a unique edge tree automaton, up to a renaming of the states, obtained by performing amalgamations until we cannot perform any more. This edge tree automaton is called the total amalgamation of C.",
+        "Example 4.6 Let A ′ = (Q ′ , ∆ ′ ) be the tree automaton with Q ′ = {q 1 , q 2 , q 3 } and transitions",
+        "1 -→ (q 3 , q 3 ),",
+        "1 -→ (q 2 , q 1 ), q 3 1 -→ (q 2 , q 2 ).",
+        "Recall that the integer n above a transition p n -→ (q, r) means that there are n transitions from p to (q, r), and that all transitions have distinct labels.",
+        "The transition matrix of A ′ is M ′ = (q 1 , q 1 ) (q 1 , q 2 ) (q 2 , q 1 ) (q 2 , q 2 ) (q 3 , q 3 ) q",
+        "Its total amalgamation is obtained by merging states q 1 and q 2 into q 12 with transition matrix is M = (q 12 , q 12 ) (q 3 , q 3 ) q 12 1 1 q 3 1 0 .",
+        "Example 4.7 Let A ′ = (Q ′ , ∆ ′ ) be the tree automaton with Q ′ = {q 1 , q 2 } and transitions",
+        "-→ (q 2 , q 1 ), q 2 1 -→ (q 2 , q 2 ).",
+        "Its transition matrix is",
+        "Its total amalgamation is obtained by merging states q 1 and q 2 into q 12 with transition matrix is M = (q 12 , q 12 ) ( ) q 12 2 .",
+        "The following result generalizes Proposition 2.5 to tree-shifts. It was established in [2] using top-down tree automata and under hypotheses stronger than trimness.",
+        "Proposition 4.8 Let A and B be trim edge tree automata that define edge treeshifts X and Y respectively. Then X and Y are conjugate if and only if A and B have the same total amalgamation. Proof. If A and B have the same total amalgamation then they are both outsplittings of that amalgamation, hence by Proposition 4.4, they are conjugate.",
+        "Conversely, let A = (Q, ∆) and B = (Q ′ , ∆ ′ ) be two trim edge tree automata that define edge tree-shifts X and Y respectively. Let us assume that there is conjugacy φ : X → Y with height anticipation n-1 defined by the block map f : B n (X) → B, where B is the alphabet of Y . Assume that φ -1 is the sliding block code with height anticipation n ′ -1 defined by the block map f ′ : B n ′ (Y ) → A, where A is the alphabet of X. Without loss of generality, we may suppose that n, n ′ ≥ 2.",
+        "A block b of height n can be written b = (a, σ 1 (b), σ 0 (b)), where σ i (b) are blocks of height n-1, and a = b(ε).",
+        "We define a tree automaton C = (B n (X) × B n ′ (Y ), Γ) labeled in A × B as follows. There is a transition",
+        "By construction, C is trim. Let t be a tree labeled on A × B accepted by C. Let t (respectively t ′ ) be the tree obtained from t by taking the first (respectively second) component of the labels of the nodes of t. The tree t is called the input (respectively output) tree of t. By construction, t ′ = φ(t). Conversely, if t is a tree of X and t ′ = φ(t), there is a unique computation tree u of C accepting t. This computation tree starts at the state (b, b ′ ), where b = t (n) and b ′ = t ′(n ′ ) .",
+        "Let us show that the automaton A can be obtained from C through a sequence of amalgamations.",
+        "We can perform a general amalgamation of C by merging all states (b, b ′ ), (b, c ′ ) sharing the same block b and such that b ′(n ′ -1) = c ′(n ′ -1) .",
+        "Indeed, let (b, b ′ ), (b, c ′ ) be two states of C such that b ′(n ′ -1) = c ′(n ′ -1) . Let ------→ ((b, c ′ ), (g, g ′ )).",
+        "The same property holds for right incoming transitions of (b, b ′ ). We assume that all states (b, b ′ ) sharing the same blocks b and b ′(n ′ -1) have been merged into a state denoted by (b, b ′(n ′ -1) ) in an automaton denoted C(n, n ′ -1). After this amalgamation, there is a transition in C(n, n ′ -1)",
+        "• e = (e(ε), σ 1 (e), σ 0 (e)) with b (n-1) = σ 1 (e) and g (n-1) = σ 0 (e).",
+        "• e ′(n ′ -1) = (f (e), σ 1 (e ′(n ′ -1) ), σ 0 (e ′(n ′ -1) )) with b ′(n ′ -2) = σ 1 (e ′(n ′ -1) ) and g",
+        ") has a left (respectively right) incoming transition from (e, e ′(n ′ -1) ) if and only if (b, c ′(n ′ -1) ) has a left (respectively right) incoming transition from (e, e ′(n ′ -1) ).",
+        "For each 1 ≤ k ≤ n ′ , we perform a general amalgamation of C(n, k) into C(n, k -1) by merging all states (b, b ′(k) ), (b, c ′(k) ) sharing the same block b and such that b ′(k-1) = c ′(k-1) . Indeed, all states (b, b ′(k) ), (b, c ′(k) ) with b ′(k-1) = c ′(k-1) have the same left (respectively right) incoming transitions. The states of C(n, 0) are pairs (b, ε), where ε is the empty block. We define the automaton D(n) obtained from C(n, 0) by keeping the first components of the states and of the edges' labels. Now, for each 3 ≤ k ≤ n, we perform a general amalgamation of D(k) into D(k -1) by merging all states b (k) , c (k) such that b (k-1) = c (k-1) . Indeed, states b (k) , c (k) such that b (k-1) = c (k-1) have the same left (respectively right) incoming transitions in D(k).",
+        "Finally, the automaton D( 2) is an out-splitting of A. Indeed, we perform an out-splitting D of A by partitioning the transitions going out of a state p into singletons. If p is a state of A, it is split into states (p, a), for each label a of a transition going out of p. Since A is trim, if (p, a) → (q, r) is a transition of A, then ((p, a), a) → ((q, b), (r, c)) is a transition of D for all letters b, c such that (a, b, c) ∈ B 2 (X). Up to a renaming of the states, we have D = D(2).",
+        "We now show that the automaton B can be obtained from C through a sequence of amalgamations. We just exchange the roles played by A and B, that is, the roles played by the first and the second components of the states and of the labels of the transitions. Indeed, if (e, e ′ ) (e(ε),f (e))",
+        "-------→ ((b, c ′ ), (g, g ′ )). is a transition of C, then e(ε) = g(e ′ ), where g is the block map defining φ -1 , and f (e) = e ′ (ε).",
+        "Hence, there is a sequence of amalgamations from C to A, and there is a sequence of amalgamations from C to B. By Proposition 4.5, A and B have the same total amalgamation. Note that the result holds even if the edge tree-shifts are not irreducible (see [1] for a definition). We only assume they are defined by trim edge automata."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Hom tree-shifts",
+      "paragraphs": [
+        "Let G = (V, E) be a simple (unlabeled) undirected graph (where self-loops are allowed). The Hom tree shift defined by G, denoted X(G), is the set of trees t labeled on V such that each path of t is a path of G. In other words, each sequence (y n ) n≥0 = (t xn ) n≥0 such that x n+1 ∈ x n Σ * , is a sequence of vertices of G such that (y n , y n+1 ) is an edge of G.",
+        "A Hom tree-shift defined by G = (V, E) is a tree-shift of finite type. Indeed, it is equal to X F , where F is the set of blocks b of height 2 on V such that (b(ε), b(i)) is not an edge of G for at least one i ∈ Σ.",
+        "for each 1 ≤ i ≤ n p , 1 ≤ j ≤ n q , and 1 ≤ k ≤ n r . Let N be the adjacency matrix of C. Note that if N pi,(qj ,r k ) = 1 for some 1 ≤ i ≤ n p , 1 ≤ j ≤ n q , and 1 ≤ k ≤ n r , then N p i ′ ,(q j ′ ,r k ′ ) = 1 for all 1 ≤ i ′ ≤ n p , 1 ≤ j ′ ≤ n q and 1 ≤ k ′ ≤ n r . Note also that if N pi,(qj ,r k ) = 1, then N pi,(r k ,qj ) = 1. Indeed, if N pi,(qj ,r k ) = 1, then M p,(q,r) = M p,(r,q) = n p > 0, implying N pi,(r k ,qj ) = 1.",
+        "Let us show that there is a simple undirected graph G such that C = A(G). Let G = (V, E), where V is the set of states of C, be the undirected graph such that there is an edge (p i , q j ) in E if there is a transition p i → (q j , r k ) in C for some r k ∈ V . This definition is consistent with the fact that the edge (p i , q j ) is undirected. Indeed, if N pi,(qj ,r k ) = 1, then M p,(q,r) = n p ̸ = 0. Thus, M q,(p,p) = n q ̸ = 0, implying N qj ,(pi,pi) = 1 and (q j , p i ) in E.",
+        "It is easy to check that C = A(G). As a consequence, X is conjugate to X A(G) , itself conjugate to the Hom tree-shift X(G). Proposition 5.4 It is decidable whether an edge tree shift is conjugate to a Hom tree-shift.",
+        "Proof. Let X be an edge tree-shift. Without loss of generality, we assume that it is defined by a trim edge tree automaton A. Let us show that X is conjugate to a Hom tree shift if and only if the total amalgamation of A is regular.",
+        "If X is conjugate to a Hom tree-shift Y defined a trim automaton B = A(G), by Proposition 4.8, A and B have the same total amalgamation D, up to a renaming of the states. By Proposition 5.2, this total amalgamation is regular. Conversely, if the total amalgamation of A is regular, by Proposition 5.3, this amalgamation defines an edge tree-shift conjugate to a Hom shift.",
+        "The time and space complexity for deciding the property is polynomial in the size of A.",
+        "Proposition 5.5 Two Hom tree shifts defined by the edge tree automata A(G) and A(H), respectively, are conjugate if and only if G and H are isomorphic as undirected graphs.",
+        "Proof. Let A(G) and A(H) be the edge tree automata corresponding to G and H, respectively, and let X(G), X(H) be the corresponding tree-shifts. The tree automata A(G) and A(H) are regular and trim. By Proposition 5.4, if X(G) and X(H) are conjugate, there is a regular tree automaton C such that C is the total amalgamation of A(G) and is the total amalgamation of A(H).",
+        "Let M be the adjacency matrix of A(G). Let us perform an initial general amalgamation B of A(G), obtained using a partition (V 1 , . . . , V ℓ ) of the states of A(G). This partition is defined according to the equivalence relation p ∼ q if and only if M s,(p,r) = M s,(q,r) for all states r, s, and M s,(r,p) = M s,(r,q) for all states r, s.",
+        "We assume that all states p i,1 , . . . p i,in i of V i are merged into a state p i in B. Since A(G) is regular and since M has 0-1 entries, if M p,(q,r) = 1 for some p ∈ V i , q ∈ V j , r ∈ V k then M p,(q ′ ,r ′ ) = 1 for any q ′ ∈ V j , r ′ ∈ V k . This implies that M q ′ ,(p,p) = 1 and M r ′ ,(p,p) = 1 for any q ′ ∈ V j , r ′ ∈ V k , and M q ′ ,(p ′ ,p ′ ) = 1, M r ′ ,(p ′ ,p ′ ) = 1 for any p ′ ∈ V i , q ∈ V j , r ∈ V k . Hence, M p ′ ,(q ′ ,r ′ ) = 1 for any p ′ ∈ V i , q ′ ∈ V j , r ′ ∈ V k . As shown in the proof of Proposition 5.2, the adjacency matrix N of the amalgamation B satisfies the following: either N pi,(pj ,p k ) = 0 or N pi,(pj ,p k ) = n i , where n i = |V i |.",
+        "Assume that the two (distinct) states p i and p j can be merged through another amalgamation after this round. This implies that N p k ,(pi,p ℓ ) = N p k ,(pj ,p ℓ ) for any states p k , p ℓ in B. Hence, M p,(q,r) = M p ′ ,(q ′ ,r ′ ) for some p, p ′ ∈ V k , q ∈ V i , q ′ ∈ V j , r, r ′ ∈ V ℓ , implying M p,(q,r) = M p,(q ′ ,r ′ ) for any p, q ∈ V i , q ′ ∈ V j , r, r ′ ∈ V ℓ . This implies V i = V j by definition of the partition (V 1 , . . . , V ℓ ).",
+        "It follows that B is the total amalgamation C of A(G).",
+        "Similarly, we consider the partition (W 1 , . . . , W ℓ ′ ) of the states of A(H) defined according to the equivalence relation p ∼ q if and only if P s,(p,r) = P s,(q,r) for all states r, s, and P s,(r,p) = P s,(r,q) for all states r, s, where P is the adjacency matrix of A(H). After renumbering the sets W i , we may assume that all states of W i are amalgamated to p i into the tree automaton C. Thus, ℓ = ℓ ′ and either N pi,(pj ,p k ) = 0 or N pi,(pj ,",
+        "There is a transition from each state in V i to each pair (q, r) with q ∈ V j , r ∈ V k in A(G) if and only if there is a transition from each state in W i to each pair (q, r) with q ∈ W j , r ∈ W k in A(H). Hence, G = H, up to a renaming of the states."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Directed Hom tree shifts",
+      "paragraphs": [
+        "In this section, we consider the class of tree shifts defined by a simple (unlabeled) directed graph G (where self-loops are allowed), referred to as directed Hom tree-shifts. These shifts are called hom tree-SFT in [3].",
+        "Let G = (V, E) be a directed graph. The directed Hom tree shift defined by G, denoted X(G), is the set of trees t labeled on V such that for each node u and each i ∈ {0, 1 . . . , d -1}, (t u , t ui ) is a (directed) edge of G. This notion is thus weaker than the notion of (undirected) Hom tree-shift, as defined in Section 5. Without loss of generality, we may consider below only trees of arity d = 2.",
+        "A directed Hom tree-shift is a tree-shift of finite type. It is accepted by the tree automaton B = (V, ∆), whose transitions are (p, p) → (q, r), where (p, q), (p, r) ∈ E.",
+        "Let A(G) be the edge tree automaton obtained from B by labeling all transitions with distinct labels. The tree-shift X(G) is conjugate to the edge tree-shift accepted by A(G).",
+        "We say that an edge tree automaton A = (Q, ∆) with adjacency matrix M is symmetric if for all states p, q, r:",
+        "• M p,(q,r) = M p,(r,q) . Note that the adjacency matrix of A(G) is symmetric."
+      ],
+      "subsections": []
+    }
+  ],
+  "body_paragraphs": [
+    "We consider two types of shift spaces, shifts of sequences and tree-shifts. A shift of sequences is a set of one-or two-sided infinite sequences of symbols defined by a collection of finite words called forbidden blocks. A tree-shift is a set of infinite trees defined by a collection of forbidden blocks. A shift space of sequences is equipped with a shift transformation, whereas a tree-shift is equipped with multiple directional shift transformations. A conjugacy between shift spaces is a continuous bijection that commutes with the shift transformations. Shifts spaces defined by a finite set of forbidden blocks are called shifts of finite type. Note that a one-sided shift of sequences can be seen as a tree-shift with arity 1.",
+    "The problem of deciding whether two-sided finite-type shifts of sequences are conjugate remains open (see, for example, [14]). By contrast, the situation is significantly simpler for one-sided shifts: Williams [18] proved that conjugacy is decidable for one-sided shifts of finite type. This decidability also extends to tree-shifts [2], a consequence of the inherently one-sided structure of trees.",
+    "Tree-shifts are, however, more complex than one-sided shifts. Petersen and Salama [15], [16] introduced the topological entropy for such spaces as an analog to topological entropy for traditional shift spaces to investigate their complexity. Their results were generalized to asymptotic pressure for a broad class of systems in [17]. Properties of tree-shifts like entropy, transitivity, Hausdorff dimensions have been explored in [4], [5], [6].",
+    "In this paper, we consider a particular class of shifts called Hom shifts. A Hom shift is defined by an undirected, simple graph G (where self-loops are allowed). We also consider the class of directed Hom tree-shifts defined by a simple directed graph G (again with self-loops). Directed Hom tree-shifts are called hom tree-SFT in [3]. A Hom shift (resp. a directed Hom shift) of sequences is the set of all sequences of symbols where the consecutive pair ab is forbidden whenever (a, b) is not an edge in the undirected (resp. directed) graph G.",
+    "A Hom shift of trees (resp. a directed Hom tree-shift) is the set of all trees avoiding all blocks of height 2 with a root labeled a and having at least one child labeled b such that (a, b) is not an edge in the undirected (resp. directed) graph G.",
+    "Alternatively, a Hom shift can be described as a nearest neighbour shift of finite type that is symmetric and isotropic. Hom shifts can be defined and studied in the multidimensional context (see [9], [10], [12]). They form a natural subclass of shifts of finite type that arise in various contexts. For example, the hard square shift and the n-coloured chessboard shifts are both two-dimensional Hom shifts. Chandgotia and Marcus [10] studied the mixing properties of Hom shifts and related them to some questions in graph theory therein.",
+    "In this paper, we prove that it is decidable whether a one-sided shift of finite type is conjugate to a one-sided Hom shift, and whether a tree-shift of finite type is conjugate to a Hom tree-shift.",
+    "The proof uses Williams's theory for one-sided shifts. The total amalgamation of a directed multi-graph is the unique directed multi-graph obtained after a sequence of out-merging operations. In [18], Williams proved that if G and H are irreducible directed graphs that define irreducible one-sided edge shifts, then these shifts are conjugate if and only if G and H have the same total amalgamation. We prove that a one-sided shift of finite type, or a tree-shift of finite type, is conjugate to a one-sided Hom shift if and only if its total amalgamation satisfies some regularity conditions that are decidable.",
+    "For tree-shifts, it was proved in [2] that two irreducible edge tree shifts defined by a bottom-up tree automaton are conjugate if and only if they have the same total amalgamation (a bottom-up tree automaton obtained through merging operations). We give another proof of this result using trim top-down tree automata, and we define the total amalgamation of a top-down edge tree automaton similarly. A top-down tree automaton is trim if there is at least one (top-down) transition starting at any state. The irreducibility is not required. We prove that, if A and B are trim top-down edge tree automata defining two tree-shifts of finite type, then these shifts are conjugate if and only if A and B have the same total amalgamation.",
+    "We prove that a tree-shift of finite type defined by a trim edge tree automaton is conjugate to a Hom tree-shift if the total amalgamation of this tree automaton satisfies some regularity conditions. The property is decidable in polynomial space and time. We also show that if two Hom tree shifts defined by undirected graphs G and H, respectively, are conjugate, then G is equal to H, up to a graph isomorphism.",
+    "We prove that a tree-shift of finite type defined by a trim edge tree automaton is conjugate to a directed Hom tree-shift if the total amalgamation of this tree automaton satisfies some symmetry conditions. The property is also decidable in polynomial space and time.",
+    "The paper is organized as follows. We recall basic definitions of symbolic dynamics in Section 2, including Williams's results on one-sided shifts of sequences. Basic definitions on tree shifts and the decidability of conjugacy for this class of shifts are presented in Section 4. One-sided Hom shifts of sequences and Hom tree-shifts are studied in Section 3 and 5. Directed Hom tree shifts are studied in Section 6.",
+    "We briefly recall some basic definitions of symbolic dynamics. For a more complete presentation, see [14], [13], and [7].",
+    "Let A be a finite set, called the alphabet. The elements of A are called letters. A word on A is a finite sequence of elements of A. The set of words on A is denoted by A * .",
+    "We consider the set A Z of two-sided infinite sequences of elements of A, equipped with the product of the discrete topology on A.",
+    "For x = (x n ) n∈Z ∈ A Z with x n ∈ A and i ≤ j, we write",
+    "A word u occurs in a sequence x if u = x [i,j) for some i, j. One also says that u is a block of x.",
+    "Let S denote the shift transformation defined for x ∈ A Z by S(x) = y if y n = x n+1 for n ∈ Z. It is continuous and one-to-one from A Z to itself.",
+    "We also consider the corresponding sets A N of right-infinite sequences. The one-sided shift transformation is defined similarly. For x ∈ A N , one has y = S(x) if y n = x n+1 for n ≥ 0. It is continuous, but not one-to-one (except when Card(A) = 1).",
+    "For a language F ⊆ A * , the set of sequences x ∈ A Z such that no element of F occurs in it is denoted by X F . It is well known that a set X ⊆ A Z is a shift space if and only if X = X F for some F ⊆ A * . A block of X is a word occurring in some sequence of X.",
+    "A shift of finite type is a shift X = X F for some finite set F .",
+    "In the sequel, we consider labeled directed graphs (with labeled edges) and unlabeled directed graphs. We say graph for multigraph. A labeled or unlabeled directed graph G is denoted by G = (V, E), where V is its set of vertices and E its set of edges. In a labeled directed graph, an edge from a state s to a state t labeled by a is denoted by (s, a, t).",
+    "An edge shift is the set of two-sided infinite paths in a finite directed graph. An edge shift is a shift of finite type.",
+    "A shift space X is irreducible if and only if for any two blocks u, v of X, there is a word w such that uwv is a block of X.",
+    "If X is a shift space, we let B n (X) denote the set of blocks of X of length n.",
+    "A one-sided shift space is a closed subset X of A N such that S(X) ⊆ X.",
+    "Note that one-sided shift spaces are usually defined as closed subsets such that S(X) = X, but we do not require this stronger condition here. The set A N itself is a one-sided shift space, called the one-sided full shift.",
+    "For a two-sided sequence x ∈ A Z , we define",
+    "A one-sided shift space is of finite type if it is the set X F of one-sided sequences over A avoiding all words of some finite set F ⊆ A * . A one-sided edge shift is the set X G of right-infinite paths in a finite directed graph G. Note that the paths may start at any state.",
+    "The adjacency matrix of a labeled or unlabeled directed graph G with a set of vertices E is the matrix M = (M st ) s,t∈E such that M st is the number of edges going from s to t in G. Thus, an edge shift is also defined by a square matrix with coefficients in N. is also defined by the adjacency matrix of G, that is, by the matrix",
+    "where X is a one-sided shift space, is a continuous map commuting with the shift transformation: S(φ(x)) = φ(S(x)), for each x ∈ X.",
+    "Let X be a one-sided shift space on the alphabet A, and let B be another alphabet. Given a nonnegative integer n, a block map is a map f : B n+1 (X) → B. The (one-sided)-sliding block code defined by f is the map φ : X → B N defined by φ(x) = y if for every i ∈ N,",
+    "Thus, y is computed from x by sliding a window of length n + 1 on x as in Figure 2.2. The integer n is the anticipation of φ.",
+    "The set φ(X) is a one-sided shift space.",
+    "It is a classical result that φ is a morphism if and only if it is a (onesided) sliding block code. A (one-sided) conjugacy is an invertible (one-sided) morphism. Its inverse is also a (one-sided) sliding block code, perhaps defined with a block map having a different anticipation. If φ : X ⊆ A N → B N , where X is a one-sided shift space, is a conjugacy, we say that X and Y = φ(X) are conjugate. Any one-sided shift of finite type is conjugate to a one-sided edge shift (see for instance [14]).",
+    "In this section, we recall the notion of transformations on directed graphs called out-splittings and out-mergings. The transformation can be defined either for labeled directed graphs or for directed graphs. Let X G be a one-sided edge shift defined by a directed graph G = (V, E). We may assume that the graph is trim, that is, that each vertex has at least one outgoing edge. An out-splitting of G is a local transformation of G into a graph G ′ = (V ′ , E ′ ) obtained by selecting a vertex s and partitioning the set of edges going out of s into two non-empty sets E 1 and E 2 . The graph G ′ is defined as follows:",
+    "• E ′ contains all edges of E neither starting at or ending in s,",
+    "• E ′ contains the edge (s 1 , a, t) for each edge (s, a, t) ∈ E 1 , and the edge (s 2 , a, t) for each edge (s, a, t) ∈ E 2 , so long as t ̸ = s, Note that for each self-loop from s to s in E, if this loop is in E 1 , then E ′ has a self-loop from s 1 to s 1 and an edge from s 1 to s 2 . Informally, an outsplitting operation involves splitting a vertex in G into two distinct vertices, partitioning its outgoing edges between them, while preserving the incoming edges by duplicating them for each new vertex (see Figure 2.4).  Let X G be the one-sided edge shift defined by G and X G ′ be the one-sided edge shift defined by G ′ . Then X G and X G ′ are conjugate. Indeed, let φ : : E N → E ′N be the sliding block code defined by the 2-block map f :",
+    "defines a conjugacy from X G onto X G ′ . Its inverse is the sliding block code defined by the 1-block map g :",
+    "Following [14], we define the notion of general out-splitting: the outgoing edges from a given state can be partitioned into arbitrary many subsets instead of just two, and the partitioning can occur simultaneously at all of the states instead of just one. This procedure also accommodates self-loops.",
+    "The inverse operation of an out-splitting is referred to as an out-merging. An out-merging of a directed graph G ′ = (V ′ , E ′ ) can be performed if there are two vertices s 1 , s 2 of G ′ such that the adjacency matrix M ′ satisfies:",
+    "The adjacency matrix of G is thus the matrix M obtained by adding the rows of index s 2 to the row of index s 1 of M ′ and then removing the column of index s 2 afterward. The graph G is called an elementary amalgamation of G ′ . Notice that even if M ′ has 0-1 entries, M may not have 0-1 entries.",
+    "Let M ′ be the adjacency matrix of a directed graph G ′ , and (V 1 , V 2 , . . . , V k ) be a partition of V ′ into classes such that if s, t belong to the same class, then the columns of indices s and t of M ′ are identical. When at least one set of the partition has a size greater than 1, we can perform a general merging. We define a graph K of adjacency matrix N obtained by merging all states of each",
+    "The row in N corresponding to s i,1 is obtained by summing the rows of the states of V i in M ′ and removing the columns",
+    "A directed graph G that can be obtained from G ′ by a sequence of elementary out-mergings is called an amalgamation of G.",
+    "The following proposition, due to R. F. Williams [18], shows that two outmerging transformations commute (see also [8] for a proof). Proposition 2.4 (Williams [18]) If G and H are amalgamations of a common directed graph L, then they have a common amalgamation K.",
+    "As a consequence, given a directed graph G, there is a unique graph, up to a renaming of the vertices, obtained by performing elementary out-mergings until we cannot perform anymore. This graph is called the total amalgamation of G. Proposition 2.5 (Williams [18]) Let G and H be irreducible directed graphs that define one-sided edge shifts X G and X H . Then X G and X H are conjugate if and only if G and H have the same total amalgamation. Proposition 2.5 also holds for one-sided edge shifts defined by trim directed graphs. We will demonstrate this fact in section 4, as it follows directly from the propositions therein.",
+    "In this section, we consider shift spaces defined by undirected graphs, which we assume to be simple, that is, with at most one (undirected) edge between two vertices, and where loops are allowed. We will consider shift spaces defined by simple directed graphs in Section 6.",
+    ") is an edge of G. In this way, each sequence x can be viewed as a graph homomorphism x : Z → G. The shift X(G) can be seen as the set of graph homomorphisms, which explains the name 'Hom shift', coined by Chandgotia in [9]. A one-sided Hom shift is a sequence",
+    "To a simple undirected graph G = (V, E) corresponds its underlying directed graph",
+    "Lemma 3.1 A one-sided Hom shift defined by an undirected graph is conjugate to the one-sided edge shift defined by its underlying directed graph.",
+    "Proof. Let G = (V, E) be an undirected graph and G ′ = (V, E ′ ) its underlying directed graph. Let φ be the sliding block code defined by the 1-block map f :",
+    "Its inverse is the sliding block code defined by the 2-block map g : Notice that X G ′ itself is not a Hom shift. Indeed, (a, a)(a, b) is a block of X G ′ while (a, b)(a, a) is not. Thus, the Hom shift property is not invariant under conjugacy.",
+    "We say that a directed graph G is regular if",
+    "• for each vertex s of G, there is a positive integer n s such that for each vertex t of G the number of edges going from s to t is either 0 or n s . Equivalently, for each state s, the nonzero values of the row of index s in the adjacency matrix of G are identical.",
+    "• whenever there is at least one edge from s to t in G, then there is at least one edge from t to s in G.",
+    "Note that the underlying directed graph of a Hom shift is regular. Indeed, the two conditions follow directly from the definitions since the adjacency matrix is a symmetrical 0-1-matrix. Proposition 3.3 Any amalgamation of a regular directed graph is a regular directed graph.",
+    "Proof. Without loss of generality, we may consider only an elementary amalgamation. We show that the definition of an elementary amalgamation implies that the two conditions of regularity are maintained.",
+    "Let s 1 and s 2 be two vertices of a regular directed graph G = (V, E) with adjacency matrix M . Let N be the adjacency matrix of the amalgamation G ′ after merging s 1 and s 2 into a state s 12 . Let n 1 (resp. n 2 ) be the value of the nonzero entries of the row of M of index s 1 (resp. s 2 ).",
+    "Suppose that s 1 and s 2 satisfy the prerequisites for an out-merging, i.e. the columns corresponding to s 1 and s 2 in M are identical. For s ∈ V , we define π(s) as s if s ̸ = s 1 , s 2 , and π(s 1 ) = π(s 2 ) = s 12 .",
+    "Let us now show that the second condition of regularity is verified. If N π(s),π(t) > 0, then there exist s ′ with π(s ′ ) = π(s) such that for each t ′ with π(t ′ ) = π(t), one has M s ′ ,t ′ > 0. This implies that M t ′ ,s ′ > 0 by regularity of G, and thus N π(t),π(s) > 0.",
+    "We now show that the first condition of regularity is verified. If N π(s),π(t) > 0, then there exist s ′ with π(s ′ ) = π(s) such that for each t ′ with π(t",
+    "Note that the graph obtained after an out-splitting of a regular graph is not necessarily regular, as one can see in Figure 2.4. Indeed, there is an edge from 1 1 to 1 2 and there is no edge from 1 2 to 1 1 in the graph in the right part of the figure.",
+    "Proposition 3.4 Any one-sided edge shift defined by a regular directed graph is conjugate to a one-sided Hom shift.",
+    "Proof. Let G be a regular directed graph with adjacency matrix M , and X G be the one-sided edge shift defined by G. We construct a new directed graph G ′ = (V ′ , E ′ ) with adjacency matrix M ′ as follows. For each vertex s of G whose corresponding row in M has all its nonzero entries equal to n s , we define n s vertices s 1 , • • • s ns in the graph G ′ , and add exactly one edge from each s i to each t j when M s,t = n s .",
+    "By construction, the adjacency matrix",
+    "Let H be the undirected graph whose set of vertices is V ′ , and where (s i , t j ) is an (undirected) edge of H if and only if M ′ si,tj = 1. The one-sided edge shift X G ′ is the one-sided edge shift defined by the underlying directed graph of H. By Lemma 3.1, the edge shift X G ′ is conjugate to the Hom shift X(H). Thus, X G is conjugate to a Hom shift as a one-sided shift.",
+    "We now give an effective characterization of one-sided edge shifts conjugate to a one-sided Hom shift. In the sequel, we will assume that the directed graphs are trim. Proposition 3.5 A one-sided edge shift defined by a trim directed graph G is conjugate to a Hom shift if and only if the total amalgamation of G is regular.",
+    "Proof. Let X G be the one-sided edge shift defined by a trim directed graph G. Assume that X G is conjugate to a Hom shift X(H), where H is an undirected graph.",
+    "The one-sided shift X G is thus conjugate to the edge shift X H ′ defined by the underlying directed graph H ′ of H, which is regular. As a consequence of Proposition 2.5 and since G and H ′ are trim, the total amalgamations of G and H ′ are the same, up to a renaming of the vertices. By Proposition 3.3, this total amalgamation is regular.",
+    "Conversely, if G has a total amalgamation K that is regular, then the onesided shift X G is conjugate to the one-sided edge shift X K , which is conjugate to a Hom shift by Proposition 3.4.",
+    "Corollary 3.6 It is decidable whether a one-sided shift of sequences of finite type is conjugate to a one-sided Hom shift.",
+    "Proof. Let X = X F be a one-sided shift of finite type over A. We may assume that all words of F have the same length n. Then X F is conjugate to X G , where G is the trim part of the directed graph whose set of states is A n-1 , and the edges (au, ub) with that a, b ∈ A and aub / ∈ F . Thus, we may assume that X is the one-sided edge shift defined by a trim directed graph G. We apply the construction of Proposition 2.5 to build the total amalgamation of G. We conclude with Proposition 3.3 by checking whether this total amalgamation is regular.",
+    "If the input is a trim directed graph G that defines the one-sided edge shift, the time and space complexity are polynomial. Indeed, if G has n vertices, the total amalgamation can be performed in time O(n 2 ) with a linear lexicographical sort of the columns of the adjacency matrix of G for each general amalgamation.",
+    "Example 3.7 Let X G be the one-sided edge shift defined by the graph G with the following adjacency matrix M :",
+    "The first and the second columns corresponding to states 1 and 2 are identical. Thus, states 1 and 2 can be merged and the amalgamation is the graph K with the following adjacency matrix N :",
+    "After this out-merging, no other out-merging is possible. Hence, the total amalgamation of G is the graph K. Since K is regular, X G is conjugate to a one-sided Hom shift, the shift X(H) defined by the undirected graph of Figure 3.2. The following proposition shows that two one-sided Hom shifts defined by distinct undirected graphs are never conjugate. Proposition 3.8 Let X(G) and X(H) be two one-sided Hom shifts defined by the undirected graphs G and H, respectively. If X(G) and X(H) are conjugate, then the undirected graphs G and H are isomorphic as undirected graphs.",
+    "Proof. Let G ′ and H ′ be the underlying directed graphs of G and H, respectively. The graphs G ′ and H ′ are regular and trim by construction. By Lemma 3.1, X(G) (resp. X(H)) is conjugate to X G ′ (resp. X H ′ ). Let M (resp. M ′ ) be the adjacency matrix of G ′ (reps. H ′ ). The matrices M and M ′ have 0-1 entries. By Proposition 3.5, if X(G) and X(H) are conjugate, then there is a regular directed graph K such that K is the total amalgamation of G ′ and is the total amalgamation of H ′ .",
+    "We define the partition (V 1 , . . . , V ℓ ) of the vertices of G ′ where the sets V i are the equivalence classes of the equivalence relation t ∼ u if and only if the columns of M corresponding to t and u are identical. Let us compute an initial general amalgamation K ′ of G ′ defined by this partition. All states of V i are merged into a single state s i in K ′ . Since G ′ is regular and M has 0-1 entries, if M s,t = 1 for some s ∈ V i , t ∈ V j , then M s,t ′ = 1 for all t ′ ∈ V j , and M t,s ′ = 1 for all s ′ ∈ V i . Thus, whenever M s,t = 1 for some s",
+    "Hence, the adjacency matrix N of the general amalgamation",
+    "Assume that the two (distinct) states s i and s j of K ′ can be merged through another out-merging after this first round. This implies that N s k ,si = N s k ,sj for each state s k of K ′ . Hence, M s,t = M s,u for each state s of G ′ , each state t of V i , and each state u of V j . This implies s i = s j by definition of the partition (V 1 , . . . , V ℓ ). As a consequence, no other merging can be performed, and",
+    "Similarly, if (W 1 , . . . , W ℓ ′ ) is the partition of the vertices of H ′ corresponding to the equivalence classes of the equivalence relation t ∼ u if and only the columns of M ′ corresponding to t and u are identical. The total amalgamation K of H ′ is obtained by merging all states in each W i . After renumbering the sets W i , we may assume that all states of W i are merged into s i in K.",
+    "Hence, ℓ = ℓ ′ . Further,",
+    "After renaming the states, we may thus assume that V k = W k for each k. As a consequence, M = M ′ , implying G ′ = H ′ .",
+    "Let Σ = {0, 1, . . . , d -1} be a finite alphabet of cardinality d. An (infinite) tree t, with nodes labeled on a finite alphabet A, is a total function from Σ * to A. A node is a word of Σ * . The empty word, denoted by ε, corresponds to the root of the tree. If x is a node, its children are xi with i ∈ Σ. If t is a tree and x is a node, t(x) is sometimes denoted by t x . A (infinite) path in a tree t is a sequence (t xn ) n≥0 where x n+1 ∈ x n Σ for any n ≥ 0. We let T (A) denote the set of all infinite trees labeled on A.",
+    "For each i ∈ Σ, we define the shift transformation σ i : T (A) → T (A) as follows. If t is a tree, σ i (t) is the tree rooted at the i-th child of t, i.e. σ i (t) x = t ix for any x ∈ Σ * . The set T (A) equipped with these shift transformations is called the full shift of infinite trees over A.",
+    "A pattern of a tree t is a restriction of t to a subset L of Σ * , where L is called the support of the pattern. A block of height k ≥ 1 on A is a function b : Σ k-1 → A. We allow the block of height 0 denoted by ε. If b is a block of height k, we let b (k ′ ) denote the subblock of b of height k ′ rooted at the root of b, if k ′ ≤ k.",
+    "If t is a tree on A and x ∈ Σ * is a node, we let t",
+    "x denote the block of height k rooted at x, that is, the block b such that t(xy) = b(y) for any y ∈ Σ k-1 . We let t (k) denote the block of height k at the root of t. We say that a block b is a block of height k of a tree t if there is a node x ∈ Σ * such that b = t (k)",
+    "x ; otherwise, b avoids t. The empty block is a block of any tree. If X is a tree-shift, let B k (X) be the set of blocks of height k of all trees of X.",
+    "If b is a block of height k ≥ 2 and i ∈ Σ, we let σ i (b) denote its subblock of height k-1",
+    "A tree-shift X on A is the set X F , where F is a set of blocks, consisting of all trees that avoid each block in F . A tree-shift of finite type X in T (A) is a tree-shift X F where F is a finite set of blocks.",
+    "Let X be a tree-shift on the alphabet A, and let B be another alphabet. Given a nonnegative integer n, a block map is a map f : B n (X) → B. The sliding block code defined by f is the map φ :",
+    "x ). The integer n-1 is the height anticipation of φ. The set φ(X) is tree-shift. A conjugacy is an invertible sliding block code. Its inverse is also a sliding block code.",
+    "Let X be a tree-shift on A and let k ≥ 1 be an integer. The map γ k : X → T (B k (X)) defined for t ∈ X by t ′ = γ k (t) if for every x ∈ Σ * ,",
+    "is the k-th higher block code on X. One also says that γ k is a coding by overlapping blocks of length k. The set X (k) = γ k (X) is a tree-shift on B k (X), called the k-th higher block shift of X, or the k-th higher block presentation of X.",
+    "The following result is well known.",
+    "To simplify the notation, we consider binary trees below, i.e., we assume that Σ = {0, 1}. However, all results hold for any d, particularly for d = 1, extending the results for one-sided shifts of sequences. A (top-down) tree automaton on an alphabet A is a structure A = (Q, ∆), where Q is a finite set of states and ∆ a finite set of transitions (p, a) → (q, r), with p, q, r ∈ Q, a ∈ A, a being the label of the transition (see for instance [11]). A transition (p, a) → (q, r), also denoted p a -→ (q, r), is said to be an outgoing transition of p, a left incoming transition of q and a right incoming transition of r.",
+    "A tree t labeled on A is accepted by A if there is a tree u on Q such that, for any x ∈ Σ * , (u x , t x ) → (u x1 , u x0 ) belongs to ∆. Such a tree u is called a computation tree for t. A tree is a computation tree of A if it is a computation tree of some tree accepted by A. The set of trees accepted by A is a tree-shift denoted by X A .",
+    "A tree automaton is trim if each state of the automaton has at least one outgoing transition.",
+    "An edge tree automaton is a tree automaton such that all transitions have distinct labels. An edge tree-shift is the set of trees accepted by an edge tree automaton.",
+    "The following result is well known.",
+    "Proposition 4.3 A tree-shift of finite type is conjugate to an edge tree shift.",
+    "Proof. Let X = X F be a tree shift of finite type, where F is a set of blocks of height k+1 with k ≥ 1. It is conjugate to the tree shift Y = γ k (X) on B k (X).",
+    "Let us show that Y is an edge tree shift. Let A = (B k (X), ∆) be the tree automaton defined as follows. The automaton A is an edge tree automaton that accepts X F .",
+    "Since an edge tree automaton has all its transitions having distinct labels, we may represent all transitions (p, a) → (q, r) going from a state p to a pair of states (q, r) by p n -→ (q, r), where n ≥ 1 is the number of transitions from p to (q, r). We define the transition matrix M of such an automaton by M p,(q,r) = n if there is a transition p n -→ (q, r). We define the notion of out-splitting of an edge tree automaton as follows. An out-splitting transforms an edge tree automaton A = (Q, ∆) into an edge tree automaton A ′ = (Q ′ , ∆ ′ ) that is obtained from a partition of the set of transitions going out of a state s into two nonempty sets ∆ 1 and ∆ 2 . The set of states of automaton A ′ is Q ′ = Q \\ {s} ∪ {s 1 , s 2 }. Let µ(q) denote the set {q} if q ̸ = s, and µ(s) denotes {s 1 , s 2 }. The transitions of ∆ ′ are the following:",
+    "Note that all transitions have distinct labels.",
+    "The inverse operation is called an out-merging. We define the notion of general out-splitting similarly. The outgoing transitions from a given state can be partitioned into arbitrary many subsets instead of just two, and the partitioning can occur simultaneously at all of the states instead of just one.",
+    "Let A ′ = (Q ′ , ∆ ′ ) be an edge tree automaton and M ′ its transition matrix.",
+    ") be a partition of Q ′ into classes such that if q i , q j belong to the same class, then for each state p of Q ′ 1. the columns of indices (q i , p) and (q j , p) of M ′ are identical, 2. the columns of indices (p, q i ) and (p, q j ) of M ′ are identical.",
+    "We can define an edge tree automaton A = (Q, ∆) of transition matrix M obtained by merging all states of each Q ′ i = {q i,1 , . . . q i,ki } into a single state q i,1 whose row in M is obtained by summing of the rows q i,1 , . . . q i,ki of M ′ and removing the columns (p, q i,2 ), • • • , (p, q i,ki ) and (q i,2 , p), • • • , (q i,ki , p) for each p ∈ Q ′ .",
+    "Note that the labels of the transitions of A ′ are all distinct since the labels of the transitions of A are all distinct, and A is defined up to a renaming of these labels. The automaton A is called a general amalgamation of A ′ . Proposition 4.4 Suppose X is the edge tree-shift defined by an edge tree automaton A, and Y is the edge tree-shift defined by the edge tree automaton A ′ that is an out-splitting automaton of A. Then X and Y are conjugate.",
+    ") by splitting a state s into two states s 1 , s 2 , and partitioning the transitions going out of s into ∆ 1 and ∆ 2 . Recall that all transitions of A and A ′ have distinct labels.",
+    "We define a sliding block code φ : X → Y from a block map f : B 2 (X) → B(Y ) as follows.",
+    "For each block (a, b, c) of height 2 of X, there are unique transitions (p, a) → (q, r), (q, b) → (t, u), and (r, c) → (v, w) in A. Below, let i, j ∈ {1, 2}.",
+    "If p, q, r ̸ = s, then we set f (a, b, c) = a (q,r) . If p, q ̸ = s, r = s and (s, c) → (v, w) ∈ ∆ i , then we set f (a, b, c) = a (q,si) . If p, r ̸ = s, q = s and (s, b)",
+    "The 2-block map f when p, q, r ̸ = s.",
+    "The sliding block map φ is clearly a conjugacy whose inverse is the sliding block map ψ defined by the 1-block map g : B(Y ) → B(X) as follows: g(a (q ′ ,r ′ ) ) = a.",
+    "Let us show that φ(X) = Y . Let z ∈ X. We first check that φ(z) is accepted by A ′ . By construction, for each x ∈ Σ * , if z",
+    "r ′ ) for some letter a of the alphabet of A and some states q ′ , r ′ ∈ Q ′ . By construction, this implies that (u and(π(u ′ x ), a) → (π(q ′ ), π(r ′ )) belongs to ∆, where π(q",
+    "For tree-shifts, William's theory for one-sided shifts of finite type holds. The same result was obtained in [2] with top-down tree automata. Proposition 4.5 If A and B are amalgamations of a common edge tree-automaton, then they have a common amalgamation.",
+    "Proof. Assume that A (respectively B) is obtained by merging states q i , q j (respectively q ′ i , q ′ j ) of an edge tree-automaton C into a state denoted q ij (respectively q ′ ij ). Thus, the columns of indices (q i , p) and (q j , p) (respectively (p, q i ) and (p, q j )) of the adjacency matrix of C are identical, and the columns of indices (q ′ i , p) and (q ′ j , p) (respectively (p, q ′ i ) and (p, q ′ j )) of the adjacency matrix of C are identical.",
+    "Assume that q ′ i ̸ = q i , q j , q ′ j ̸ = q i , q j . If p ̸ = q i , q j , then the columns of indices (q ′ i , p) and (q ′ j , p) (respectively (p, q ′ i ) and (p, q ′ j )) remain identical in the adjacency matrix of A. If p = q i , the columns of indices (q ′ i , q i ) and (q ′ j , q i ) (respectively (q i , q ′ i ) and (q i , q ′ j )) become the columns of indices (q ′ i , q ij ) and (q ′ j , q ij ) (respectively (q ij , q ′ i ) and (q ij , q ′ j )) in A and remain identical. Thus, one can merge the states q ′ i , q ′ j in A leading to an automaton D. Let M be the adjacency matrix of C and N the adjacency matrix of D. If q ̸ = q ij , q ′ ij , we have N q,(r,t) = M q,(r ′ ,t ′ ) for each r ′ , t ′ such that π(r ′ ) = r, π(t ′ ) = t, where π(s) = s for each s ̸ = q i , q j , q ′ i , q ′ j , π(q i ) = π(q j ) = q ij , and π(q",
+    "Similarly, one can merge the states q i , q j in B and get an automaton D ′ with the same transition matrix as D.",
+    "Assume now that q ′ i = q i (and q ′ j ̸ = q i , q j ), the columns of indices (q i , p), (q j , p) and (q ′ j , p) (respectively (p, q i ), (p, q j ) and (p, q ′ j )) are equal. Thus, in A, the columns of indices (q ij , p) and (q ′ j , p) (respectively (p, q ij ) and (p, q ′ j )) are equal. Therefore, it is possible to merge the states q ij and q ′ j of A into a state denoted (q ij , q ′ j ) and get an automaton D. If q ̸ = (q ij , q ′ j ), we have N q,(r,t) = M q,(r ′ ,t ′ ) for all r ′ , t ′ such that π(r ′ ) = r, π(t ′ ) = t, where π(s) = s for each s ̸ = q i , q j , q ′ j , π(q i ) = π(q j ) = π(q ′ j ) = (q ij , q ′ j ). We also have N (qij ,q ′ j ),(r,t) = M qi,(r ′ ,t ′ ) + M qj ,(r ′ ,t ′ ) + M q ′ j ,(r ′ ,t ′ ) , for all q ′ , r ′ such that π(r ′ ) = r, π(t ′ ) = t.",
+    "Similarly, it is possible to merge the states q ′ ij and q j of B into a state denoted (q ′ ij , q j ) and obtain an automaton D ′ identical to D after renaming (q ′ ij , q j ) by (q ij , q ′ j ). All other cases run identically to the one above, or are trivial.",
+    "As a consequence, given an edge tree automaton C, there is a unique edge tree automaton, up to a renaming of the states, obtained by performing amalgamations until we cannot perform any more. This edge tree automaton is called the total amalgamation of C.",
+    "Example 4.6 Let A ′ = (Q ′ , ∆ ′ ) be the tree automaton with Q ′ = {q 1 , q 2 , q 3 } and transitions",
+    "1 -→ (q 3 , q 3 ),",
+    "1 -→ (q 2 , q 1 ), q 3 1 -→ (q 2 , q 2 ).",
+    "Recall that the integer n above a transition p n -→ (q, r) means that there are n transitions from p to (q, r), and that all transitions have distinct labels.",
+    "The transition matrix of A ′ is M ′ = (q 1 , q 1 ) (q 1 , q 2 ) (q 2 , q 1 ) (q 2 , q 2 ) (q 3 , q 3 ) q",
+    "Its total amalgamation is obtained by merging states q 1 and q 2 into q 12 with transition matrix is M = (q 12 , q 12 ) (q 3 , q 3 ) q 12 1 1 q 3 1 0 .",
+    "Example 4.7 Let A ′ = (Q ′ , ∆ ′ ) be the tree automaton with Q ′ = {q 1 , q 2 } and transitions",
+    "-→ (q 2 , q 1 ), q 2 1 -→ (q 2 , q 2 ).",
+    "Its transition matrix is",
+    "Its total amalgamation is obtained by merging states q 1 and q 2 into q 12 with transition matrix is M = (q 12 , q 12 ) ( ) q 12 2 .",
+    "The following result generalizes Proposition 2.5 to tree-shifts. It was established in [2] using top-down tree automata and under hypotheses stronger than trimness.",
+    "Proposition 4.8 Let A and B be trim edge tree automata that define edge treeshifts X and Y respectively. Then X and Y are conjugate if and only if A and B have the same total amalgamation. Proof. If A and B have the same total amalgamation then they are both outsplittings of that amalgamation, hence by Proposition 4.4, they are conjugate.",
+    "Conversely, let A = (Q, ∆) and B = (Q ′ , ∆ ′ ) be two trim edge tree automata that define edge tree-shifts X and Y respectively. Let us assume that there is conjugacy φ : X → Y with height anticipation n-1 defined by the block map f : B n (X) → B, where B is the alphabet of Y . Assume that φ -1 is the sliding block code with height anticipation n ′ -1 defined by the block map f ′ : B n ′ (Y ) → A, where A is the alphabet of X. Without loss of generality, we may suppose that n, n ′ ≥ 2.",
+    "A block b of height n can be written b = (a, σ 1 (b), σ 0 (b)), where σ i (b) are blocks of height n-1, and a = b(ε).",
+    "We define a tree automaton C = (B n (X) × B n ′ (Y ), Γ) labeled in A × B as follows. There is a transition",
+    "By construction, C is trim. Let t be a tree labeled on A × B accepted by C. Let t (respectively t ′ ) be the tree obtained from t by taking the first (respectively second) component of the labels of the nodes of t. The tree t is called the input (respectively output) tree of t. By construction, t ′ = φ(t). Conversely, if t is a tree of X and t ′ = φ(t), there is a unique computation tree u of C accepting t. This computation tree starts at the state (b, b ′ ), where b = t (n) and b ′ = t ′(n ′ ) .",
+    "Let us show that the automaton A can be obtained from C through a sequence of amalgamations.",
+    "We can perform a general amalgamation of C by merging all states (b, b ′ ), (b, c ′ ) sharing the same block b and such that b ′(n ′ -1) = c ′(n ′ -1) .",
+    "Indeed, let (b, b ′ ), (b, c ′ ) be two states of C such that b ′(n ′ -1) = c ′(n ′ -1) . Let ------→ ((b, c ′ ), (g, g ′ )).",
+    "The same property holds for right incoming transitions of (b, b ′ ). We assume that all states (b, b ′ ) sharing the same blocks b and b ′(n ′ -1) have been merged into a state denoted by (b, b ′(n ′ -1) ) in an automaton denoted C(n, n ′ -1). After this amalgamation, there is a transition in C(n, n ′ -1)",
+    "• e = (e(ε), σ 1 (e), σ 0 (e)) with b (n-1) = σ 1 (e) and g (n-1) = σ 0 (e).",
+    "• e ′(n ′ -1) = (f (e), σ 1 (e ′(n ′ -1) ), σ 0 (e ′(n ′ -1) )) with b ′(n ′ -2) = σ 1 (e ′(n ′ -1) ) and g",
+    ") has a left (respectively right) incoming transition from (e, e ′(n ′ -1) ) if and only if (b, c ′(n ′ -1) ) has a left (respectively right) incoming transition from (e, e ′(n ′ -1) ).",
+    "For each 1 ≤ k ≤ n ′ , we perform a general amalgamation of C(n, k) into C(n, k -1) by merging all states (b, b ′(k) ), (b, c ′(k) ) sharing the same block b and such that b ′(k-1) = c ′(k-1) . Indeed, all states (b, b ′(k) ), (b, c ′(k) ) with b ′(k-1) = c ′(k-1) have the same left (respectively right) incoming transitions. The states of C(n, 0) are pairs (b, ε), where ε is the empty block. We define the automaton D(n) obtained from C(n, 0) by keeping the first components of the states and of the edges' labels. Now, for each 3 ≤ k ≤ n, we perform a general amalgamation of D(k) into D(k -1) by merging all states b (k) , c (k) such that b (k-1) = c (k-1) . Indeed, states b (k) , c (k) such that b (k-1) = c (k-1) have the same left (respectively right) incoming transitions in D(k).",
+    "Finally, the automaton D( 2) is an out-splitting of A. Indeed, we perform an out-splitting D of A by partitioning the transitions going out of a state p into singletons. If p is a state of A, it is split into states (p, a), for each label a of a transition going out of p. Since A is trim, if (p, a) → (q, r) is a transition of A, then ((p, a), a) → ((q, b), (r, c)) is a transition of D for all letters b, c such that (a, b, c) ∈ B 2 (X). Up to a renaming of the states, we have D = D(2).",
+    "We now show that the automaton B can be obtained from C through a sequence of amalgamations. We just exchange the roles played by A and B, that is, the roles played by the first and the second components of the states and of the labels of the transitions. Indeed, if (e, e ′ ) (e(ε),f (e))",
+    "-------→ ((b, c ′ ), (g, g ′ )). is a transition of C, then e(ε) = g(e ′ ), where g is the block map defining φ -1 , and f (e) = e ′ (ε).",
+    "Hence, there is a sequence of amalgamations from C to A, and there is a sequence of amalgamations from C to B. By Proposition 4.5, A and B have the same total amalgamation. Note that the result holds even if the edge tree-shifts are not irreducible (see [1] for a definition). We only assume they are defined by trim edge automata.",
+    "Let G = (V, E) be a simple (unlabeled) undirected graph (where self-loops are allowed). The Hom tree shift defined by G, denoted X(G), is the set of trees t labeled on V such that each path of t is a path of G. In other words, each sequence (y n ) n≥0 = (t xn ) n≥0 such that x n+1 ∈ x n Σ * , is a sequence of vertices of G such that (y n , y n+1 ) is an edge of G.",
+    "A Hom tree-shift defined by G = (V, E) is a tree-shift of finite type. Indeed, it is equal to X F , where F is the set of blocks b of height 2 on V such that (b(ε), b(i)) is not an edge of G for at least one i ∈ Σ.",
+    "for each 1 ≤ i ≤ n p , 1 ≤ j ≤ n q , and 1 ≤ k ≤ n r . Let N be the adjacency matrix of C. Note that if N pi,(qj ,r k ) = 1 for some 1 ≤ i ≤ n p , 1 ≤ j ≤ n q , and 1 ≤ k ≤ n r , then N p i ′ ,(q j ′ ,r k ′ ) = 1 for all 1 ≤ i ′ ≤ n p , 1 ≤ j ′ ≤ n q and 1 ≤ k ′ ≤ n r . Note also that if N pi,(qj ,r k ) = 1, then N pi,(r k ,qj ) = 1. Indeed, if N pi,(qj ,r k ) = 1, then M p,(q,r) = M p,(r,q) = n p > 0, implying N pi,(r k ,qj ) = 1.",
+    "Let us show that there is a simple undirected graph G such that C = A(G). Let G = (V, E), where V is the set of states of C, be the undirected graph such that there is an edge (p i , q j ) in E if there is a transition p i → (q j , r k ) in C for some r k ∈ V . This definition is consistent with the fact that the edge (p i , q j ) is undirected. Indeed, if N pi,(qj ,r k ) = 1, then M p,(q,r) = n p ̸ = 0. Thus, M q,(p,p) = n q ̸ = 0, implying N qj ,(pi,pi) = 1 and (q j , p i ) in E.",
+    "It is easy to check that C = A(G). As a consequence, X is conjugate to X A(G) , itself conjugate to the Hom tree-shift X(G). Proposition 5.4 It is decidable whether an edge tree shift is conjugate to a Hom tree-shift.",
+    "Proof. Let X be an edge tree-shift. Without loss of generality, we assume that it is defined by a trim edge tree automaton A. Let us show that X is conjugate to a Hom tree shift if and only if the total amalgamation of A is regular.",
+    "If X is conjugate to a Hom tree-shift Y defined a trim automaton B = A(G), by Proposition 4.8, A and B have the same total amalgamation D, up to a renaming of the states. By Proposition 5.2, this total amalgamation is regular. Conversely, if the total amalgamation of A is regular, by Proposition 5.3, this amalgamation defines an edge tree-shift conjugate to a Hom shift.",
+    "The time and space complexity for deciding the property is polynomial in the size of A.",
+    "Proposition 5.5 Two Hom tree shifts defined by the edge tree automata A(G) and A(H), respectively, are conjugate if and only if G and H are isomorphic as undirected graphs.",
+    "Proof. Let A(G) and A(H) be the edge tree automata corresponding to G and H, respectively, and let X(G), X(H) be the corresponding tree-shifts. The tree automata A(G) and A(H) are regular and trim. By Proposition 5.4, if X(G) and X(H) are conjugate, there is a regular tree automaton C such that C is the total amalgamation of A(G) and is the total amalgamation of A(H).",
+    "Let M be the adjacency matrix of A(G). Let us perform an initial general amalgamation B of A(G), obtained using a partition (V 1 , . . . , V ℓ ) of the states of A(G). This partition is defined according to the equivalence relation p ∼ q if and only if M s,(p,r) = M s,(q,r) for all states r, s, and M s,(r,p) = M s,(r,q) for all states r, s.",
+    "We assume that all states p i,1 , . . . p i,in i of V i are merged into a state p i in B. Since A(G) is regular and since M has 0-1 entries, if M p,(q,r) = 1 for some p ∈ V i , q ∈ V j , r ∈ V k then M p,(q ′ ,r ′ ) = 1 for any q ′ ∈ V j , r ′ ∈ V k . This implies that M q ′ ,(p,p) = 1 and M r ′ ,(p,p) = 1 for any q ′ ∈ V j , r ′ ∈ V k , and M q ′ ,(p ′ ,p ′ ) = 1, M r ′ ,(p ′ ,p ′ ) = 1 for any p ′ ∈ V i , q ∈ V j , r ∈ V k . Hence, M p ′ ,(q ′ ,r ′ ) = 1 for any p ′ ∈ V i , q ′ ∈ V j , r ′ ∈ V k . As shown in the proof of Proposition 5.2, the adjacency matrix N of the amalgamation B satisfies the following: either N pi,(pj ,p k ) = 0 or N pi,(pj ,p k ) = n i , where n i = |V i |.",
+    "Assume that the two (distinct) states p i and p j can be merged through another amalgamation after this round. This implies that N p k ,(pi,p ℓ ) = N p k ,(pj ,p ℓ ) for any states p k , p ℓ in B. Hence, M p,(q,r) = M p ′ ,(q ′ ,r ′ ) for some p, p ′ ∈ V k , q ∈ V i , q ′ ∈ V j , r, r ′ ∈ V ℓ , implying M p,(q,r) = M p,(q ′ ,r ′ ) for any p, q ∈ V i , q ′ ∈ V j , r, r ′ ∈ V ℓ . This implies V i = V j by definition of the partition (V 1 , . . . , V ℓ ).",
+    "It follows that B is the total amalgamation C of A(G).",
+    "Similarly, we consider the partition (W 1 , . . . , W ℓ ′ ) of the states of A(H) defined according to the equivalence relation p ∼ q if and only if P s,(p,r) = P s,(q,r) for all states r, s, and P s,(r,p) = P s,(r,q) for all states r, s, where P is the adjacency matrix of A(H). After renumbering the sets W i , we may assume that all states of W i are amalgamated to p i into the tree automaton C. Thus, ℓ = ℓ ′ and either N pi,(pj ,p k ) = 0 or N pi,(pj ,",
+    "There is a transition from each state in V i to each pair (q, r) with q ∈ V j , r ∈ V k in A(G) if and only if there is a transition from each state in W i to each pair (q, r) with q ∈ W j , r ∈ W k in A(H). Hence, G = H, up to a renaming of the states.",
+    "In this section, we consider the class of tree shifts defined by a simple (unlabeled) directed graph G (where self-loops are allowed), referred to as directed Hom tree-shifts. These shifts are called hom tree-SFT in [3].",
+    "Let G = (V, E) be a directed graph. The directed Hom tree shift defined by G, denoted X(G), is the set of trees t labeled on V such that for each node u and each i ∈ {0, 1 . . . , d -1}, (t u , t ui ) is a (directed) edge of G. This notion is thus weaker than the notion of (undirected) Hom tree-shift, as defined in Section 5. Without loss of generality, we may consider below only trees of arity d = 2.",
+    "A directed Hom tree-shift is a tree-shift of finite type. It is accepted by the tree automaton B = (V, ∆), whose transitions are (p, p) → (q, r), where (p, q), (p, r) ∈ E.",
+    "Let A(G) be the edge tree automaton obtained from B by labeling all transitions with distinct labels. The tree-shift X(G) is conjugate to the edge tree-shift accepted by A(G).",
+    "We say that an edge tree automaton A = (Q, ∆) with adjacency matrix M is symmetric if for all states p, q, r:",
+    "• M p,(q,r) = M p,(r,q) . Note that the adjacency matrix of A(G) is symmetric."
+  ],
+  "references": [
+    {
+      "id": 1,
+      "text": "Sofic Tree-Shifts\n\t\t\n\t\t\tNathalieAubrun\n\t\t\n\t\t\n\t\t\tMarie-PierreBéal\n\t\t\n\t\t10.1007/s00224-013-9456-1\n\t\n\t\n\t\tTheory of Computing Systems\n\t\tTheory Comput Syst\n\t\t1432-4350\n\t\t1433-0490\n\t\t\n\t\t\t53\n\t\t\t4\n\t\t\t\n\t\t\t2013\n\t\t\tSpringer Science and Business Media LLC"
+    },
+    {
+      "id": 2,
+      "text": "Tree-shifts of finite type\n\t\t\n\t\t\tNathalieAubrun\n\t\t\n\t\t\n\t\t\tMarie-PierreBéal\n\t\t\n\t\t10.1016/j.tcs.2012.07.020\n\t\n\t\n\t\tTheoretical Computer Science\n\t\tTheoretical Computer Science\n\t\t0304-3975\n\t\t\n\t\t\t459\n\t\t\t\n\t\t\t2012\n\t\t\tElsevier BV"
+    },
+    {
+      "id": 3,
+      "text": "Characterization and topological behavior of homomorphism tree-shifts\n\t\t\n\t\t\tJung-ChaoBan\n\t\t\n\t\t\n\t\t\tChih-HungChang\n\t\t\n\t\t\n\t\t\tWen-GueiHu\n\t\t\n\t\t\n\t\t\tGuan-YuLai\n\t\t\n\t\t\n\t\t\tYu-LiangWu\n\t\t\t0000-0002-5181-056X\n\t\t\n\t\t10.1016/j.topol.2021.107848\n\t\n\t\n\t\tTopology and its Applications\n\t\tTopology and its Applications\n\t\t0166-8641\n\t\t\n\t\t\t302\n\t\t\t107848\n\t\t\t2021\n\t\t\tElsevier BV"
+    },
+    {
+      "id": 4,
+      "text": "Topological entropy for shifts of finite type over <mml:math xmlns:mml=\"http://www.w3.org/1998/Math/MathML\" altimg=\"si1.svg\"><mml:mi mathvariant=\"double-struck\">Z</mml:mi></mml:math> and trees\n\t\t\n\t\t\tJung-ChaoBan\n\t\t\n\t\t\n\t\t\tChih-HungChang\n\t\t\t0000-0001-7352-5148\n\t\t\n\t\t\n\t\t\tWen-GueiHu\n\t\t\n\t\t\n\t\t\tYu-LiangWu\n\t\t\t0000-0002-5181-056X\n\t\t\n\t\t10.1016/j.tcs.2022.07.007\n\t\n\t\n\t\tTheoretical Computer Science\n\t\tTheoretical Computer Science\n\t\t0304-3975\n\t\t\n\t\t\t930\n\t\t\t\n\t\t\t2022\n\t\t\tElsevier BV"
+    },
+    {
+      "id": 5,
+      "text": "Transitivity and dense orbits for Markov tree-shifts<sup>*</sup>\n\t\t\n\t\t\tJung-ChaoBan\n\t\t\n\t\t\n\t\t\tChih-HungChang\n\t\t\t0000-0001-7352-5148\n\t\t\n\t\t\n\t\t\tNai-ZhuHuang\n\t\t\t0000-0002-5655-8682\n\t\t\n\t\t\n\t\t\tGuan-YuLai\n\t\t\t0000-0003-3215-7523\n\t\t\n\t\t10.1088/1361-6544/addcb0\n\t\n\t\n\t\tNonlinearity\n\t\tNonlinearity\n\t\t0951-7715\n\t\t1361-6544\n\t\t\n\t\t\t38\n\t\t\t7\n\t\t\t075021\n\t\t\t2025\n\t\t\tIOP Publishing"
+    },
+    {
+      "id": 6,
+      "text": "Hausdorff dimensions of irreducible Markov hom tree‐shifts\n\t\t\n\t\t\tJung‐chaoBan\n\t\t\n\t\t\n\t\t\tGuan‐yuLai\n\t\t\n\t\t\n\t\t\tYu‐liangWu\n\t\t\t0000-0002-5181-056X\n\t\t\n\t\t10.1112/jlms.70198\n\t\n\t\n\t\tJournal of the London Mathematical Society\n\t\tJournal of London Math Soc\n\t\t0024-6107\n\t\t1469-7750\n\t\t\n\t\t\t111\n\t\t\t6\n\t\t\t\n\t\t\tWiley\n\t\t\n\t\n\tPaper No. e70198, 39, 2025"
+    },
+    {
+      "id": 7,
+      "text": "Symbolic dynamics\n\t\t\n\t\t\tMarie-PierreBéal\n\t\t\n\t\t\n\t\t\tJeanBerstel\n\t\t\n\t\t\n\t\t\tSørenEilers\n\t\t\n\t\t\n\t\t\tDominiquePerrin\n\t\t\n\t\t10.4171/automata-1/27\n\t\n\t\n\t\tHandbook of Automata Theory\n\t\t\n\t\t\tJean-ÉricPin\n\t\t\n\t\t\n\t\t\tEuropean Mathematical Society Publishing House\n\t\t\t2021\n\t\t\tII\n\t\t\t\n\t\t\n\t\n\tchapter 27"
+    },
+    {
+      "id": 8,
+      "text": "Automorphisms of one-sided subshifts of finite type\n\t\t\n\t\t\tMikeBoyle\n\t\t\n\t\t\n\t\t\tJohnFranks\n\t\t\n\t\t\n\t\t\tBruceKitchens\n\t\t\n\t\t10.1017/s0143385700005678\n\t\n\t\n\t\tErgodic Theory and Dynamical Systems\n\t\tErgod. Th. Dynam. Sys.\n\t\t0143-3857\n\t\t1469-4417\n\t\t\n\t\t\t10\n\t\t\t3\n\t\t\t\n\t\t\t1990\n\t\t\tCambridge University Press (CUP)"
+    },
+    {
+      "id": 9,
+      "text": "Four-cycle free graphs, height functions, the pivot property and entropy minimality\n\t\t\n\t\t\tNishantChandgotia\n\t\t\n\t\t10.1017/etds.2015.88\n\t\n\t\n\t\tErgodic Theory and Dynamical Systems\n\t\tErgod. Th. Dynam. Sys.\n\t\t0143-3857\n\t\t1469-4417\n\t\t\n\t\t\t37\n\t\t\t4\n\t\t\t\n\t\t\t2017\n\t\t\tCambridge University Press (CUP)"
+    },
+    {
+      "id": 10,
+      "text": "Mixing properties for hom-shifts and the distance between walks on associated graphs\n\t\t\n\t\t\tNishantChandgotia\n\t\t\n\t\t\n\t\t\tBrianHMarcus\n\t\t\n\t\t10.2140/pjm.2018.294.41\n\t\n\t\n\t\tPacific Journal of Mathematics\n\t\tPacific J. Math.\n\t\t0030-8730\n\t\t\n\t\t\t294\n\t\t\t1\n\t\t\t\n\t\t\t2018\n\t\t\tMathematical Sciences Publishers"
+    },
+    {
+      "id": 11,
+      "text": "MaxHubert Comon\n\t\t\n\t\t\n\t\t\tRémiDauchet\n\t\t\n\t\t\n\t\t\tFlorentGilleron\n\t\t\n\t\t\n\t\t\tDenisJacquemard\n\t\t\n\t\t\n\t\t\tChristofLugiez\n\t\t\n\t\t\n\t\t\tSophieLöding\n\t\t\n\t\t\n\t\t\tMarcTison\n\t\t\n\t\t\n\t\t\tTommasi\n\t\t\n\t\t\n\t\n\tTree Automata Techniques and Applications. 2021. hal-03367725"
+    },
+    {
+      "id": 12,
+      "text": "Anion Composition Control and Magnetic Short- and Long-Range Order in Transition Metal Oxide Hydrides\n\t\t\n\t\t\tSilvèreGangloff\n\t\t\n\t\t\n\t\t\tBenjaminHellouin De Menibus\n\t\t\n\t\t\n\t\t\tPiotrOpocha\n\t\t\n\t\t10.1021/cm060201n.s001\n\t\n\t\n\t\tJournal d'analyse mathématique\n\t\t\n\t\t\t2024. inPress, hal-03842725v2\n\t\t\tAmerican Chemical Society (ACS)"
+    },
+    {
+      "id": 13,
+      "text": "One-sided, two-sided and countable state Markov shifts\n\t\t\n\t\t\tPBruce\n\t\t\n\t\t\n\t\t\tKitchens\n\t\t\n\t\t\n\t\t\t1998\n\t\t\tSpringer-Verlag\n\t\t\tBerlin\n\t\t\n\t\t\n\t\t\tUniversitext\n\t\t\n\t\n\tSymbolic dynamics"
+    },
+    {
+      "id": 14,
+      "text": "An Introduction to Symbolic Dynamics and Coding\n\t\t\n\t\t\tDouglasLind\n\t\t\n\t\t\n\t\t\tBrianMarcus\n\t\t\n\t\t10.1017/cbo9780511626302\n\t\t\n\t\t\t1995. 2021\n\t\t\tCambridge University Press\n\t\t\tCambridge\n\t\t\n\t\n\t2nd edition"
+    },
+    {
+      "id": 15,
+      "text": "Tree shift topological entropy\n\t\t\n\t\t\tKarlPetersen\n\t\t\t0000-0001-5074-7696\n\t\t\n\t\t\n\t\t\tIbrahimSalama\n\t\t\n\t\t10.1016/j.tcs.2018.05.034\n\t\n\t\n\t\tTheoretical Computer Science\n\t\tTheoretical Computer Science\n\t\t0304-3975\n\t\t\n\t\t\t743\n\t\t\t\n\t\t\t2018\n\t\t\tElsevier BV"
+    },
+    {
+      "id": 16,
+      "text": "Entropy on regular trees\n\t\t\n\t\t\tKarlPetersen\n\t\t\n\t\t\n\t\t\tIbrahimSalama\n\t\t\n\t\t10.3934/dcds.2020186\n\t\n\t\n\t\tDiscrete & Continuous Dynamical Systems - A\n\t\t1553-5231\n\t\t\n\t\t\t40\n\t\t\t7\n\t\t\t\n\t\t\t2020\n\t\t\tAmerican Institute of Mathematical Sciences (AIMS)"
+    },
+    {
+      "id": 17,
+      "text": "Asymptotic pressure on some self-similar trees\n\t\t\n\t\t\tKarlPetersen\n\t\t\t0000-0001-5074-7696\n\t\t\n\t\t\n\t\t\tIbrahimSalama\n\t\t\n\t\t10.1142/s0219493723500090\n\t\n\t\n\t\tStochastics and Dynamics\n\t\tStoch. Dyn.\n\t\t0219-4937\n\t\t1793-6799\n\t\t\n\t\t\t23\n\t\t\t02\n\t\t\t2023\n\t\t\tWorld Scientific Pub Co Pte Ltd\n\t\t\n\t\n\tPaper No. 2350009, 19"
+    },
+    {
+      "id": 18,
+      "text": "Errata to \"Classification of Subshifts of Finite Type\"\n\t\t\n\t\t\tRFWilliams\n\t\t\n\t\t10.2307/1970903\n\t\n\t\n\t\tThe Annals of Mathematics\n\t\tThe Annals of Mathematics\n\t\t0003-486X\n\t\t\n\t\t\t99\n\t\t\t2\n\t\t\t380\n\t\t\t1973. 1974\n\t\t\tJSTOR"
+    }
+  ],
+  "formulas": [
+    {
+      "id": "FORMULA_1",
+      "raw": "x [i,j) = x i x i+1 • • • x j-1 ."
+    },
+    {
+      "id": "FORMULA_2",
+      "raw": "A set X ⊆ A Z is a shift space if it is topologically closed, and shift-invariant, that is, if S(X) = X."
+    },
+    {
+      "id": "FORMULA_3",
+      "raw": "x + = x 0 x 1 • • • . If X is a two- sided shift space, then the set X + = {x + | x ∈ X} is a one-sided shift space."
+    },
+    {
+      "id": "FORMULA_4",
+      "raw": "M = 1 1 1 0 ."
+    },
+    {
+      "id": "FORMULA_5",
+      "raw": "A (one-sided) morphism φ : X ⊆ A N → B N ,"
+    },
+    {
+      "id": "FORMULA_6",
+      "raw": "y i = f (x [i,i+n] ). x 0 • • • x i-1 x i • • • x i+n x i+n+1 • • • y 0 • • • y i-1 y i y i+1 • • • f Figure 2.2: A one-sided sliding block code."
+    },
+    {
+      "id": "FORMULA_7",
+      "raw": "• V ′ = V \\ {s} ∪ {s 1 , s 2 },"
+    },
+    {
+      "id": "FORMULA_8",
+      "raw": "B 2 (X G ) → E ′ , where f ((t, a, u)(u, b, v)) = (t, a, u) if t, u ̸ = s, f ((t, a, s)(s, b, v)) = (t, a, s 1 ) if t ̸ = s and (s, b, v) ∈ E 1 , f ((t, a, s)(s, b, v)) = (t, a, s 2 ) if t ̸ = s and (s, b, v) ∈ E 2 , f ((s, a, t)(t, b, u)) = (s 1 , a, t) if t ̸ = s and (s, a, t) ∈ E 1 , f ((s, a, t)(t, b, u)) = (s 2 , a, t) if t ̸ = s and (s, a, t) ∈ E 2 , f ((s, a, s)(s, b, t)) = (s 1 , a, s 1 ) if (s, b, t) ∈ E 1 , f ((s, a, s)(s, b, t)) = (s 1 , a, s 2 ) if (s, b, t) ∈ E 2 ."
+    },
+    {
+      "id": "FORMULA_9",
+      "raw": "E ′ → E, where g(t, ℓ, u) = (π(t), π(ℓ), π(u)), with π(t) = t if t ̸ = s 1 , s 2 , π(s 1 ) = π(s 2 ) = s, π(a) = a."
+    },
+    {
+      "id": "FORMULA_10",
+      "raw": "• the column of index s 1 is equal to the column of index s 2 of M ′ ."
+    },
+    {
+      "id": "FORMULA_11",
+      "raw": "V i = {s i,1 , . . . s i,ki } into a single state s i,1 ."
+    },
+    {
+      "id": "FORMULA_12",
+      "raw": "s i,2 , • • • , s i,ki . The graph K is called a general amalgamation of G ′ ."
+    },
+    {
+      "id": "FORMULA_13",
+      "raw": "A Hom shift is defined by a simple (unlabeled) undirected graph G = (V, E) as the set X(G) of bi-infinite sequences x = (x i ) i∈Z of states of G such that (x i , x i+1"
+    },
+    {
+      "id": "FORMULA_14",
+      "raw": "x = (x i ) i∈N of states in G such that (x i , x i+1 ) is an edge in G. It is also denoted X(G)."
+    },
+    {
+      "id": "FORMULA_15",
+      "raw": "G ′ = (V ′ , E ′ ) where V ′ = V and (s, t) ∈ E ′ , (t, s) ∈ E ′ whenever (s, t) ∈ E. A one-sided Hom shift is a one-sided shift of finite type. Indeed, it is equal to X F , where F is the finite set {st | (s, t) / ∈ E}."
+    },
+    {
+      "id": "FORMULA_16",
+      "raw": "E ′ → V with f ((s, t)) = s. The map φ is a conjugacy from X G ′ to X(G)."
+    },
+    {
+      "id": "FORMULA_17",
+      "raw": "V 2 → E ′ with g(st) = (s, t)."
+    },
+    {
+      "id": "FORMULA_18",
+      "raw": "′ ) = π(t), one has M s ′ ,t ′ > 0. Hence, M s ′ ,t ′ = n s ′ . By construction, if s ̸ = s 1 , s 2 , we have s ′ = s and we get N π(s ′ ),π(t ′ ) = N π(s),π(t) = n s ′ = n s . If s = s 1 or s = s 2 , then s ′ = s 1 or s ′ = s 2 . Since M s ′ ,t ′ > 0, M t ′ ,s ′ > 0, implying M t ′ ,s1 > 0 and M t ′ ,s2 > 0, and M s1,t ′ > 0 and M s2,t ′ > 0. Thus, M s1,t ′ = n 1 and M s2,t ′ = n 2 , implying N s12,π(t) = n 1 + n 2 . Thus, G ′ is regular."
+    },
+    {
+      "id": "FORMULA_19",
+      "raw": "M ′ of G ′ is a 0-1-matrix. Since G is regular, M s,t > 0 if and only if M t,s > 0. By construction, M ′ si,tj = 1 if and only if M s,t > 0. Thus, M ′ si,tj = 1 if and only if M ′ tj ,si = 1, The graph G is a general amalgamation of G ′ . Hence, the one-sided edge shift X G is conjugate to the one-sided edge shift X G ′ ."
+    },
+    {
+      "id": "FORMULA_20",
+      "raw": "M =   2 2 1 1 1 2 1 1 0   ."
+    },
+    {
+      "id": "FORMULA_21",
+      "raw": "N = 3 3 1 0 ."
+    },
+    {
+      "id": "FORMULA_22",
+      "raw": "∈ V i , t ∈ V j , then M s ′ ,t ′ = 1 for all s ′ ∈ V i , t ′ ∈ V j ."
+    },
+    {
+      "id": "FORMULA_23",
+      "raw": "K ′ satisfies either N s k ,si = 0 or N s k ,si = n k , where n k = |V k |."
+    },
+    {
+      "id": "FORMULA_24",
+      "raw": "K ′ is the total amalgamation K of G ′ ."
+    },
+    {
+      "id": "FORMULA_25",
+      "raw": "N s k ,si = |V k | and N s k ,si = |W k |, implying |V k | = |W k | for each k."
+    },
+    {
+      "id": "FORMULA_26",
+      "raw": "(k)"
+    },
+    {
+      "id": "FORMULA_27",
+      "raw": "rooted at i. A block b of height k ≥ 2 is denoted by (b ε , σ 1 (b), σ 0 (b))."
+    },
+    {
+      "id": "FORMULA_28",
+      "raw": "X → T (B) defined by φ(t) = t ′ if for every x ∈ Σ * , t ′ x = f (t (n)"
+    },
+    {
+      "id": "FORMULA_29",
+      "raw": "t ′ x = t (k) x ,(4.1)"
+    },
+    {
+      "id": "FORMULA_30",
+      "raw": "b ε σ0(b) σ1(b) b (k) b"
+    },
+    {
+      "id": "FORMULA_31",
+      "raw": "• (p, a (q ′ ,r ′ ) ) → (q ′ , r ′ ) if (q ′ , r ′ ) ∈ µ(q) × µ(r), p ̸ = s, (p, a) → (q, r) ∈ ∆; • (s i , a (q ′ ,r ′ ) ) → (q ′ , r ′ ) if (q ′ , r ′ ) ∈ µ(q) × µ(r), (s, a) → (q, r) ∈ ∆ i ."
+    },
+    {
+      "id": "FORMULA_32",
+      "raw": "Let (Q ′ 1 , Q ′ 2 , . . . , Q ′ k"
+    },
+    {
+      "id": "FORMULA_33",
+      "raw": "A ′ = (Q ′ , ∆ ′ ) is obtained from A = (Q, ∆"
+    },
+    {
+      "id": "FORMULA_34",
+      "raw": "→ (t, u) ∈ ∆ i , then we set f (a, b, c) = a (si,r) . If p ̸ = s, q = r = s, (s, b) → (t, u) ∈ ∆ i , and (s, c) → (v, w) ∈ ∆ j , then we set f (a, b, c) = a (si,sj ) . If p = s, q, r ̸ = s and (p, a) → (q, r) ∈ ∆ i , then we set f (a, b, c) = a (q,r) . If p = q = s, r ̸ = s, and (s, b) → (t, u) ∈ ∆ i , then we set f (a, b, c) = a (si,r) . If p = r = s, q ̸ = s, and (s, c) → (v, w) ∈ ∆ i , then we set f (a, b, c) = a (q,si) . If p = q = r = s, (s, b) → (t, u) ∈ ∆ i , and (s, c) → (v, w) ∈ ∆ j , then we set f (a, b, c) = a (si,sj ) . p : a r : c q : b w v u t a (q,r) f Figure 4.3:"
+    },
+    {
+      "id": "FORMULA_35",
+      "raw": "(2) x = (a, b, c) and f (a, b, c) = a (q ′ ,r ′ ) with q ′ , r ′ ∈ Q ′ , then there is p ∈ Q ′ such that (p, a) → (q ′ , r ′ ) ∈ ∆ ′ . Hence, φ(z) is accepted by A ′ . Conversely, if z ′ ∈ Y , let us show that z ′ ∈ φ(X). Let u ′ be a computation tree of z ′ in A ′ . Then, for each x ∈ Σ * , (u ′ x , z x ) → (u ′ x1 , u ′ x0 ) belongs to ∆ ′ . Thus, z x = a (q ′ ,"
+    },
+    {
+      "id": "FORMULA_36",
+      "raw": "′ x1 , u ′ x0 ) = (q ′ , r ′ ), g(z x ) = a,"
+    },
+    {
+      "id": "FORMULA_37",
+      "raw": "′′ ) = q ′′ if q ′′ ̸ = s 1 , s 2 and π(s 1 ) = π(s 2 ) = s. Hence, z = ψ(z ′ ) is accepted by A and φ(z) = z ′ ."
+    },
+    {
+      "id": "FORMULA_38",
+      "raw": "′ i ) = π(q ′ j ) = q ′ ij . We also have N qij ,(r,t) = M qi,(r ′ ,t ′ ) + M qj ,(r ′ ,t ′ ) , N q ′ ij ,(r,t) = M q ′ i ,(r ′ ,t ′ ) + M q ′ j ,(r ′ ,t ′ ) for each r ′ , t ′ such that π(r ′ ) = r, π(t ′ ) = t."
+    },
+    {
+      "id": "FORMULA_39",
+      "raw": "q 1 1 -→ (q 1 , q 1 ), q 1 1 -→ (q 1 , q 2 ), q 1 1 -→ (q 2 , q 1 ), q 1 1 -→ (q 2 , q 2 ), q2"
+    },
+    {
+      "id": "FORMULA_40",
+      "raw": "q 3 1 -→ (q 1 , q 1 ), q 3 1 -→ (q 1 , q 2 ), q3"
+    },
+    {
+      "id": "FORMULA_41",
+      "raw": "1 1 1 1 1 0 q 2 0 0 0 0 1 q 3 1 1 1 1 0"
+    },
+    {
+      "id": "FORMULA_42",
+      "raw": "q 1 1 -→ (q 1 , q 1 ), q 1 1 -→ (q 1 , q 2 ), q 1 1 -→ (q 2 , q 1 ), q 1 1 -→ (q 2 , q 2 ), q 2 1 -→ (q 1 , q 1 ), q 2 1 -→ (q 1 , q 2 ), q2 1"
+    },
+    {
+      "id": "FORMULA_43",
+      "raw": "M ′ = (q 1 , q 1 ) (q 1 , q 2 ) (q 2 , q 1 ) (q 2 , q 2 ) q 1 1 1 1 1 q 2 1 1 1 1 ."
+    },
+    {
+      "id": "FORMULA_44",
+      "raw": "(b, b ′ ) (a,f (b)) -----→ ((c, c ′ ), (d, d ′ )) in C if and only if • b = (a, σ 1 (b), σ 0 (b)) with c (n-1) = σ 1 (b) and d (n-1) = σ 0 (b). • b ′ = (f σ 1 (b ′ ), σ 0 (b ′ )) with c ′(n-1) = σ 1 (b ′ ) and d ′(n-1) = σ 0 (b ′ )."
+    },
+    {
+      "id": "FORMULA_45",
+      "raw": "(e, e ′(n ′ -1) ) (e(ε),f (e)) -------→ ((b, b ′(n ′ -1) ), (g, g ′(n ′ -1) )),"
+    },
+    {
+      "id": "FORMULA_46",
+      "raw": "′(n ′ -2) = σ 0 (e ′(n ′ -1) ). Hence, if b ′(n ′ -2) = c ′(n ′ -2) , then (b, b ′(n ′ -1)"
+    },
+    {
+      "id": "FORMULA_47",
+      "raw": "p k ) = |V i | = |W i |, implying |V i | = |W i | for each i."
+    }
+  ]
+}

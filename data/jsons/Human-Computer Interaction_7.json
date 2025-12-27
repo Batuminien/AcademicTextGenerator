@@ -1,0 +1,706 @@
+{
+  "title": "TimeGazer: Temporal Modeling of Predictive Gaze Stabilization for AR Interaction",
+  "authors": [
+    {
+      "firstname": "Yaozheng",
+      "surname": "Xia",
+      "email": ""
+    },
+    {
+      "firstname": "Zaiping",
+      "surname": "Zhu",
+      "email": ""
+    },
+    {
+      "firstname": "Bo",
+      "surname": "Pang",
+      "email": ""
+    },
+    {
+      "firstname": "Sheng",
+      "surname": "Li",
+      "email": ""
+    },
+    {
+      "firstname": "Shaorong",
+      "surname": "Wang",
+      "email": ""
+    }
+  ],
+  "abstract": "",
+  "sections": [
+    {
+      "title": "ABSTRACT",
+      "paragraphs": [
+        "Gaze stabilization is critical for enabling fluid, accurate, and efficient interaction in immersive augmented reality (AR) environments, particularly during task-oriented visual behaviors. However, fixation sequences captured in active gaze tasks often exhibit irregular dispersion and systematic deviations from target locations, a variability primarily caused by the combined effects of human oculomotor physiology, insufficient AR headset tracking and calibration accuracy, and environmental disturbances, undermining interaction performance and visual engagement. To address this issue, we propose TimeGazer, which reformulates gaze stabilization as a sequence-to-sequence temporal regression problem, predicting idealized fixation trajectories for the target-fixation phase from historical gaze dynamics in the search phase. We present a synthetic data generation and blending strategy that produces spatially concentrated, target-centered fixation references aligned with task objectives, substantially enriching the training space and enhancing model generalization. We train and evaluate TimeGazer on a hybrid dataset of real and augmented gaze sequences collected via Microsoft HoloLens 2 from 54 participants across multiple prediction horizons. Through the user study, statistical results demonstrate that TimeGazer significantly improves interaction accuracy and reduces completion time, confirming that temporal modeling of predictive gaze stabilization can strengthen attentional consistency and responsiveness in task-driven AR interaction. These findings highlight the broader potential of TimeGazer for advancing adaptive gaze-based interfaces and temporal modeling research in immersive systems.",
+        "Index Terms: Gaze stablization, fixation, augmented reality, seq2seq model, temporal modeling."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "INTRODUCTION",
+      "paragraphs": [
+        "Eye-tracking technology has become a pivotal component of augmented reality (AR) systems, enabling intuitive human-computer interaction through gaze-based control and attention analysis [25].",
+        "In AR applications such as gaze typing and augmented reading, the fixation phase is critical for accurately inferring user intent and enhancing interaction efficiency [48]. However, human gaze behavior alternates between saccades-rapid eye movements that shift fixation-and fixations, where the eyes remain relatively stable to acquire visual information [40]. Despite this stability, raw gaze data collected during fixation often exhibits considerable dispersion and deviation from the intended target, arising from human physiological factors, hardware limitations, and environmental conditions [2,35]. Such dispersion necessitates longer fixation times to compensate for reduced spatial precision, thereby increasing cognitive load and visual fatigue, which ultimately degrades user experience [53,29]. More specifically, unintended gaze shifts from saccades to fixations (or occurring during fixations) can severely impair the user experience and compromise interaction © 2025 IEEE. This is the author's version of the article that has been published in the proceedings of IEEE Visualization conference. The final version of this record is available at: xx.xxxx/TVCG.201x.xxxxxxx/ performance.",
+        "Since gaze naturally forms a spatiotemporal sequence [7], its velocity, acceleration, and dispersion patterns-timestamped and correlated across points-carry rich cues about user intent and perceptual stability [22]. This has motivated extensive research on scanpath prediction, which aims to model and anticipate sequential gaze behaviors [43,52,11,57]. However, most of these studies primarily address scanpaths in free-viewing scenarios within static visual scenes, rather than gaze sequences driven by actively controlled tasks. In contrast, goal-directed or volitional gaze tasks such as reading [12,23,44] or mid-air typing [48,18,63] are inherently constrained by directional and spatial patterns of eye movements [5,15] (e.g., line-by-line text reading or navigating a virtual keyboard), limiting their generality for broader gaze-based interaction. To alleviate this gap, we aim to optimize the gaze experience under weak directional constraints in active attention tasks, enabling so-called gaze stabilization to facilitate fundamental human-computer interaction events such as object selection in VR/AR environments.",
+        "The sequential nature of gaze data naturally aligns with time series analysis, which has proven highly effective in capturing temporal dependencies across domains such as speech recognition [59] and financial forecasting [51]. By leveraging the temporal dependencies inherent in gaze data, numerous approaches have been proposed for modeling eye movement sequences. Scanpath prediction methods have demonstrated high accuracy, but they predominantly focus on free-viewing scenarios rather than task-driven settings [54,65]. Similarly, gaze estimation and prediction methods achieve impressive performance, yet most operate from a third-person perspective and lack consideration of egocentric environments [13,22]. Recent studies have begun to address active attention tasks in egocentric scenarios [32,26]; however, these works often rely on multimodal frameworks, which not only obscure the primary role of visual attention in such tasks but also introduce practical challenges for deployment on AR/VR devices.",
+        "To address this gap, we introduce TimesGazer, a novel approach explicitly exploits the rich information embedded in gaze trajectories over time by leveraging temporal sequence modeling. The spatiotemporal dynamics of gaze-particularly velocity changes and dispersion trends-encode user intent and attentional stability, which our model captures to predict optimized fixation points and improve AR interaction reliability. To the best of our knowledge, this is the first to explicitly harness temporal dynamics for refining gaze positions during fixation. Our approach achieves robust gaze stabilization through predictive modeling to ensure both accuracy and efficiency in active attention tasks in AR system. Our primary objective is to reduce gaze dispersion and minimize the offset from target points, thereby enhancing the reliability of gazebased interactions in AR applications. To achieve this, we develop a sequence-to-sequence model that exploits historical gaze trajectories from preceding saccadic phases to predict optimized fixation points in the subsequent fixation phase of active tasks. For training, we collected eye movement data from diverse participants performing controlled fixation tasks under minimally distracting conditions, constructing paired datasets for supervised learning. Our model is deployed and validated on AR mobile devices with significant performance improvement.",
+        "The main contributions of this work are as follows:",
+        "• We propose a predictive gaze stabilization framework for AR that reformulates stabilization as a sequence-to-sequence temporal regression problem, refining fixation points without relying on scene semantics or multimodal cues, and generalizing across individuals by capturing shared temporal patterns in gaze behavior.",
+        "• We present a synthetic data generation and blending strategy that creates target-centered augmented fixation sequences, ex-panding training diversity and improving model generalization for temporal gaze dynamics.",
+        "• We curate a purpose-built temporal gaze dataset of paired saccade-fixation sequences collected from diverse participants under controlled conditions, providing a robust foundation for supervised learning in active attention tasks.",
+        "• We optimize and deploy TimeGazer on mobile AR headsets, achieving low-latency, real-time inference and demonstrating significant gains in interaction accuracy and task completion time across multiple prediction horizons."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "RELATED WORKS",
+      "paragraphs": [
+        "First of all, methods of gaze tracking are presented. Then, the temporal analysis model and its applications are summarized."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Gaze Tracking",
+      "paragraphs": [
+        "Gaze tracking in AR systems has evolved from hardware-centric methods like Pupil Center Corneal Reflection (PCCR) [39] to modern deep learning approaches with temporal modelling capabilities. PCCR remains the standard in commercial XR headsets such as Microsoft HoloLens 2, HTC Vive Pro Eye, and Meta Quest Pro for its robustness and slippage compensation, though it increases hardware cost and calibration complexity. Recent appearance-based approaches using CNNs, LSTMs, and Transformers treat gaze as a spatiotemporal signal, enabling learning-based estimation across frames [14,28]. While recent architectures-such as ViT-based and hybrid CNN-Transformer models-have demonstrated strong performance in gaze estimation [31,42], studies in VR contexts consistently show that gaze dispersion during the fixation phase degrades interaction precision, elevates cognitive load, and contributes to visual fatigue [36]."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Temporal Analysis Model",
+      "paragraphs": [
+        "Temporal modeling has evolved from early statistical methods to advanced deep learning approaches, each addressing different aspects of sequential dependency. Classical techniques such as ARIMA [24] and Holt-Winters [9] assume fixed temporal patterns and struggle with highly dynamic or nonlinear behaviors.",
+        "To overcome these limitations, machine learning models like LightGBM [24] and XGBoost [10] introduced greater flexibility, though they remain limited in capturing complex long-range dependencies. Deep learning models further advanced temporal analysis through diverse architectures: MLP-based models encode temporal dependencies into fixed parameters, offering computational efficiency but limited capacity for long-term relationships [41,8,60,61]. Temporal Convolutional Networks (TCNs) utilize dilated causal convolutions for parallelized modeling of local and midrange patterns, though receptive fields require careful tuning [3,49,30]. RNN and LSTM architectures capture sequential dynamics through recurrent state transitions and support variable-length sequences, but suffer from limited parallelism and difficulty modeling very long dependencies [27,62,46]. Transformers introduce selfattention for global dependency modeling and multi-scale temporal adaptation, albeit with substantial computational overhead [56,64]. For instance, PatchTST [37] leverages sub-sequence patching to enhance long-sequence modeling, while iTransformer [33] treats each variable's history as an attention token, improving inter-variable dependency capture and long-term context understanding. These advancements highlight the strength of temporal analysis in handling complex sequential patterns, making it a compelling foundation for gaze-related research in AR environments.",
+        "Temporal models are widely applied in gaze-related tasks. In gaze estimation, spatio-temporal models exploit eye, head, and body dynamics for accurate current fixation, but rarely predict future gaze [22,38]. In gaze prediction, models leverage historical eye movements, scene context, and user behavior to forecast future gaze targets or trajectories. For example, Hu et al. [19] predict users' fixation points in task-driven VR settings, demonstrating the feasibility of gaze forecasting for interactive virtual environments. Gupta et al. [13] proposed MTGS, a transformer-based model for multiperson gaze prediction in third-person scenes, but not for egocentric views. Recent egocentric approaches, such as Lai et al. [26] and Liu et al. [32], incorporate audiovisual cues to predict gaze trajectories; however, their multi-modal pipelines are often too heavy for realtime AR devices. In scanpath prediction, methods like ScanDMM, ScanTD, and ScanDTM [50,65,54] model temporal dependencies between discrete fixations, yet mostly under free-viewing or weakly constrained attention, with little focus on goal-directed or active fixation tasks. This gap motivates our work on stabilizing active fixations in AR via temporal modeling and predicting."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "DATA COLLECTION 3.1 Stimuli",
+      "paragraphs": [
+        "To collect gaze data, we constructed an AR environment as the experimental stimulus (see Fig. 2). The real-world background, positioned 3 meters away and consisting of a large, plain black mat sufficient to encompass the entire virtual scene, was paired with a virtual scene also positioned 3 meters in front of the headset. This virtual scene measured 2 × 2 meters and was deliberately kept minimal to reduce potential confounding factors. Only three types of visual elements were presented: (1) a red-blue concentric circle (radius: 0.1 m) serving as the start marker for each trial, (2) a tan arrow indicating the participant's intended gaze shift direction, and (3) a yellow cross (arm length: 0.1 m) serving as the fixation target, at whose center participants were instructed to maintain steady fixation. This minimalist design reduces scene complexity, thereby enhancing the discriminability of fixation events and enabling a clearer separation of physiological eye movements (e.g., saccades, microsaccades) from task-driven gaze behavior [16,47]."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Apparatus and Participants",
+      "paragraphs": [
+        "Our data collection was conducted on a PC equipped with an AMD Ryzen™ 5 7500F CPU (3.70 GHz) and an NVIDIA GeForce RTX 2080 GPU. The experimental setup was implemented on a Microsoft HoloLens 2 headset, which integrates an optical eyetracking system operating at 60 Hz with an accuracy of approximately 0.5°. Head motion was simultaneously recorded using the HoloLens 2's built-in head tracking system at a sampling rate of 60 Hz. The experimental scenes were rendered in real time using the Unity3D engine, and custom Unity scripts were developed to log task-related gaze and head information at 60 Hz.",
+        "We recruited 54 participants (29 males, 25 females; aged 19-25 years) for the gaze data collection. All participants reported normal or corrected-to-normal vision. Prior to the experiment, the eye tracker was calibrated individually for each participant. Participants performed the task in a dimly lit room while seated with minimal body movement and they were provided with a pair of earplugs to avoid auditory disturbance. During the experiment, participants were given a mandatory break after each round and could also request additional breaks if they felt tired or uncomfortable. A snapshot of the experimental setup is shown in Fig. 3."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Procedure",
+      "paragraphs": [
+        "Prior to the experiment, participants were given at least 10 minutes to familiarize themselves with the headset and the virtual environment to ensure task comprehension. Each participant then completed 6 rounds of fixation tasks, with each round consisting of 20 individual trials. In each trial, a start marker appeared at a random location within the 2 × 2-meter virtual area (fixed at 3 meters from the headset). Participants were required to maintain gaze fixation on this marker for 1 second to initiate the trial. Upon disappearance of the marker, a yellow arrow appeared at its former location, indicating the direction of the fixation target (a yellow cross). Participants were instructed to follow the arrow's direction, locate the fixation target, and maintain steady gaze on its center for 5 seconds. After successful fixation, both arrow and target disappeared, triggering the next trial. Though conceptually divided into three phases-(1) trial initiation, (2) gaze shift, and (3) sustained fixation-the sequence flowed continuously without explicit pauses.",
+        "During each trial, we recorded the precise sampling time of each gaze point, the target position, the participant's head position and direction, as well as the gaze origin position and gaze direction(measured in visual angles). Derived features, such as the linear velocity and angular velocity of gaze points, gaze position projected onto the target plane were subsequently computed from these measurements. To ensure data validity, trials were excluded if they met any of the following criteria: (1) Failure to maintain uninterrupted fixation on the target center for ≥ 2.5 seconds during the first 5-second time window of a trial; (2) Gaze shifts exceeding the boundaries of the 2×2-meter virtual area; (3) Loss of fixation, defined as ≥ 24 consecutive gaze points radially > 0.1 m from the target center during the sustained fixation phase (corresponding to the 400 ms upper bound of the fixation window suggested in [47], and following HoloLens visual angle guidelines). In total, our collected data contains 54 participants' exploration data in 3771 (54 × 20 × 6 -2709) trials. Each trial data contains about 3,00 gaze points (60 Hz sampling rate) with features like target position, gaze position, gaze linear velocity, gaze angular velocity and timestamp"
+      ],
+      "subsections": []
+    },
+    {
+      "title": "DATA ANALYSIS",
+      "paragraphs": [
+        "The active gaze fixation task defined in this study is a composite visual task consisting of a target search phase guided by directional stimuli and a subsequent target-fixation phase. As illustrated in Fig. 4, the eye-tracking data collected during this process can be categorized into two types: rapid movements and stable fixations (shown in different colors in the figure). Several prior studies have analyzed gaze movement characteristics in VR and leveraged them for future gaze prediction, such as [21,20]. Unlikely, our research goal is to make gaze points during the stable fixation phase exhibit smaller overall deviations from the target and greater internal concentration."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Analysis and Processing of Raw Gaze Data",
+      "paragraphs": [
+        "In a given visual task, eye-movement data are commonly segmented into saccades and fixations using kinematic thresholds-typically speed or spatial dispersion-following principles established in physiology and classical eye-tracking research [2,34]. However, decades of studies since Yarbus et al. [58] have demonstrated that task instructions and stimulus characteristics profoundly alter eyemovement behavior, affecting fixation-duration distributions, saccade amplitudes, and scanpath patterns [45,6]. Consequently, we adapted rather than directly adopted empirical thresholds, retaining the principles of classical I-DT and I-VT while tailoring the parameters to our active fixation setting [1,17]. Specifically, the effective fixation region was defined as a circle of 0.1 m radius around the target, corresponding to approximately 3.81°of visual angle at our viewing distance(Sec. A.1). Within this region, we analyzed the angular velocity distribution of gaze samples and observed that over 95% of points fell below 15°/s (Fig. A.1). This informed our threshold choice, which was further validated through sensitivity analyses (Sec. A.4). We defined the onset of stable fixation as the first 12sample window (200 ms at 60 Hz, following [47]) within the target region where the mean angular velocity falls below 20°/s."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Data Augmentation",
+      "paragraphs": [
+        "However, despite careful thresholding, real fixation sequences often exhibit systematic offsets from the target and substantial withinfixation variability(Fig. 4), which may introduce bias during model training. To mitigate this issue, we further generated synthetic fixation trajectories with reduced spatial bias and stronger internal cohesion. These synthetic sequences reflect the idealized convergence expected during the target-fixation phase, providing additional training data that mitigate the propagation of undesired offsets. The generation process and validation are detailed in Sec. A.5."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "TIMEGAZER MODEL",
+      "paragraphs": [],
+      "subsections": []
+    },
+    {
+      "title": "Problem Formulation",
+      "paragraphs": [
+        "Eye movement sequences during the target-fixation phase often exhibit irregular spatial dispersion and systematic offsets relative to the target center. To achieve gaze stabilization, we aim to transform these noisy fixation sequences into an idealized, target-centered trajectory. Formally, let the historical gaze sequence captured during the target-searching phase be X",
+        "where x t represents the gaze feature vector (e.g., gaze position, velocity, and derived features) at time step t. The goal is to predict a future sequence Y T +1:",
+        "where τ denotes the prediction horizon, and each y k corresponds to an idealized fixation point that is both closer to the target and exhibits stronger spatial cohesion. The mapping can be expressed as a parameterized function: ỸT+1:T+τ = f θ (X 1:T ), where f θ is learned by minimizing the discrepancy between predicted sequences and reference sequences (constructed via data augmentation, see Sec. 4.2).",
+        "To capture temporal dependencies and sequence dynamics, we adopt a sequence-to-sequence (seq2seq) prediction framework, which naturally aligns with the task of predicting temporally coherent future gaze patterns from historical eye movements. We evaluate the model across multiple prediction horizons, reflecting varying levels of anticipatory gaze stabilization."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Model Structure",
+      "paragraphs": [
+        "The overall architecture of TimeGazer is illustrated in Fig. 5. The model input, X ∈ R B×T ×(C+1) , consists of gaze sequences represented as a tensor with batch size B, sequence length T , and C gaze-related features, with an additional dimension corresponding to timestamp information."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Embedding Module",
+      "paragraphs": [
+        "For each sample b ∈ [1, B] and feature channel c ∈ [1,C], gaze coordinates and velocities are standardized along the temporal dimension to ensure consistent input scales prior to embedding:",
+        "The normalized features X are then projected into an embedding space through a Token Embedding module, implemented as a 1D convolution layer with a kernel size of 3:",
+        "This module not only projects features into a high-dimensional representation but also captures local temporal dependencies critical for sequence modeling. To incorporate global order information, we adopt sinusoidal positional encoding, which introduces positional context without additional trainable parameters. The encoding for each time step t ∈ [1, T ] is defined as:",
+        "where d denotes the embedding dimension, and i indexed the frequency components of the encoding. Specifically, Zposition(t, 2i) and Zposition(t, 2i + 1) correspond to the 2i-th and (2i + 1)-th dimensions of the positional embedding at time step t. In parallel, timestamp features are embedded via a bias-free linear projection, yielding Z time ∈ R B×T ×d . The final embedding representation is obtained through element-wise summation:",
+        "Finally, Z is passed through a Predict Linear layer, which extends the temporal dimension from the historical sequence length T to the combined length of T + τ, where τ denotes the prediction horizon:"
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Temporal Model",
+      "paragraphs": [
+        "To effectively capture the temporal dependencies in eye movements, we adopt TimesNet [55], a state-of-the-art model for shortterm temporal analysis, as the backbone of our framework. Times-Net is composed of a stack of TimesBlock modules connected via residual connections, enabling the model to jointly capture both short-and long-term dependencies in gaze sequential data. Within each TimesBlock, the input sequence is first transformed into the frequency domain using Fourier transform to extract periodic patterns of gaze points. Subsequently, multi-scale convolutional blocks are applied to capture local dependencies at different temporal resolutions. Finally, all periodic features are adaptively aggregated to form the intermediate temporal representation:",
+        "which serves as the basis for downstream prediction tasks."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Project Layer",
+      "paragraphs": [
+        "To enhance the expressiveness of temporal representations while maintaining computational efficiency, we adopt two complementary projection strategies: (1) a multi-head self-attention projection, which captures long-range dependencies by dynamically weighting temporal positions, and (2) a linear projection, which provides a lightweight mapping that preserves local structures. The attention-based projection is defined as:",
+        "where MHA(•) is the Multi-Head Attention.",
+        "The linear projection is defined as: Ŷlinear ∈ R B×(T +τ)×C is defined as:",
+        "Where W linear and b linear are trainable parameters.",
+        "Finally, the fused projection combines the two branches through a learnable balance parameter α:",
+        "We also performed ablation experiments to compare the two single-branch variants with the fused design (Sec. 6.5). In addition, We conducted a sensitivity analysis on the number of attention heads used in the Multi-Head Attention (MHA) Project module, with the embedding dimension fixed at d = 16. As shown in Tab. 1, the model achieves the best performance when the number of heads is set to 8, while performance drops noticeably when the number of heads increases to 16. This decline can be attributed to the fact that with d = 16 and h = 16, each attention head only has one dimension, which severely limits its representational capacity and hinders effective information interaction across dimensions. These results suggest that an excessively large number of heads may be detrimental under low embedding dimensions, highlighting the importance of balancing head number and embedding size in practice.",
+        "© 2025 IEEE. This is the author's version of the article that has been published in the proceedings of IEEE Visualization conference. The final version of this record is available at: xx.xxxx/TVCG.201x.xxxxxxx/"
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Loss Function",
+      "paragraphs": [
+        "We design a loss function that not only penalizes pointwise prediction errors but also explicitly constrains the spatial distribution of predicted gaze points. Specifically, our formulation extends the conventional Mean Squared Error (MSE) by introducing center distance and dispersion consistency regularization terms. Formally, given a set of predicted fixation points P{ p1 , • • • , pn } and ground-truth fixation points P{p 1 , • • • , p n }, the per-step loss for the fixation phase is defined as: To further investigate the role of each component in the combined loss, we first estimated the relative scales of the three terms by computing their average magnitudes on small batches, and accordingly set λ c and λ v to be within comparable orders. Then, we performed a coarse grid search and found the best-performing configuration to be λ c = 0.001 and λ v = 0.05.  Finally, we ablated the individual components of L comb , as shown in Tab. 2, all the metrics used in the validation are defined in Sec. 6.1. Removing either the center distance or the dispersion consistency term resulted in performance drops across AI, CI, and AD, demonstrating that both terms make complementary contributions. The best results were consistently achieved when both components were included, confirming the necessity of the complete L comb design.",
+        "The overall loss for training is formulated as:",
+        "where L velocity computes the MSE of velocity between consecutive points over the entire sequence, and L reg 2 is a standard weight decay to prevent overfitting.",
+        "To validate the necessity of each component, we conducted ablation studies by progressively enabling the center and variance constraints in addition to the baseline MSE(Sec. 6.5). We also per-formed a hyperparameter sensitivity analysis on the weighting parameter λ to assess its impact on model performance. We analyzed the sensitivity of the weighting factor λ in the total loss:",
+        "As shown in Tab. 3, increasing the weight of L comb consistently improved performance across all metrics. Larger λ values led to higher AI scores, along with gradual improvements in CI and AD. The best overall performance was observed when λ was set to 0.9. Therefore, we adopted λ = 0.9 as the default setting in all subsequent experiments."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Training Strategy",
+      "paragraphs": [
+        "Training seq2seq models with the conventional teacher forcing strategy often leads to exposure bias, since during inference the model must rely on its own predictions rather than ground-truth inputs, causing error accumulation over time [4]. To address this issue, we draw inspiration from SCINet [30] and adopt a slidingwindow training strategy. As shown in Fig. 6, both the historical and predicted sequence lengths are fixed. At each step, the model generates a predicted segment that is longer than the slidingwindow size. We then take only the first l w points of this segment, where l w is the sliding-window length, append them to the growing predicted sequence, and shift the historical window forward by l w points to form the next input. This process repeats until the predicted sequence reaches the horizon τ. By partially consuming the model's own predictions in a progressive manner, the strategy reduces reliance on ground-truth samples, thereby alleviating exposure bias and improving long-term robustness. We further investigated the effect of the sliding-window size on model performance, all the metrics used in the validation are defined in Sec. 6.1. As shown in Tab. 4, the model achieves its best results when the window size is set to 16. A larger window provides the model with a broader temporal context, which facilitates more accurate gaze prediction. Based on this observation, we adopt a window size of 16 as the default configuration in all subsequent experiments."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "EXPERIMENTS AND RESULTS",
+      "paragraphs": [
+        "To comprehensively evaluate the effectiveness of our model, we conducted a series of experiments. First, we examined its adaptability to different prediction horizons. Second, we implemented a gaze-selection task in Unity and performed cross-user experiments © 2025 IEEE. This is the author's version of the article that has been published in the proceedings of IEEE Visualization conference. The final version of this record is available at: xx.xxxx/TVCG.201x.xxxxxxx/ to assess real-world performance on AR devices. Third, we carried out ablation studies to validate the contributions of individual model components. Finally, we conducted parameter sensitivity analyses to evaluate the robustness of the model with respect to key hyperparameters."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Metrics",
+      "paragraphs": [
+        "We adopt two relative metrics and one absolute metric to evaluate gaze stabilization for each gaze sequence with n i points.",
+        "1. Concentration Improvement (CI): Concentration is measured by the standard deviation of distances between gaze points and targets:",
+        "where g i ∈ R 2 denotes the coordinate of target point, p j ∈ R 2 and p2 j are predicted point and origin point, respectively, and ε is a minimum value.",
+        "2. Accuracy Improvement (AI): Accuracy is measured by the mean distance di between n i points and the target. Similar to CI, AI is defined as:",
+        "3.Average Distance (AD): AD is the absolute mean distance of the predicted points to the target:"
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Experimetn Settings",
+      "paragraphs": [
+        "Our model is implemented in PyTorch and optimized using Adam with an initial learning rate of 0.001. A cosine annealing scheduler is applied:",
+        ", where η 0 is the initial learning rate and E the total number of training epochs. Early stopping with patience of 20 is used to prevent overfitting. We set the length of the historical gaze sequence to 96 time steps (Sec. A.3) and tested different batch sizes in theoretical experiments and adopted 64 for user studies, balancing accuracy and efficiency. For the sliding-window strategy, the input sequence length is fixed at T = 64 with a stride of 16. Various prediction horizons τ were explored in theoretical experiments, while τ = 64 was selected for user studies."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Quantitative Evaluation",
+      "paragraphs": [
+        "Before the user study, we performed quantitative experiments to evaluate TimeGazer under varying prediction horizons and batch sizes. As shown in Tab. 5, increasing the prediction length improves the AI metric, indicating more concentrated gaze predictions, but also leads to a substantial rise in computational cost per prediction. Moreover, the consistently low Average Deviation (AD) values across different participants-on the order of 10 -2 to 10 -3 -demonstrate that the learned temporal patterns generalize well, making the model robust and applicable across individuals  despite inter-subject variability in gaze behavior. Balancing performance and efficiency, we adopt a prediction length of 64 (approximately one second) and a batch size of 64 for the subsequent user evaluation."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "User Study and Performance Evaluation",
+      "paragraphs": [
+        "To evaluate the performance of TimeGazer in AR scenarios, we conducted a user study with 27 participants (16 male, 11 female; aged 18-25 years, M = 21). Prior to the experiment, each participant underwent a calibration procedure to ensure accurate eyetracking on the device and completed a short training session to familiarize themselves with the task. Our method adopted counterbalanced and randomized ordering of the two algorithm conditions being compared, to mitigate potential sequence and learning effects.",
+        "We developed a gaze selection task in Unity, consisting of spherical targets with three radii: 0.10 m, 0.06 m, and 0.04 m. Each condition was repeated three times. As illustrated in Fig. 7(a), during each trial participants were guided by directional arrows to sequentially fixate on eight target spheres. A fixation was considered successful if the participant maintained continuous gaze on a sphere for at least 1 s within a 5 s time limit, upon which the sphere was removed.  For each target, we recorded the target coordinates, participants' gaze trajectories, fixation completion status, the number of fixation interruptions, the cumulative fixation duration, and the total task completion time.",
+        "We compared TimeGazer with the native HoloLens 2 eyetracking algorithm using four metrics: (1) average fixation completion rate (ACR, ↑, proportion), ( 2  As shown in Tab. 6, TimeGazer outperformed the native HoloLens 2 on all four metrics, with statistically significant improvements (ACR: p = 0.0034, d = 0.873; ATD: p = 0.035, d = 0.917; GI: p = 0.035, d = 0.397; FTR: p = 0.035, d = 0.416), demonstrating its substantial impact on gaze stability and interaction efficiency.",
+        "In addition, we further evaluated TimeGazer in two standard AR interaction scenarios provided by the MRTK Eye Tracking library: Target Selection and Navigation (as illustrated in Fig. 7(b) and Fig. 7(c)). For the Target Selection task, we measured ATD to quantify the average time required to select a target, and GI to capture how often the gaze left the selection area during each trial. For the Navigation task, we used ATD to evaluate the time required for users to follow a predefined path using gaze input. As shown in Tab. 7, TimeGazer outperformed the native HoloLens 2 eye-tracking algorithm across all MRTK scenarios, with statistically significant improvements in both target selection (ATD: p = 0.0011, d = 1.26; GI: p = 0.0482, d = 0.64) and navigation (ATD: p = 0.0008, d = 1.99). These results demonstrate that TimeGazer effectively enhances gaze-based interaction efficiency and stability in AR environments. To further evaluate user experience, participants provided 5point Likert scale ratings for both methods after completing all trials for each target size. Ratings assessed two aspects of gaze selection: stability and sensitivity. Statistical significance was tested using the Wilcoxon signed-rank test, with results shown in Tab. 8. Users rated TimeGazer significantly higher than the native HoloLens 2 algorithm in both stability (3.93 ± 0.42 vs. 3.27 ± 0.46, p = 0.0056, d = 1.234) and sensitivity (4.07 ± 0.46 vs.",
+        "3.07 ± 0.46, p = 0.0003, d = 4.009), indicating that TimeGazer provides a noticeably more stable and responsive gaze interaction experience."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Ablation Study",
+      "paragraphs": [
+        "We conducted ablation studies on the architectural design of TimeGazer to verify the effectiveness of each module.",
+        "First, we examined the components of the Embedding Module. As shown in Tab. 9, removing any of the three embedding types (token, position, or time) substantially degrades overall performance, indicating that each embedding plays an indispensable role in capturing different aspects of gaze dynamics. Next, we ablated the Project Module, with results summarized in Tab. 10. Using only the Linear Project yields relatively high standard deviations, suggesting weaker robustness against outliers. By contrast, using only the Multi-Head Attention Project provides more stable predictions but offers limited improvement in point clustering compared to the Linear Project. Importantly, combining both components achieves the best balance: it enhances clustering (CI) and accuracy (AI) simultaneously while maintaining low variance Overall, these results confirm that the full architecture of"
+      ],
+      "subsections": []
+    },
+    {
+      "title": "DISCUSSION",
+      "paragraphs": [
+        "This work represents the first attempt to explicitly exploit temporal modeling for gaze stabilization in AR systems. Through extensive experiments, we revealed several important aspects related to gaze refinement and task-driven visual attention. Temporal Modeling vs. Classical Gaze-Tracking Models: In contrast to classical approaches based on calibration correction or spatial filtering, temporal modeling methods exploit the implicit sequential dependencies embedded in gaze data. By leveraging historical trajectories, they can capture velocity, dispersion, and higher-order temporal correlations that guide the generation of more accurate and stable spatial positions. Both quantitative analyses from theoretical experiments (Tab. 5) and subjective user survey (Tab. 8) support that temporal modeling enhances spatial compactness of gaze points during fixation, while improving alignment with intended target locations.",
+        "We attribute this advantage to the ability of sequence-tosequence models to encode long-range dependencies from the prefixation search phase and align them with the subsequent fixation phase, thereby effectively bridging past dynamics and future stability [59]. The consistently low variance of the Average Deviation (AD)-on the order of 10 -3 -further demonstrates the robustness of this approach across different users. This robustness suggests © 2025 IEEE. This is the author's version of the article that has been published in the proceedings of IEEE Visualization conference. The final version of this record is available at: xx.xxxx/TVCG.201x.xxxxxxx/ that temporal modeling captures a generalizable structure of gaze behavior, consistent with Yarbus's classic assertion that \"the pattern of eye movements is determined by the task\" [58]. In particular, although our dataset consists of gaze sequences collected from 54 different participants, the seq2seq model successfully distilled shared temporal patterns that generalized well across individuals, demonstrating its applicability beyond subject-specific idiosyncrasies.",
+        "Limitations: TimeGazer is built upon a sequence-to-sequence (seq2seq) temporal modeling framework that assumes a fixed-length input history, consistent model architecture, and predefined dataset conditions. In real-world scenarios, however, gaze sequences have variable lengths. To accommodate the model, historical sequences must be truncated, padded, or interpolated, which may reduce the precision of predicted fixation points and limit the model's ability to jointly capture the dynamics from target search to fixation phases. Consequently, the current model may not generalize directly to tasks such as reading or mid-air typing, which exhibit different temporal patterns and variable sequence lengths, and would require task-specific retraining using appropriately tailored historical sequences.",
+        "Additionally, in our data collection, some fixations start relatively close to the producing less stable gaze trajectories. These cases are more likely to be removed during data cleaning, which results in an underrepresentation of short-distance targets in the dataset. As a result, the model exhibits differential responsiveness to targets at varying distances, performing slightly better for medium-to-long-range fixations than for very short-range fixations.",
+        "Futrue work: To address the limitation of fixed-length inputs, we plan to investigate adaptive sequence modeling approaches, such as hierarchical seq2seq architectures or attention-based transformers, which can process variable-length historical sequences without truncation or interpolation, thereby preserving the full temporal dynamics from target search to fixation. To mitigate the imbalance between nearand far-distance fixations, we aim to augment the dataset with additional short-distance target scenarios and incorporate a distanceaware weighting scheme during training. This strategy is expected to enhance model responsiveness and prediction accuracy across all fixation distances. Furthermore, we will explore integrating uncertainty estimation or robust regression techniques to better handle unstable or noisy fixation trajectories, thereby improving the reliability of predicted gaze points under diverse real-world conditions."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "CONCLUSION",
+      "paragraphs": [
+        "In this paper, our approach positions temporal sequence modeling as a foundational paradigm for gaze-based interaction in AR. By treating gaze stabilization not as a post-processing filter but as a predictive, task-driven temporal inference problem, we establish a new perspective on how the dynamics of human eye movements can be harnessed for neural modeling and facilitate interaction design.",
+        "Our TimeGazer model exemplifies this shift: it shows that latent temporal patterns in gaze trajectories carry rich cues about user intent and attentional stability, and that exploiting these cues can unlock performance gains unattainable through static or geometryonly approaches. Beyond the specific improvements in dispersion and accuracy, our approach reframes gaze interaction as a temporally grounded process, suggesting opportunities for adaptive interfaces, multimodal fusion strategies, and personalized attentionaware AR systems.",
+        "Looking ahead, temporal modeling of gaze could become a unifying principle for bridging perception and action in immersive environments-supporting not only robust object selection but also advanced tasks such as gaze-guided navigation, collaborative AR/VR workflows, and cognitive state estimation. By revealing the untapped potential of time-series dynamics, our study lays conceptual and practical groundwork for the next Here, β controls the contraction strength (smaller α indicates stronger convergence toward the target), and ∆t denotes the sampling interval at 60Hz. This procedure yields synthetic fixation subsequences with reduced spatial deviations and stronger internal cohesion, reflecting the idealized convergence pattern expected during the targetfixation phase."
+      ],
+      "subsections": []
+    }
+  ],
+  "body_paragraphs": [
+    "Gaze stabilization is critical for enabling fluid, accurate, and efficient interaction in immersive augmented reality (AR) environments, particularly during task-oriented visual behaviors. However, fixation sequences captured in active gaze tasks often exhibit irregular dispersion and systematic deviations from target locations, a variability primarily caused by the combined effects of human oculomotor physiology, insufficient AR headset tracking and calibration accuracy, and environmental disturbances, undermining interaction performance and visual engagement. To address this issue, we propose TimeGazer, which reformulates gaze stabilization as a sequence-to-sequence temporal regression problem, predicting idealized fixation trajectories for the target-fixation phase from historical gaze dynamics in the search phase. We present a synthetic data generation and blending strategy that produces spatially concentrated, target-centered fixation references aligned with task objectives, substantially enriching the training space and enhancing model generalization. We train and evaluate TimeGazer on a hybrid dataset of real and augmented gaze sequences collected via Microsoft HoloLens 2 from 54 participants across multiple prediction horizons. Through the user study, statistical results demonstrate that TimeGazer significantly improves interaction accuracy and reduces completion time, confirming that temporal modeling of predictive gaze stabilization can strengthen attentional consistency and responsiveness in task-driven AR interaction. These findings highlight the broader potential of TimeGazer for advancing adaptive gaze-based interfaces and temporal modeling research in immersive systems.",
+    "Index Terms: Gaze stablization, fixation, augmented reality, seq2seq model, temporal modeling.",
+    "Eye-tracking technology has become a pivotal component of augmented reality (AR) systems, enabling intuitive human-computer interaction through gaze-based control and attention analysis [25].",
+    "In AR applications such as gaze typing and augmented reading, the fixation phase is critical for accurately inferring user intent and enhancing interaction efficiency [48]. However, human gaze behavior alternates between saccades-rapid eye movements that shift fixation-and fixations, where the eyes remain relatively stable to acquire visual information [40]. Despite this stability, raw gaze data collected during fixation often exhibits considerable dispersion and deviation from the intended target, arising from human physiological factors, hardware limitations, and environmental conditions [2,35]. Such dispersion necessitates longer fixation times to compensate for reduced spatial precision, thereby increasing cognitive load and visual fatigue, which ultimately degrades user experience [53,29]. More specifically, unintended gaze shifts from saccades to fixations (or occurring during fixations) can severely impair the user experience and compromise interaction © 2025 IEEE. This is the author's version of the article that has been published in the proceedings of IEEE Visualization conference. The final version of this record is available at: xx.xxxx/TVCG.201x.xxxxxxx/ performance.",
+    "Since gaze naturally forms a spatiotemporal sequence [7], its velocity, acceleration, and dispersion patterns-timestamped and correlated across points-carry rich cues about user intent and perceptual stability [22]. This has motivated extensive research on scanpath prediction, which aims to model and anticipate sequential gaze behaviors [43,52,11,57]. However, most of these studies primarily address scanpaths in free-viewing scenarios within static visual scenes, rather than gaze sequences driven by actively controlled tasks. In contrast, goal-directed or volitional gaze tasks such as reading [12,23,44] or mid-air typing [48,18,63] are inherently constrained by directional and spatial patterns of eye movements [5,15] (e.g., line-by-line text reading or navigating a virtual keyboard), limiting their generality for broader gaze-based interaction. To alleviate this gap, we aim to optimize the gaze experience under weak directional constraints in active attention tasks, enabling so-called gaze stabilization to facilitate fundamental human-computer interaction events such as object selection in VR/AR environments.",
+    "The sequential nature of gaze data naturally aligns with time series analysis, which has proven highly effective in capturing temporal dependencies across domains such as speech recognition [59] and financial forecasting [51]. By leveraging the temporal dependencies inherent in gaze data, numerous approaches have been proposed for modeling eye movement sequences. Scanpath prediction methods have demonstrated high accuracy, but they predominantly focus on free-viewing scenarios rather than task-driven settings [54,65]. Similarly, gaze estimation and prediction methods achieve impressive performance, yet most operate from a third-person perspective and lack consideration of egocentric environments [13,22]. Recent studies have begun to address active attention tasks in egocentric scenarios [32,26]; however, these works often rely on multimodal frameworks, which not only obscure the primary role of visual attention in such tasks but also introduce practical challenges for deployment on AR/VR devices.",
+    "To address this gap, we introduce TimesGazer, a novel approach explicitly exploits the rich information embedded in gaze trajectories over time by leveraging temporal sequence modeling. The spatiotemporal dynamics of gaze-particularly velocity changes and dispersion trends-encode user intent and attentional stability, which our model captures to predict optimized fixation points and improve AR interaction reliability. To the best of our knowledge, this is the first to explicitly harness temporal dynamics for refining gaze positions during fixation. Our approach achieves robust gaze stabilization through predictive modeling to ensure both accuracy and efficiency in active attention tasks in AR system. Our primary objective is to reduce gaze dispersion and minimize the offset from target points, thereby enhancing the reliability of gazebased interactions in AR applications. To achieve this, we develop a sequence-to-sequence model that exploits historical gaze trajectories from preceding saccadic phases to predict optimized fixation points in the subsequent fixation phase of active tasks. For training, we collected eye movement data from diverse participants performing controlled fixation tasks under minimally distracting conditions, constructing paired datasets for supervised learning. Our model is deployed and validated on AR mobile devices with significant performance improvement.",
+    "The main contributions of this work are as follows:",
+    "• We propose a predictive gaze stabilization framework for AR that reformulates stabilization as a sequence-to-sequence temporal regression problem, refining fixation points without relying on scene semantics or multimodal cues, and generalizing across individuals by capturing shared temporal patterns in gaze behavior.",
+    "• We present a synthetic data generation and blending strategy that creates target-centered augmented fixation sequences, ex-panding training diversity and improving model generalization for temporal gaze dynamics.",
+    "• We curate a purpose-built temporal gaze dataset of paired saccade-fixation sequences collected from diverse participants under controlled conditions, providing a robust foundation for supervised learning in active attention tasks.",
+    "• We optimize and deploy TimeGazer on mobile AR headsets, achieving low-latency, real-time inference and demonstrating significant gains in interaction accuracy and task completion time across multiple prediction horizons.",
+    "First of all, methods of gaze tracking are presented. Then, the temporal analysis model and its applications are summarized.",
+    "Gaze tracking in AR systems has evolved from hardware-centric methods like Pupil Center Corneal Reflection (PCCR) [39] to modern deep learning approaches with temporal modelling capabilities. PCCR remains the standard in commercial XR headsets such as Microsoft HoloLens 2, HTC Vive Pro Eye, and Meta Quest Pro for its robustness and slippage compensation, though it increases hardware cost and calibration complexity. Recent appearance-based approaches using CNNs, LSTMs, and Transformers treat gaze as a spatiotemporal signal, enabling learning-based estimation across frames [14,28]. While recent architectures-such as ViT-based and hybrid CNN-Transformer models-have demonstrated strong performance in gaze estimation [31,42], studies in VR contexts consistently show that gaze dispersion during the fixation phase degrades interaction precision, elevates cognitive load, and contributes to visual fatigue [36].",
+    "Temporal modeling has evolved from early statistical methods to advanced deep learning approaches, each addressing different aspects of sequential dependency. Classical techniques such as ARIMA [24] and Holt-Winters [9] assume fixed temporal patterns and struggle with highly dynamic or nonlinear behaviors.",
+    "To overcome these limitations, machine learning models like LightGBM [24] and XGBoost [10] introduced greater flexibility, though they remain limited in capturing complex long-range dependencies. Deep learning models further advanced temporal analysis through diverse architectures: MLP-based models encode temporal dependencies into fixed parameters, offering computational efficiency but limited capacity for long-term relationships [41,8,60,61]. Temporal Convolutional Networks (TCNs) utilize dilated causal convolutions for parallelized modeling of local and midrange patterns, though receptive fields require careful tuning [3,49,30]. RNN and LSTM architectures capture sequential dynamics through recurrent state transitions and support variable-length sequences, but suffer from limited parallelism and difficulty modeling very long dependencies [27,62,46]. Transformers introduce selfattention for global dependency modeling and multi-scale temporal adaptation, albeit with substantial computational overhead [56,64]. For instance, PatchTST [37] leverages sub-sequence patching to enhance long-sequence modeling, while iTransformer [33] treats each variable's history as an attention token, improving inter-variable dependency capture and long-term context understanding. These advancements highlight the strength of temporal analysis in handling complex sequential patterns, making it a compelling foundation for gaze-related research in AR environments.",
+    "Temporal models are widely applied in gaze-related tasks. In gaze estimation, spatio-temporal models exploit eye, head, and body dynamics for accurate current fixation, but rarely predict future gaze [22,38]. In gaze prediction, models leverage historical eye movements, scene context, and user behavior to forecast future gaze targets or trajectories. For example, Hu et al. [19] predict users' fixation points in task-driven VR settings, demonstrating the feasibility of gaze forecasting for interactive virtual environments. Gupta et al. [13] proposed MTGS, a transformer-based model for multiperson gaze prediction in third-person scenes, but not for egocentric views. Recent egocentric approaches, such as Lai et al. [26] and Liu et al. [32], incorporate audiovisual cues to predict gaze trajectories; however, their multi-modal pipelines are often too heavy for realtime AR devices. In scanpath prediction, methods like ScanDMM, ScanTD, and ScanDTM [50,65,54] model temporal dependencies between discrete fixations, yet mostly under free-viewing or weakly constrained attention, with little focus on goal-directed or active fixation tasks. This gap motivates our work on stabilizing active fixations in AR via temporal modeling and predicting.",
+    "To collect gaze data, we constructed an AR environment as the experimental stimulus (see Fig. 2). The real-world background, positioned 3 meters away and consisting of a large, plain black mat sufficient to encompass the entire virtual scene, was paired with a virtual scene also positioned 3 meters in front of the headset. This virtual scene measured 2 × 2 meters and was deliberately kept minimal to reduce potential confounding factors. Only three types of visual elements were presented: (1) a red-blue concentric circle (radius: 0.1 m) serving as the start marker for each trial, (2) a tan arrow indicating the participant's intended gaze shift direction, and (3) a yellow cross (arm length: 0.1 m) serving as the fixation target, at whose center participants were instructed to maintain steady fixation. This minimalist design reduces scene complexity, thereby enhancing the discriminability of fixation events and enabling a clearer separation of physiological eye movements (e.g., saccades, microsaccades) from task-driven gaze behavior [16,47].",
+    "Our data collection was conducted on a PC equipped with an AMD Ryzen™ 5 7500F CPU (3.70 GHz) and an NVIDIA GeForce RTX 2080 GPU. The experimental setup was implemented on a Microsoft HoloLens 2 headset, which integrates an optical eyetracking system operating at 60 Hz with an accuracy of approximately 0.5°. Head motion was simultaneously recorded using the HoloLens 2's built-in head tracking system at a sampling rate of 60 Hz. The experimental scenes were rendered in real time using the Unity3D engine, and custom Unity scripts were developed to log task-related gaze and head information at 60 Hz.",
+    "We recruited 54 participants (29 males, 25 females; aged 19-25 years) for the gaze data collection. All participants reported normal or corrected-to-normal vision. Prior to the experiment, the eye tracker was calibrated individually for each participant. Participants performed the task in a dimly lit room while seated with minimal body movement and they were provided with a pair of earplugs to avoid auditory disturbance. During the experiment, participants were given a mandatory break after each round and could also request additional breaks if they felt tired or uncomfortable. A snapshot of the experimental setup is shown in Fig. 3.",
+    "Prior to the experiment, participants were given at least 10 minutes to familiarize themselves with the headset and the virtual environment to ensure task comprehension. Each participant then completed 6 rounds of fixation tasks, with each round consisting of 20 individual trials. In each trial, a start marker appeared at a random location within the 2 × 2-meter virtual area (fixed at 3 meters from the headset). Participants were required to maintain gaze fixation on this marker for 1 second to initiate the trial. Upon disappearance of the marker, a yellow arrow appeared at its former location, indicating the direction of the fixation target (a yellow cross). Participants were instructed to follow the arrow's direction, locate the fixation target, and maintain steady gaze on its center for 5 seconds. After successful fixation, both arrow and target disappeared, triggering the next trial. Though conceptually divided into three phases-(1) trial initiation, (2) gaze shift, and (3) sustained fixation-the sequence flowed continuously without explicit pauses.",
+    "During each trial, we recorded the precise sampling time of each gaze point, the target position, the participant's head position and direction, as well as the gaze origin position and gaze direction(measured in visual angles). Derived features, such as the linear velocity and angular velocity of gaze points, gaze position projected onto the target plane were subsequently computed from these measurements. To ensure data validity, trials were excluded if they met any of the following criteria: (1) Failure to maintain uninterrupted fixation on the target center for ≥ 2.5 seconds during the first 5-second time window of a trial; (2) Gaze shifts exceeding the boundaries of the 2×2-meter virtual area; (3) Loss of fixation, defined as ≥ 24 consecutive gaze points radially > 0.1 m from the target center during the sustained fixation phase (corresponding to the 400 ms upper bound of the fixation window suggested in [47], and following HoloLens visual angle guidelines). In total, our collected data contains 54 participants' exploration data in 3771 (54 × 20 × 6 -2709) trials. Each trial data contains about 3,00 gaze points (60 Hz sampling rate) with features like target position, gaze position, gaze linear velocity, gaze angular velocity and timestamp",
+    "The active gaze fixation task defined in this study is a composite visual task consisting of a target search phase guided by directional stimuli and a subsequent target-fixation phase. As illustrated in Fig. 4, the eye-tracking data collected during this process can be categorized into two types: rapid movements and stable fixations (shown in different colors in the figure). Several prior studies have analyzed gaze movement characteristics in VR and leveraged them for future gaze prediction, such as [21,20]. Unlikely, our research goal is to make gaze points during the stable fixation phase exhibit smaller overall deviations from the target and greater internal concentration.",
+    "In a given visual task, eye-movement data are commonly segmented into saccades and fixations using kinematic thresholds-typically speed or spatial dispersion-following principles established in physiology and classical eye-tracking research [2,34]. However, decades of studies since Yarbus et al. [58] have demonstrated that task instructions and stimulus characteristics profoundly alter eyemovement behavior, affecting fixation-duration distributions, saccade amplitudes, and scanpath patterns [45,6]. Consequently, we adapted rather than directly adopted empirical thresholds, retaining the principles of classical I-DT and I-VT while tailoring the parameters to our active fixation setting [1,17]. Specifically, the effective fixation region was defined as a circle of 0.1 m radius around the target, corresponding to approximately 3.81°of visual angle at our viewing distance(Sec. A.1). Within this region, we analyzed the angular velocity distribution of gaze samples and observed that over 95% of points fell below 15°/s (Fig. A.1). This informed our threshold choice, which was further validated through sensitivity analyses (Sec. A.4). We defined the onset of stable fixation as the first 12sample window (200 ms at 60 Hz, following [47]) within the target region where the mean angular velocity falls below 20°/s.",
+    "However, despite careful thresholding, real fixation sequences often exhibit systematic offsets from the target and substantial withinfixation variability(Fig. 4), which may introduce bias during model training. To mitigate this issue, we further generated synthetic fixation trajectories with reduced spatial bias and stronger internal cohesion. These synthetic sequences reflect the idealized convergence expected during the target-fixation phase, providing additional training data that mitigate the propagation of undesired offsets. The generation process and validation are detailed in Sec. A.5.",
+    "Eye movement sequences during the target-fixation phase often exhibit irregular spatial dispersion and systematic offsets relative to the target center. To achieve gaze stabilization, we aim to transform these noisy fixation sequences into an idealized, target-centered trajectory. Formally, let the historical gaze sequence captured during the target-searching phase be X",
+    "where x t represents the gaze feature vector (e.g., gaze position, velocity, and derived features) at time step t. The goal is to predict a future sequence Y T +1:",
+    "where τ denotes the prediction horizon, and each y k corresponds to an idealized fixation point that is both closer to the target and exhibits stronger spatial cohesion. The mapping can be expressed as a parameterized function: ỸT+1:T+τ = f θ (X 1:T ), where f θ is learned by minimizing the discrepancy between predicted sequences and reference sequences (constructed via data augmentation, see Sec. 4.2).",
+    "To capture temporal dependencies and sequence dynamics, we adopt a sequence-to-sequence (seq2seq) prediction framework, which naturally aligns with the task of predicting temporally coherent future gaze patterns from historical eye movements. We evaluate the model across multiple prediction horizons, reflecting varying levels of anticipatory gaze stabilization.",
+    "The overall architecture of TimeGazer is illustrated in Fig. 5. The model input, X ∈ R B×T ×(C+1) , consists of gaze sequences represented as a tensor with batch size B, sequence length T , and C gaze-related features, with an additional dimension corresponding to timestamp information.",
+    "For each sample b ∈ [1, B] and feature channel c ∈ [1,C], gaze coordinates and velocities are standardized along the temporal dimension to ensure consistent input scales prior to embedding:",
+    "The normalized features X are then projected into an embedding space through a Token Embedding module, implemented as a 1D convolution layer with a kernel size of 3:",
+    "This module not only projects features into a high-dimensional representation but also captures local temporal dependencies critical for sequence modeling. To incorporate global order information, we adopt sinusoidal positional encoding, which introduces positional context without additional trainable parameters. The encoding for each time step t ∈ [1, T ] is defined as:",
+    "where d denotes the embedding dimension, and i indexed the frequency components of the encoding. Specifically, Zposition(t, 2i) and Zposition(t, 2i + 1) correspond to the 2i-th and (2i + 1)-th dimensions of the positional embedding at time step t. In parallel, timestamp features are embedded via a bias-free linear projection, yielding Z time ∈ R B×T ×d . The final embedding representation is obtained through element-wise summation:",
+    "Finally, Z is passed through a Predict Linear layer, which extends the temporal dimension from the historical sequence length T to the combined length of T + τ, where τ denotes the prediction horizon:",
+    "To effectively capture the temporal dependencies in eye movements, we adopt TimesNet [55], a state-of-the-art model for shortterm temporal analysis, as the backbone of our framework. Times-Net is composed of a stack of TimesBlock modules connected via residual connections, enabling the model to jointly capture both short-and long-term dependencies in gaze sequential data. Within each TimesBlock, the input sequence is first transformed into the frequency domain using Fourier transform to extract periodic patterns of gaze points. Subsequently, multi-scale convolutional blocks are applied to capture local dependencies at different temporal resolutions. Finally, all periodic features are adaptively aggregated to form the intermediate temporal representation:",
+    "which serves as the basis for downstream prediction tasks.",
+    "To enhance the expressiveness of temporal representations while maintaining computational efficiency, we adopt two complementary projection strategies: (1) a multi-head self-attention projection, which captures long-range dependencies by dynamically weighting temporal positions, and (2) a linear projection, which provides a lightweight mapping that preserves local structures. The attention-based projection is defined as:",
+    "where MHA(•) is the Multi-Head Attention.",
+    "The linear projection is defined as: Ŷlinear ∈ R B×(T +τ)×C is defined as:",
+    "Where W linear and b linear are trainable parameters.",
+    "Finally, the fused projection combines the two branches through a learnable balance parameter α:",
+    "We also performed ablation experiments to compare the two single-branch variants with the fused design (Sec. 6.5). In addition, We conducted a sensitivity analysis on the number of attention heads used in the Multi-Head Attention (MHA) Project module, with the embedding dimension fixed at d = 16. As shown in Tab. 1, the model achieves the best performance when the number of heads is set to 8, while performance drops noticeably when the number of heads increases to 16. This decline can be attributed to the fact that with d = 16 and h = 16, each attention head only has one dimension, which severely limits its representational capacity and hinders effective information interaction across dimensions. These results suggest that an excessively large number of heads may be detrimental under low embedding dimensions, highlighting the importance of balancing head number and embedding size in practice.",
+    "© 2025 IEEE. This is the author's version of the article that has been published in the proceedings of IEEE Visualization conference. The final version of this record is available at: xx.xxxx/TVCG.201x.xxxxxxx/",
+    "We design a loss function that not only penalizes pointwise prediction errors but also explicitly constrains the spatial distribution of predicted gaze points. Specifically, our formulation extends the conventional Mean Squared Error (MSE) by introducing center distance and dispersion consistency regularization terms. Formally, given a set of predicted fixation points P{ p1 , • • • , pn } and ground-truth fixation points P{p 1 , • • • , p n }, the per-step loss for the fixation phase is defined as: To further investigate the role of each component in the combined loss, we first estimated the relative scales of the three terms by computing their average magnitudes on small batches, and accordingly set λ c and λ v to be within comparable orders. Then, we performed a coarse grid search and found the best-performing configuration to be λ c = 0.001 and λ v = 0.05.  Finally, we ablated the individual components of L comb , as shown in Tab. 2, all the metrics used in the validation are defined in Sec. 6.1. Removing either the center distance or the dispersion consistency term resulted in performance drops across AI, CI, and AD, demonstrating that both terms make complementary contributions. The best results were consistently achieved when both components were included, confirming the necessity of the complete L comb design.",
+    "The overall loss for training is formulated as:",
+    "where L velocity computes the MSE of velocity between consecutive points over the entire sequence, and L reg 2 is a standard weight decay to prevent overfitting.",
+    "To validate the necessity of each component, we conducted ablation studies by progressively enabling the center and variance constraints in addition to the baseline MSE(Sec. 6.5). We also per-formed a hyperparameter sensitivity analysis on the weighting parameter λ to assess its impact on model performance. We analyzed the sensitivity of the weighting factor λ in the total loss:",
+    "As shown in Tab. 3, increasing the weight of L comb consistently improved performance across all metrics. Larger λ values led to higher AI scores, along with gradual improvements in CI and AD. The best overall performance was observed when λ was set to 0.9. Therefore, we adopted λ = 0.9 as the default setting in all subsequent experiments.",
+    "Training seq2seq models with the conventional teacher forcing strategy often leads to exposure bias, since during inference the model must rely on its own predictions rather than ground-truth inputs, causing error accumulation over time [4]. To address this issue, we draw inspiration from SCINet [30] and adopt a slidingwindow training strategy. As shown in Fig. 6, both the historical and predicted sequence lengths are fixed. At each step, the model generates a predicted segment that is longer than the slidingwindow size. We then take only the first l w points of this segment, where l w is the sliding-window length, append them to the growing predicted sequence, and shift the historical window forward by l w points to form the next input. This process repeats until the predicted sequence reaches the horizon τ. By partially consuming the model's own predictions in a progressive manner, the strategy reduces reliance on ground-truth samples, thereby alleviating exposure bias and improving long-term robustness. We further investigated the effect of the sliding-window size on model performance, all the metrics used in the validation are defined in Sec. 6.1. As shown in Tab. 4, the model achieves its best results when the window size is set to 16. A larger window provides the model with a broader temporal context, which facilitates more accurate gaze prediction. Based on this observation, we adopt a window size of 16 as the default configuration in all subsequent experiments.",
+    "To comprehensively evaluate the effectiveness of our model, we conducted a series of experiments. First, we examined its adaptability to different prediction horizons. Second, we implemented a gaze-selection task in Unity and performed cross-user experiments © 2025 IEEE. This is the author's version of the article that has been published in the proceedings of IEEE Visualization conference. The final version of this record is available at: xx.xxxx/TVCG.201x.xxxxxxx/ to assess real-world performance on AR devices. Third, we carried out ablation studies to validate the contributions of individual model components. Finally, we conducted parameter sensitivity analyses to evaluate the robustness of the model with respect to key hyperparameters.",
+    "We adopt two relative metrics and one absolute metric to evaluate gaze stabilization for each gaze sequence with n i points.",
+    "1. Concentration Improvement (CI): Concentration is measured by the standard deviation of distances between gaze points and targets:",
+    "where g i ∈ R 2 denotes the coordinate of target point, p j ∈ R 2 and p2 j are predicted point and origin point, respectively, and ε is a minimum value.",
+    "2. Accuracy Improvement (AI): Accuracy is measured by the mean distance di between n i points and the target. Similar to CI, AI is defined as:",
+    "3.Average Distance (AD): AD is the absolute mean distance of the predicted points to the target:",
+    "Our model is implemented in PyTorch and optimized using Adam with an initial learning rate of 0.001. A cosine annealing scheduler is applied:",
+    ", where η 0 is the initial learning rate and E the total number of training epochs. Early stopping with patience of 20 is used to prevent overfitting. We set the length of the historical gaze sequence to 96 time steps (Sec. A.3) and tested different batch sizes in theoretical experiments and adopted 64 for user studies, balancing accuracy and efficiency. For the sliding-window strategy, the input sequence length is fixed at T = 64 with a stride of 16. Various prediction horizons τ were explored in theoretical experiments, while τ = 64 was selected for user studies.",
+    "Before the user study, we performed quantitative experiments to evaluate TimeGazer under varying prediction horizons and batch sizes. As shown in Tab. 5, increasing the prediction length improves the AI metric, indicating more concentrated gaze predictions, but also leads to a substantial rise in computational cost per prediction. Moreover, the consistently low Average Deviation (AD) values across different participants-on the order of 10 -2 to 10 -3 -demonstrate that the learned temporal patterns generalize well, making the model robust and applicable across individuals  despite inter-subject variability in gaze behavior. Balancing performance and efficiency, we adopt a prediction length of 64 (approximately one second) and a batch size of 64 for the subsequent user evaluation.",
+    "To evaluate the performance of TimeGazer in AR scenarios, we conducted a user study with 27 participants (16 male, 11 female; aged 18-25 years, M = 21). Prior to the experiment, each participant underwent a calibration procedure to ensure accurate eyetracking on the device and completed a short training session to familiarize themselves with the task. Our method adopted counterbalanced and randomized ordering of the two algorithm conditions being compared, to mitigate potential sequence and learning effects.",
+    "We developed a gaze selection task in Unity, consisting of spherical targets with three radii: 0.10 m, 0.06 m, and 0.04 m. Each condition was repeated three times. As illustrated in Fig. 7(a), during each trial participants were guided by directional arrows to sequentially fixate on eight target spheres. A fixation was considered successful if the participant maintained continuous gaze on a sphere for at least 1 s within a 5 s time limit, upon which the sphere was removed.  For each target, we recorded the target coordinates, participants' gaze trajectories, fixation completion status, the number of fixation interruptions, the cumulative fixation duration, and the total task completion time.",
+    "We compared TimeGazer with the native HoloLens 2 eyetracking algorithm using four metrics: (1) average fixation completion rate (ACR, ↑, proportion), ( 2  As shown in Tab. 6, TimeGazer outperformed the native HoloLens 2 on all four metrics, with statistically significant improvements (ACR: p = 0.0034, d = 0.873; ATD: p = 0.035, d = 0.917; GI: p = 0.035, d = 0.397; FTR: p = 0.035, d = 0.416), demonstrating its substantial impact on gaze stability and interaction efficiency.",
+    "In addition, we further evaluated TimeGazer in two standard AR interaction scenarios provided by the MRTK Eye Tracking library: Target Selection and Navigation (as illustrated in Fig. 7(b) and Fig. 7(c)). For the Target Selection task, we measured ATD to quantify the average time required to select a target, and GI to capture how often the gaze left the selection area during each trial. For the Navigation task, we used ATD to evaluate the time required for users to follow a predefined path using gaze input. As shown in Tab. 7, TimeGazer outperformed the native HoloLens 2 eye-tracking algorithm across all MRTK scenarios, with statistically significant improvements in both target selection (ATD: p = 0.0011, d = 1.26; GI: p = 0.0482, d = 0.64) and navigation (ATD: p = 0.0008, d = 1.99). These results demonstrate that TimeGazer effectively enhances gaze-based interaction efficiency and stability in AR environments. To further evaluate user experience, participants provided 5point Likert scale ratings for both methods after completing all trials for each target size. Ratings assessed two aspects of gaze selection: stability and sensitivity. Statistical significance was tested using the Wilcoxon signed-rank test, with results shown in Tab. 8. Users rated TimeGazer significantly higher than the native HoloLens 2 algorithm in both stability (3.93 ± 0.42 vs. 3.27 ± 0.46, p = 0.0056, d = 1.234) and sensitivity (4.07 ± 0.46 vs.",
+    "3.07 ± 0.46, p = 0.0003, d = 4.009), indicating that TimeGazer provides a noticeably more stable and responsive gaze interaction experience.",
+    "We conducted ablation studies on the architectural design of TimeGazer to verify the effectiveness of each module.",
+    "First, we examined the components of the Embedding Module. As shown in Tab. 9, removing any of the three embedding types (token, position, or time) substantially degrades overall performance, indicating that each embedding plays an indispensable role in capturing different aspects of gaze dynamics. Next, we ablated the Project Module, with results summarized in Tab. 10. Using only the Linear Project yields relatively high standard deviations, suggesting weaker robustness against outliers. By contrast, using only the Multi-Head Attention Project provides more stable predictions but offers limited improvement in point clustering compared to the Linear Project. Importantly, combining both components achieves the best balance: it enhances clustering (CI) and accuracy (AI) simultaneously while maintaining low variance Overall, these results confirm that the full architecture of",
+    "This work represents the first attempt to explicitly exploit temporal modeling for gaze stabilization in AR systems. Through extensive experiments, we revealed several important aspects related to gaze refinement and task-driven visual attention. Temporal Modeling vs. Classical Gaze-Tracking Models: In contrast to classical approaches based on calibration correction or spatial filtering, temporal modeling methods exploit the implicit sequential dependencies embedded in gaze data. By leveraging historical trajectories, they can capture velocity, dispersion, and higher-order temporal correlations that guide the generation of more accurate and stable spatial positions. Both quantitative analyses from theoretical experiments (Tab. 5) and subjective user survey (Tab. 8) support that temporal modeling enhances spatial compactness of gaze points during fixation, while improving alignment with intended target locations.",
+    "We attribute this advantage to the ability of sequence-tosequence models to encode long-range dependencies from the prefixation search phase and align them with the subsequent fixation phase, thereby effectively bridging past dynamics and future stability [59]. The consistently low variance of the Average Deviation (AD)-on the order of 10 -3 -further demonstrates the robustness of this approach across different users. This robustness suggests © 2025 IEEE. This is the author's version of the article that has been published in the proceedings of IEEE Visualization conference. The final version of this record is available at: xx.xxxx/TVCG.201x.xxxxxxx/ that temporal modeling captures a generalizable structure of gaze behavior, consistent with Yarbus's classic assertion that \"the pattern of eye movements is determined by the task\" [58]. In particular, although our dataset consists of gaze sequences collected from 54 different participants, the seq2seq model successfully distilled shared temporal patterns that generalized well across individuals, demonstrating its applicability beyond subject-specific idiosyncrasies.",
+    "Limitations: TimeGazer is built upon a sequence-to-sequence (seq2seq) temporal modeling framework that assumes a fixed-length input history, consistent model architecture, and predefined dataset conditions. In real-world scenarios, however, gaze sequences have variable lengths. To accommodate the model, historical sequences must be truncated, padded, or interpolated, which may reduce the precision of predicted fixation points and limit the model's ability to jointly capture the dynamics from target search to fixation phases. Consequently, the current model may not generalize directly to tasks such as reading or mid-air typing, which exhibit different temporal patterns and variable sequence lengths, and would require task-specific retraining using appropriately tailored historical sequences.",
+    "Additionally, in our data collection, some fixations start relatively close to the producing less stable gaze trajectories. These cases are more likely to be removed during data cleaning, which results in an underrepresentation of short-distance targets in the dataset. As a result, the model exhibits differential responsiveness to targets at varying distances, performing slightly better for medium-to-long-range fixations than for very short-range fixations.",
+    "Futrue work: To address the limitation of fixed-length inputs, we plan to investigate adaptive sequence modeling approaches, such as hierarchical seq2seq architectures or attention-based transformers, which can process variable-length historical sequences without truncation or interpolation, thereby preserving the full temporal dynamics from target search to fixation. To mitigate the imbalance between nearand far-distance fixations, we aim to augment the dataset with additional short-distance target scenarios and incorporate a distanceaware weighting scheme during training. This strategy is expected to enhance model responsiveness and prediction accuracy across all fixation distances. Furthermore, we will explore integrating uncertainty estimation or robust regression techniques to better handle unstable or noisy fixation trajectories, thereby improving the reliability of predicted gaze points under diverse real-world conditions.",
+    "In this paper, our approach positions temporal sequence modeling as a foundational paradigm for gaze-based interaction in AR. By treating gaze stabilization not as a post-processing filter but as a predictive, task-driven temporal inference problem, we establish a new perspective on how the dynamics of human eye movements can be harnessed for neural modeling and facilitate interaction design.",
+    "Our TimeGazer model exemplifies this shift: it shows that latent temporal patterns in gaze trajectories carry rich cues about user intent and attentional stability, and that exploiting these cues can unlock performance gains unattainable through static or geometryonly approaches. Beyond the specific improvements in dispersion and accuracy, our approach reframes gaze interaction as a temporally grounded process, suggesting opportunities for adaptive interfaces, multimodal fusion strategies, and personalized attentionaware AR systems.",
+    "Looking ahead, temporal modeling of gaze could become a unifying principle for bridging perception and action in immersive environments-supporting not only robust object selection but also advanced tasks such as gaze-guided navigation, collaborative AR/VR workflows, and cognitive state estimation. By revealing the untapped potential of time-series dynamics, our study lays conceptual and practical groundwork for the next Here, β controls the contraction strength (smaller α indicates stronger convergence toward the target), and ∆t denotes the sampling interval at 60Hz. This procedure yields synthetic fixation subsequences with reduced spatial deviations and stronger internal cohesion, reflecting the idealized convergence pattern expected during the targetfixation phase.",
+    "v . Values are reported as mean ± standard deviation (SD).",
+    "40 ± 11.73 1.41 ± 0.99 0.050 ± 0.059"
+  ],
+  "references": [
+    {
+      "id": 1,
+      "text": "One algorithm to rule them all? An evaluation and discussion of ten eye movement event-detection algorithms\n\t\t\n\t\t\tRichardAndersson\n\t\t\n\t\t\n\t\t\tLinneaLarsson\n\t\t\n\t\t\n\t\t\tKennethHolmqvist\n\t\t\n\t\t\n\t\t\tMartinStridh\n\t\t\n\t\t\n\t\t\tMarcusNyström\n\t\t\n\t\t10.3758/s13428-016-0738-9\n\t\n\t\n\t\tBehavior Research Methods\n\t\tBehav Res\n\t\t1554-3528\n\t\t\n\t\t\t49\n\t\t\t2\n\t\t\t\n\t\t\t2017\n\t\t\tSpringer Science and Business Media LLC"
+    },
+    {
+      "id": 2,
+      "text": "NEUROPHYSIOLOGY OF EYE MOVEMENTS\n\t\t\n\t\t\tPBach-Y Rita\n\t\t\n\t\t10.1016/b978-0-12-071050-8.50006-9\n\t\n\t\n\t\tThe Control of Eye Movements\n\t\t\n\t\t\tElsevier\n\t\t\t2012. 1, 4"
+    },
+    {
+      "id": 3,
+      "text": "An empirical evaluation of generic convolutional and recurrent networks for sequence modeling\n\t\t\n\t\t\tSBai\n\t\t\n\t\t\n\t\t\tJZKolter\n\t\t\n\t\t\n\t\t\tVKoltun\n\t\t\n\t\tarXiv:1803.01271\n\t\t\n\t\t\t2018\n\t\t\n\t\n\tarXiv preprint"
+    },
+    {
+      "id": 4,
+      "text": "Scheduled sampling for sequence prediction with recurrent neural networks\n\t\t\n\t\t\tSBengio\n\t\t\n\t\t\n\t\t\tOVinyals\n\t\t\n\t\t\n\t\t\tNJaitly\n\t\t\n\t\t\n\t\t\tNShazeer\n\t\t\n\t\n\t\n\t\tAdvances in neural information processing systems\n\t\t\n\t\t\t2015\n\t\t\t28"
+    },
+    {
+      "id": 5,
+      "text": "Predicting task from eye movements: On the importance of spatial distribution, dynamics, and image features\n\t\t\n\t\t\tJFBoisvert\n\t\t\n\t\t\n\t\t\tNDBruce\n\t\t\n\t\n\t\n\t\tNeurocomputing\n\t\t\n\t\t\t207\n\t\t\t2\n\t\t\t\n\t\t\t2016"
+    },
+    {
+      "id": 6,
+      "text": "Defending yarbus: Eye movements reveal observers' task\n\t\t\n\t\t\tABorji\n\t\t\n\t\t\n\t\t\tLItti\n\t\t\n\t\n\t\n\t\tJournal of vision\n\t\t\n\t\t\t14\n\t\t\t3\n\t\t\t\n\t\t\t2014"
+    },
+    {
+      "id": 7,
+      "text": "Real-world scanpaths exhibit long-term temporal dependencies: Considerations for contextual ai for ar applications\n\t\t\n\t\t\tCSBurlingham\n\t\t\n\t\t\n\t\t\tNSendhilnathan\n\t\t\n\t\t\n\t\t\tXWu\n\t\t\n\t\t\n\t\t\tTSMurdison\n\t\t\n\t\t\n\t\t\tMJProulx\n\t\t\n\t\t10.1145/3649902.36563522\n\t\n\t\n\t\tProceedings of the 2024 Symposium on Eye Tracking Research and Applications\n\t\tthe 2024 Symposium on Eye Tracking Research and Applications\n\t\t\n\t\t\tGlasgow United Kingdom\n\t\t\t2024"
+    },
+    {
+      "id": 8,
+      "text": "NHITS: Neural Hierarchical Interpolation for Time Series Forecasting\n\t\t\n\t\t\tCristianChallu\n\t\t\n\t\t\n\t\t\tKinGOlivares\n\t\t\n\t\t\n\t\t\tBorisNOreshkin\n\t\t\n\t\t\n\t\t\tFedericoGarza Ramirez\n\t\t\n\t\t\n\t\t\tMaxMergenthaler Canseco\n\t\t\n\t\t\n\t\t\tArturDubrawski\n\t\t\n\t\t10.1609/aaai.v37i6.25854\n\t\n\t\n\t\tProceedings of the AAAI Conference on Artificial Intelligence\n\t\tAAAI\n\t\t2159-5399\n\t\t2374-3468\n\t\t\n\t\t\t37\n\t\t\t6\n\t\t\t\n\t\t\t2023\n\t\t\tAssociation for the Advancement of Artificial Intelligence (AAAI)"
+    },
+    {
+      "id": 9,
+      "text": "The holt-winters forecasting procedure\n\t\t\n\t\t\tCChatfield\n\t\t\n\t\t10.2307/23471622\n\t\n\t\n\t\tJournal of the Royal Statistical Society. Series C (Applied Statistics)\n\t\t\n\t\t\t27\n\t\t\t3\n\t\t\t\n\t\t\t1978"
+    },
+    {
+      "id": 10,
+      "text": "Xgboost: A scalable tree boosting system\n\t\t\n\t\t\tTChen\n\t\t\n\t\t\n\t\t\tCGuestrin\n\t\t\n\t\t10.1145/2939672.29397852\n\t\tarXiv:1603.02754\n\t\n\t\n\t\tProceedings of the 22nd ACM SIGKDD International Conference on Knowledge Discovery and Data Mining\n\t\tthe 22nd ACM SIGKDD International Conference on Knowledge Discovery and Data Mining\n\t\t\n\t\t\tAug. 2016"
+    },
+    {
+      "id": 11,
+      "text": "Beyond average: Individualized visual scanpath prediction\n\t\t\n\t\t\tXChen\n\t\t\n\t\t\n\t\t\tMJiang\n\t\t\n\t\t\n\t\t\tQZhao\n\t\t\n\t\t10.1109/CVPR52733.2024.024022\n\t\n\t\n\t\t2024 IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)\n\t\tSeattle, WA, USA\n\t\t\n\t\t\t2024"
+    },
+    {
+      "id": 12,
+      "text": "Eyettention: An attention-based dual-sequence model for predicting human scanpaths during reading\n\t\t\n\t\t\tSDeng\n\t\t\n\t\t\n\t\t\tDRReich\n\t\t\n\t\t\n\t\t\tPPrasse\n\t\t\n\t\t\n\t\t\tPHaller\n\t\t\n\t\t\n\t\t\tTScheffer\n\t\t\n\t\t\n\t\t\tLAJäger\n\t\t\n\t\n\t\n\t\tProceedings of the ACM on Human-Computer Interaction\n\t\t\n\t\t\t7\n\t\t\tETRA\n\t\t\t\n\t\t\t2023"
+    },
+    {
+      "id": 13,
+      "text": "Mtgs: A novel framework for multi-person temporal gaze following and social gaze prediction\n\t\t\n\t\t\tAGupta\n\t\t\n\t\t\n\t\t\tSTafasca\n\t\t\n\t\t\n\t\t\tAFarkhondeh\n\t\t\n\t\t\n\t\t\tPVuillecard\n\t\t\n\t\t\n\t\t\tJ.-MOdobez\n\t\t\n\t\n\t\n\t\tAdvances in Neural Information Processing Systems\n\t\t\n\t\t\t2024\n\t\t\t37\n\t\t\t3"
+    },
+    {
+      "id": 14,
+      "text": "In the eye of the beholder: A survey of models for eyes and gaze\n\t\t\n\t\t\tDWHansen\n\t\t\n\t\t\n\t\t\tQJi\n\t\t\n\t\t10.1109/TPAMI.2009.302\n\t\n\t\n\t\tIEEE Transactions on Pattern Analysis and Machine Intelligence\n\t\t\n\t\t\t32\n\t\t\t3\n\t\t\t\n\t\t\t2010"
+    },
+    {
+      "id": 15,
+      "text": "Predicting Cognitive State from Eye Movements\n\t\t\n\t\t\tJohnMHenderson\n\t\t\n\t\t\n\t\t\tSvetlanaVShinkareva\n\t\t\n\t\t\n\t\t\tJingWang\n\t\t\n\t\t\n\t\t\tStevenGLuke\n\t\t\n\t\t\n\t\t\tJennOlejarczyk\n\t\t\n\t\t10.1371/journal.pone.0064937\n\t\n\t\n\t\tPLoS ONE\n\t\tPLoS ONE\n\t\t1932-6203\n\t\t\n\t\t\t8\n\t\t\t5\n\t\t\te64937\n\t\t\t2013\n\t\t\tPublic Library of Science (PLoS)"
+    },
+    {
+      "id": 16,
+      "text": "KHolmqvist\n\t\t\n\t\t\n\t\t\tMNyström\n\t\t\n\t\t\n\t\t\tRAndersson\n\t\t\n\t\t\n\t\t\tRDewhurst\n\t\t\n\t\t\n\t\t\tHJarodzka\n\t\t\n\t\t\n\t\t\tJVan De Weijer\n\t\t\n\t\tEye tracking: A comprehensive guide to methods and measures\n\t\t\n\t\t\toup Oxford\n\t\t\t2011"
+    },
+    {
+      "id": 17,
+      "text": "RETRACTED ARTICLE: Eye tracking: empirical foundations for a minimal reporting guideline\n\t\t\n\t\t\tKennethHolmqvist\n\t\t\t0000-0003-1738-3207\n\t\t\n\t\t\n\t\t\tSagaLeeÖrbom\n\t\t\n\t\t\n\t\t\tIgnaceT CHooge\n\t\t\n\t\t\n\t\t\tDiederickCNiehorster\n\t\t\n\t\t\n\t\t\tRobertGAlexander\n\t\t\n\t\t\n\t\t\tRichardAndersson\n\t\t\n\t\t\n\t\t\tJeroenSBenjamins\n\t\t\n\t\t\n\t\t\tPieterBlignaut\n\t\t\n\t\t\n\t\t\tAnne-MarieBrouwer\n\t\t\n\t\t\n\t\t\tLewisLChuang\n\t\t\n\t\t\n\t\t\tKirstenADalrymple\n\t\t\n\t\t\n\t\t\tDenisDrieghe\n\t\t\n\t\t\n\t\t\tMattJDunn\n\t\t\n\t\t\n\t\t\tUlrichEttinger\n\t\t\n\t\t\n\t\t\tSusannFiedler\n\t\t\n\t\t\n\t\t\tTomFoulsham\n\t\t\n\t\t\n\t\t\tJosNVan Der Geest\n\t\t\n\t\t\n\t\t\tDanWitznerHansen\n\t\t\n\t\t\n\t\t\tSamuelBHutton\n\t\t\n\t\t\n\t\t\tEnkelejdaKasneci\n\t\t\n\t\t\n\t\t\tAlanKingstone\n\t\t\n\t\t\n\t\t\tPaulCKnox\n\t\t\n\t\t\n\t\t\tEllenMKok\n\t\t\n\t\t\n\t\t\tHelenaLee\n\t\t\n\t\t\n\t\t\tJoyYeonjooLee\n\t\t\n\t\t\n\t\t\tJukkaMLeppänen\n\t\t\n\t\t\n\t\t\tStephenMacknik\n\t\t\n\t\t\n\t\t\tPäiviMajaranta\n\t\t\n\t\t\n\t\t\tSusanaMartinez-Conde\n\t\t\n\t\t\n\t\t\tAntjeNuthmann\n\t\t\n\t\t\n\t\t\tMarcusNyström\n\t\t\n\t\t\n\t\t\tJacobLOrquin\n\t\t\n\t\t\n\t\t\tJorgeOtero-Millan\n\t\t\n\t\t\n\t\t\tSoonYoungPark\n\t\t\n\t\t\n\t\t\tStanislavPopelka\n\t\t\n\t\t\n\t\t\tFrankProudlock\n\t\t\n\t\t\n\t\t\tFrankRenkewitz\n\t\t\n\t\t\n\t\t\tAustinRoorda\n\t\t\n\t\t\n\t\t\tMichaelSchulte-Mecklenbeck\n\t\t\n\t\t\n\t\t\tBonitaSharif\n\t\t\n\t\t\n\t\t\tFrederickShic\n\t\t\n\t\t\n\t\t\tMarkShovman\n\t\t\n\t\t\n\t\t\tMervynGThomas\n\t\t\n\t\t\n\t\t\tWardVenrooij\n\t\t\n\t\t\n\t\t\tRaimondasZemblys\n\t\t\n\t\t\n\t\t\tRoySHessels\n\t\t\n\t\t10.3758/s13428-021-01762-8\n\t\n\t\n\t\tBehavior Research Methods\n\t\tBehav Res\n\t\t1554-3528\n\t\t\n\t\t\t55\n\t\t\t1\n\t\t\t\n\t\t\t2023\n\t\t\tSpringer Science and Business Media LLC"
+    },
+    {
+      "id": 18,
+      "text": "Skimr: Dwell-free eye typing in mixed reality\n\t\t\n\t\t\tJHu\n\t\t\n\t\t\n\t\t\tJJDudley\n\t\t\n\t\t\n\t\t\tPOKristensson\n\t\t\n\t\t10.1109/VR58804.2024.000652\n\t\n\t\n\t\t2024 IEEE Conference Virtual Reality and 3D User Interfaces (VR)\n\t\t\n\t\t\tMar. 2024"
+    },
+    {
+      "id": 19,
+      "text": "FixationNet: Forecasting Eye Fixations in Task-Oriented Virtual Environments\n\t\t\n\t\t\tZhimingHu\n\t\t\n\t\t\n\t\t\tAndreasBulling\n\t\t\n\t\t\n\t\t\tShengLi\n\t\t\n\t\t\n\t\t\tGuopingWang\n\t\t\n\t\t10.1109/tvcg.2021.3067779\n\t\n\t\n\t\tIEEE Transactions on Visualization and Computer Graphics\n\t\tIEEE Trans. Visual. Comput. Graphics\n\t\t1077-2626\n\t\t2160-9306\n\t\t\n\t\t\t27\n\t\t\t5\n\t\t\t\n\t\t\t2021\n\t\t\tInstitute of Electrical and Electronics Engineers (IEEE)"
+    },
+    {
+      "id": 20,
+      "text": "DGaze: CNN-Based Gaze Prediction in Dynamic Scenes\n\t\t\n\t\t\tZhimingHu\n\t\t\n\t\t\n\t\t\tShengLi\n\t\t\n\t\t\n\t\t\tCongyiZhang\n\t\t\n\t\t\n\t\t\tKangruiYi\n\t\t\n\t\t\n\t\t\tGuopingWang\n\t\t\n\t\t\n\t\t\tDineshManocha\n\t\t\n\t\t10.1109/tvcg.2020.2973473\n\t\n\t\n\t\tIEEE Transactions on Visualization and Computer Graphics\n\t\tIEEE Trans. Visual. Comput. Graphics\n\t\t1077-2626\n\t\t2160-9306\n\t\t\n\t\t\t26\n\t\t\t5\n\t\t\t\n\t\t\t2020\n\t\t\tInstitute of Electrical and Electronics Engineers (IEEE)"
+    },
+    {
+      "id": 21,
+      "text": "Sgaze: A data-driven eye-head coordination model for realtime gaze prediction\n\t\t\n\t\t\tZHu\n\t\t\n\t\t\n\t\t\tCZhang\n\t\t\n\t\t\n\t\t\tSLi\n\t\t\n\t\t\n\t\t\tGWang\n\t\t\n\t\t\n\t\t\tDManocha\n\t\t\n\t\n\t\n\t\tIEEE transactions on visualization and computer graphics\n\t\t\n\t\t\t25\n\t\t\t5\n\t\t\t2002-2010, 2019. 4"
+    },
+    {
+      "id": 22,
+      "text": "Spatio-Temporal Attention and Gaussian Processes for Personalized Video Gaze Estimation\n\t\t\n\t\t\tSwatiJindal\n\t\t\n\t\t\n\t\t\tMohitYadav\n\t\t\n\t\t\n\t\t\tRobertoManduchi\n\t\t\n\t\t10.1109/cvprw63382.2024.00065\n\t\n\t\n\t\t2024 IEEE/CVF Conference on Computer Vision and Pattern Recognition Workshops (CVPRW)\n\t\t\n\t\t\tIEEE\n\t\t\tJune 2024\n\t\t\t2"
+    },
+    {
+      "id": 23,
+      "text": "Task effects on eye movements during reading.\n\t\t\n\t\t\tJohannaKKaakinen\n\t\t\n\t\t\n\t\t\tJukkaHyönä\n\t\t\n\t\t10.1037/a0020693\n\t\n\t\n\t\tJournal of Experimental Psychology: Learning, Memory, and Cognition\n\t\tJournal of Experimental Psychology: Learning, Memory, and Cognition\n\t\t0278-7393\n\t\t1939-1285\n\t\t\n\t\t\t36\n\t\t\t6\n\t\t\t\n\t\t\t2010\n\t\t\tAmerican Psychological Association (APA)"
+    },
+    {
+      "id": 24,
+      "text": "Lightgbm: A highly efficient gradient boosting decision tree\n\t\t\n\t\t\tGKe\n\t\t\n\t\t\n\t\t\tQMeng\n\t\t\n\t\t\n\t\t\tTFinley\n\t\t\n\t\t\n\t\t\tTWang\n\t\t\n\t\t\n\t\t\tWChen\n\t\t\n\t\t\n\t\t\tWMa\n\t\t\n\t\t\n\t\t\tQYe\n\t\t\n\t\t\n\t\t\tT.-YLiu\n\t\t\n\t\n\t\n\t\tAdvances in Neural Information Processing Systems\n\t\t\n\t\t\tCurran Associates, Inc\n\t\t\t2017\n\t\t\t30"
+    },
+    {
+      "id": 25,
+      "text": "Eye Tracking for Everyone\n\t\t\n\t\t\tKyleKrafka\n\t\t\n\t\t\n\t\t\tAdityaKhosla\n\t\t\n\t\t\n\t\t\tPetrKellnhofer\n\t\t\n\t\t\n\t\t\tHariniKannan\n\t\t\n\t\t\n\t\t\tSuchendraBhandarkar\n\t\t\n\t\t\n\t\t\tWojciechMatusik\n\t\t\n\t\t\n\t\t\tAntonioTorralba\n\t\t\n\t\t10.1109/cvpr.2016.239\n\t\n\t\n\t\t2016 IEEE Conference on Computer Vision and Pattern Recognition (CVPR)\n\t\t\n\t\t\tIEEE\n\t\t\t2016"
+    },
+    {
+      "id": 26,
+      "text": "Listen to look into the future: Audio-visual egocentric gaze anticipation\n\t\t\n\t\t\tBLai\n\t\t\n\t\t\n\t\t\tFRyan\n\t\t\n\t\t\n\t\t\tWJia\n\t\t\n\t\t\n\t\t\tMLiu\n\t\t\n\t\t\n\t\t\tJMRehg\n\t\t\n\t\n\t\n\t\tEuropean Conference on Computer Vision\n\t\t\n\t\t\tSpringer\n\t\t\t2024\n\t\t\t2\n\t\t\t3"
+    },
+    {
+      "id": 27,
+      "text": "Modeling long-and shortterm temporal patterns with deep neural networks\n\t\t\n\t\t\tGLai\n\t\t\n\t\t\n\t\t\tW.-CChang\n\t\t\n\t\t\n\t\t\tYYang\n\t\t\n\t\t\n\t\t\tHLiu\n\t\t\n\t\n\t\n\t\tThe 41st international ACM SIGIR conference on research & development in information retrieval\n\t\t\n\t\t\t2018"
+    },
+    {
+      "id": 28,
+      "text": "In the eye of the beholder: A survey of gaze tracking techniques\n\t\t\n\t\t\tJLiu\n\t\t\n\t\t\n\t\t\tJChi\n\t\t\n\t\t\n\t\t\tHYang\n\t\t\n\t\t\n\t\t\tXYin\n\t\t\n\t\n\t\n\t\tPattern Recognition\n\t\t\n\t\t\t132\n\t\t\t2\n\t\t\t108944\n\t\t\t2022"
+    },
+    {
+      "id": 29,
+      "text": "Assessing perceptual load and cognitive load by fixation-related information of eye movements\n\t\t\n\t\t\tJ.-CLiu\n\t\t\n\t\t\n\t\t\tK.-ALi\n\t\t\n\t\t\n\t\t\tS.-LYeh\n\t\t\n\t\t\n\t\t\tS.-YChien\n\t\t\n\t\n\t\n\t\tSensors\n\t\t\n\t\t\t22\n\t\t\t3\n\t\t\t1187\n\t\t\t2022"
+    },
+    {
+      "id": 30,
+      "text": "Scinet: Time series modeling and forecasting with sample convolution and interaction\n\t\t\n\t\t\tMLiu\n\t\t\n\t\t\n\t\t\tAZeng\n\t\t\n\t\t\n\t\t\tMChen\n\t\t\n\t\t\n\t\t\tZXu\n\t\t\n\t\t\n\t\t\tQLai\n\t\t\n\t\t\n\t\t\tLMa\n\t\t\n\t\t\n\t\t\tQXu\n\t\t\n\t\n\t\n\t\tAdvances in Neural Information Processing Systems\n\t\t\n\t\t\t35\n\t\t\t6\n\t\t\t2022"
+    },
+    {
+      "id": 31,
+      "text": "Fovealnet: Advancing ai-driven gaze tracking solutions for efficient foveated rendering in virtual reality\n\t\t\n\t\t\tWLiu\n\t\t\n\t\t\n\t\t\tBDuinkharjav\n\t\t\n\t\t\n\t\t\tQSun\n\t\t\n\t\t\n\t\t\tSQZhang\n\t\t\n\t\t10.1109/TVCG.2025.35495772\n\t\n\t\n\t\tIEEE Transactions on Visualization and Computer Graphics\n\t\t\n\t\t\t31\n\t\t\t5\n\t\t\t\n\t\t\tMay 2025"
+    },
+    {
+      "id": 32,
+      "text": "EyEar: Learning Audio Synchronized Human Gaze Trajectory Based on Physics-Informed Dynamics\n\t\t\n\t\t\tXiaochuanLiu\n\t\t\n\t\t\n\t\t\tXinCheng\n\t\t\n\t\t\n\t\t\tYuchongSun\n\t\t\n\t\t\n\t\t\tXiaoxueWu\n\t\t\n\t\t\n\t\t\tRuihuaSong\n\t\t\n\t\t\n\t\t\tHaoSun\n\t\t\n\t\t\n\t\t\tDenghaoZhang\n\t\t\n\t\t10.1609/aaai.v39i2.32133\n\t\n\t\n\t\tProceedings of the AAAI Conference on Artificial Intelligence\n\t\tAAAI\n\t\t2159-5399\n\t\t2374-3468\n\t\t\n\t\t\t39\n\t\t\t2\n\t\t\t\n\t\t\tApr. 2025\n\t\t\tAssociation for the Advancement of Artificial Intelligence (AAAI)"
+    },
+    {
+      "id": 33,
+      "text": "YLiu\n\t\t\n\t\t\n\t\t\tTHu\n\t\t\n\t\t\n\t\t\tHZhang\n\t\t\n\t\t\n\t\t\tHWu\n\t\t\n\t\t\n\t\t\tSWang\n\t\t\n\t\t\n\t\t\tLMa\n\t\t\n\t\t\n\t\t\tMLong\n\t\t\n\t\tarXiv:2310.06625\n\t\titransformer: Inverted transformers are effective for time series forecasting\n\t\t\n\t\t\t2023\n\t\t\n\t\n\tarXiv preprint"
+    },
+    {
+      "id": 34,
+      "text": "Defining the temporal threshold for ocular fixation in free-viewing visuocognitive tasks\n\t\t\n\t\t\tBarryRManor\n\t\t\n\t\t\n\t\t\tEvianGordon\n\t\t\n\t\t10.1016/s0165-0270(03)00151-1\n\t\n\t\n\t\tJournal of Neuroscience Methods\n\t\tJournal of Neuroscience Methods\n\t\t0165-0270\n\t\t\n\t\t\t128\n\t\t\t1-2\n\t\t\t\n\t\t\t2003\n\t\t\tElsevier BV"
+    },
+    {
+      "id": 35,
+      "text": "Selection performance and reliability of eye and head gaze tracking under varying light conditions\n\t\t\n\t\t\tAMarquardt\n\t\t\n\t\t\n\t\t\tMSteininger\n\t\t\n\t\t\n\t\t\tCTrepkowski\n\t\t\n\t\t\n\t\t\tMWeier\n\t\t\n\t\t\n\t\t\tEKruijff\n\t\t\n\t\t10.1109/VR58804.2024.000751\n\t\n\t\n\t\t2024 IEEE Conference Virtual Reality and 3D User Interfaces (VR)\n\t\t\n\t\t\tMar. 2024"
+    },
+    {
+      "id": 36,
+      "text": "Exploring eye tracking to detect cognitive load in complex virtual reality training\n\t\t\n\t\t\tMNasri\n\t\t\n\t\t\n\t\t\tMKosa\n\t\t\n\t\t\n\t\t\tLChukoskie\n\t\t\n\t\t\n\t\t\tMMoghaddam\n\t\t\n\t\t\n\t\t\tCHarteveld\n\t\t\n\t\t10.48550/arXiv.2411.127712\n\t\tarXiv:2411.12771\n\t\t\n\t\t\tNov. 2024"
+    },
+    {
+      "id": 37,
+      "text": "YNie\n\t\t\n\t\t\n\t\t\tNHNguyen\n\t\t\n\t\t\n\t\t\tPSinthong\n\t\t\n\t\t\n\t\t\tJKalagnanam\n\t\t\n\t\tarXiv:2211.14730\n\t\tA time series is worth 64 words: Long-term forecasting with transformers\n\t\t\n\t\t\t2022\n\t\t\n\t\n\tarXiv preprint"
+    },
+    {
+      "id": 38,
+      "text": "Dynamic 3D Gaze from Afar: Deep Gaze Estimation from Temporal Eye-Head-Body Coordination\n\t\t\n\t\t\tSomaNonaka\n\t\t\n\t\t\n\t\t\tShoheiNobuhara\n\t\t\n\t\t\n\t\t\tKoNishino\n\t\t\n\t\t10.1109/cvpr52688.2022.00223\n\t\n\t\n\t\t2022 IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)\n\t\t\n\t\t\tIEEE\n\t\t\tJune 2022. 3"
+    },
+    {
+      "id": 39,
+      "text": "Freegaze: a gaze tracking system for everyday gaze interaction\n\t\t\n\t\t\tTOhno\n\t\t\n\t\t\n\t\t\tNMukawa\n\t\t\n\t\t\n\t\t\tAYoshikawa\n\t\t\n\t\n\t\n\t\tProceedings of the 2002 symposium on Eye tracking research & applications\n\t\tthe 2002 symposium on Eye tracking research & applications\n\t\t\n\t\t\t2002"
+    },
+    {
+      "id": 40,
+      "text": "Oculomotor system: Models\n\t\t\n\t\t\tLOptican\n\t\t\n\t\t10.1016/B978-008045046-9.01095-01\n\t\n\t\n\t\tEncyclopedia of Neuroscience\n\t\t\n\t\t\tLRSquire\n\t\t\n\t\tOxford\n\t\t\n\t\t\tAcademic Press\n\t\t\t2009"
+    },
+    {
+      "id": 41,
+      "text": "Meta-Learning Framework with Applications to Zero-Shot Time-Series Forecasting\n\t\t\n\t\t\tBorisNOreshkin\n\t\t\n\t\t\n\t\t\tDmitriCarpov\n\t\t\n\t\t\n\t\t\tNicolasChapados\n\t\t\n\t\t\n\t\t\tYoshuaBengio\n\t\t\n\t\t10.1609/aaai.v35i10.17115\n\t\tarXiv:1905.10437\n\t\n\t\n\t\tProceedings of the AAAI Conference on Artificial Intelligence\n\t\tAAAI\n\t\t2159-5399\n\t\t2374-3468\n\t\t\n\t\t\t35\n\t\t\t10\n\t\t\t\n\t\t\t2019\n\t\t\tAssociation for the Advancement of Artificial Intelligence (AAAI)\n\t\t\n\t\n\tarXiv preprint"
+    },
+    {
+      "id": 42,
+      "text": "Unigaze: Towards universal gaze estimation via large-scale pre-training\n\t\t\n\t\t\tJQin\n\t\t\n\t\t\n\t\t\tXZhang\n\t\t\n\t\t\n\t\t\tYSugano\n\t\t\n\t\t10.48550/arXiv.2502.023072\n\t\tarXiv:2502.02307\n\t\t\n\t\t\tMar. 2025"
+    },
+    {
+      "id": 43,
+      "text": "Visual scanpath transformer: Guiding computers to see the world\n\t\t\n\t\t\tMQiu\n\t\t\n\t\t\n\t\t\tQRong\n\t\t\n\t\t\n\t\t\tDLiang\n\t\t\n\t\t\n\t\t\tHTu\n\t\t\n\t\t10.1109/ISMAR59233.2023.000372\n\t\n\t\n\t\t2023 IEEE International Symposium on Mixed and Augmented Reality (ISMAR)\n\t\t\n\t\t\tOct. 2023"
+    },
+    {
+      "id": 44,
+      "text": "Eye Movements During Mindless Reading\n\t\t\n\t\t\tErikDReichle\n\t\t\n\t\t\n\t\t\tAndrewEReineberg\n\t\t\n\t\t\n\t\t\tJonathanWSchooler\n\t\t\n\t\t10.1177/0956797610378686\n\t\n\t\n\t\tPsychological Science\n\t\tPsychol Sci\n\t\t0956-7976\n\t\t1467-9280\n\t\t\n\t\t\t21\n\t\t\t9\n\t\t\t\n\t\t\t2010\n\t\t\tSAGE Publications"
+    },
+    {
+      "id": 45,
+      "text": "Task and context determine where you look\n\t\t\n\t\t\tCARothkopf\n\t\t\n\t\t\n\t\t\tDHBallard\n\t\t\n\t\t\n\t\t\tMMHayhoe\n\t\t\n\t\n\t\n\t\tJournal of vision\n\t\t\n\t\t\t7\n\t\t\t14\n\t\t\t\n\t\t\t2007"
+    },
+    {
+      "id": 46,
+      "text": "Unicornn: A recurrent model for learning very long time dependencies\n\t\t\n\t\t\tTKRusch\n\t\t\n\t\t\n\t\t\tSMishra\n\t\t\n\t\tPMLR, 2021. 2\n\t\n\t\n\t\tInternational Conference on Machine Learning"
+    },
+    {
+      "id": 47,
+      "text": "Identifying fixations and saccades in eye-tracking protocols\n\t\t\n\t\t\tDarioDSalvucci\n\t\t\n\t\t\n\t\t\tJosephHGoldberg\n\t\t\n\t\t10.1145/355017.355028\n\t\n\t\n\t\tProceedings of the symposium on Eye tracking research & applications - ETRA '00\n\t\tthe symposium on Eye tracking research & applications - ETRA '00\n\t\t\n\t\t\tACM Press\n\t\t\t2000\n\t\t\t3"
+    },
+    {
+      "id": 48,
+      "text": "Eyeo: Autocalibrating gaze output with gaze input for gaze typing\n\t\t\n\t\t\tASaran\n\t\t\n\t\t\n\t\t\tJAlber\n\t\t\n\t\t\n\t\t\tCZhang\n\t\t\n\t\t\n\t\t\tAParadiso\n\t\t\n\t\t\n\t\t\tDBragg\n\t\t\n\t\t\n\t\t\tJLangford\n\t\t\n\t\t10.1145/3706599.3720090\n\t\n\t\n\t\tProceedings of the Extended Abstracts of the CHI Conference on Human Factors in Computing Systems\n\t\tthe Extended Abstracts of the CHI Conference on Human Factors in Computing SystemsYokohama Japan\n\t\t\n\t\t\tACM\n\t\t\tApr. 2025\n\t\t\t1\n\t\t\t2"
+    },
+    {
+      "id": 49,
+      "text": "Think globally, act locally: A deep neural network approach to high-dimensional time series forecasting\n\t\t\n\t\t\tRSen\n\t\t\n\t\t\n\t\t\tH.-FYu\n\t\t\n\t\t\n\t\t\tISDhillon\n\t\t\n\t\n\t\n\t\tAdvances in neural information processing systems\n\t\t\n\t\t\t2019\n\t\t\t32"
+    },
+    {
+      "id": 50,
+      "text": "Scandmm: A deep markov model of scanpath prediction for 360°images\n\t\t\n\t\t\tXSui\n\t\t\n\t\t\n\t\t\tYFang\n\t\t\n\t\t\n\t\t\tHZhu\n\t\t\n\t\t\n\t\t\tSWang\n\t\t\n\t\t\n\t\t\tZWang\n\t\t\n\t\t10.1109/CVPR52729.2023.006753\n\t\n\t\n\t\t2023 IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)\n\t\tVancouver, BC, Canada\n\t\t\n\t\t\t2023"
+    },
+    {
+      "id": 51,
+      "text": "Hierarchical adaptive temporal-relational modeling for stock trend prediction\n\t\t\n\t\t\tHWang\n\t\t\n\t\t\n\t\t\tSLi\n\t\t\n\t\t\n\t\t\tTWang\n\t\t\n\t\t\n\t\t\tJZheng\n\t\t\n\t\n\t\n\t\tIJCAI\n\t\t\n\t\t\t2021"
+    },
+    {
+      "id": 52,
+      "text": "Scanpath prediction on information visualisations\n\t\t\n\t\t\tYWang\n\t\t\n\t\t\n\t\t\tMBâce\n\t\t\n\t\t\n\t\t\tABulling\n\t\t\n\t\t10.1109/TVCG.2023.32422932\n\t\n\t\n\t\tIEEE Transactions on Visualization and Computer Graphics\n\t\t\n\t\t\t30\n\t\t\t7\n\t\t\t\n\t\t\t2024"
+    },
+    {
+      "id": 53,
+      "text": "Assessment of eye fatigue caused by head-mounted displays using eye-tracking\n\t\t\n\t\t\tYanWang\n\t\t\t0000-0003-0733-3812\n\t\t\n\t\t\n\t\t\tGuangtaoZhai\n\t\t\n\t\t\n\t\t\tSichaoChen\n\t\t\n\t\t\n\t\t\tXiongkuoMin\n\t\t\n\t\t\n\t\t\tZhongpaiGao\n\t\t\n\t\t\n\t\t\tXuefeiSong\n\t\t\n\t\t10.1186/s12938-019-0731-5\n\t\n\t\n\t\tBioMedical Engineering OnLine\n\t\tBioMed Eng OnLine\n\t\t1475-925X\n\t\t\n\t\t\t18\n\t\t\t1\n\t\t\t111\n\t\t\t2019\n\t\t\tSpringer Science and Business Media LLC"
+    },
+    {
+      "id": 54,
+      "text": "Scantd: 360°scanpath prediction based on time-series diffusion\n\t\t\n\t\t\tYWang\n\t\t\n\t\t\n\t\t\tF.-LZhang\n\t\t\n\t\t\n\t\t\tNADodgson\n\t\t\n\t\t10.1145/3664647.3681315\n\t\n\t\n\t\tProceedings of the 32nd ACM International Conference on Multimedia\n\t\tthe 32nd ACM International Conference on MultimediaMelbourne VIC Australia\n\t\t\n\t\t\tACM\n\t\t\tOct. 2024\n\t\t\t2\n\t\t\t3"
+    },
+    {
+      "id": 55,
+      "text": "Timesnet: Temporal 2d-variation modeling for general time series analysis\n\t\t\n\t\t\tHWu\n\t\t\n\t\t\n\t\t\tTHu\n\t\t\n\t\t\n\t\t\tYLiu\n\t\t\n\t\t\n\t\t\tHZhou\n\t\t\n\t\t\n\t\t\tJWang\n\t\t\n\t\t\n\t\t\tMLong\n\t\t\n\t\t10.48550/arXiv.2210.021865\n\t\tarXiv:2210.02186\n\t\t\n\t\t\tApr. 2023"
+    },
+    {
+      "id": 56,
+      "text": "Autoformer: Decomposition transformers with auto-correlation for long-term series forecasting\n\t\t\n\t\t\tHWu\n\t\t\n\t\t\n\t\t\tJXu\n\t\t\n\t\t\n\t\t\tJWang\n\t\t\n\t\t\n\t\t\tMLong\n\t\t\n\t\n\t\n\t\tAdvances in neural information processing systems\n\t\t\n\t\t\t34\n\t\t\t2\n\t\t\t\n\t\t\t2021"
+    },
+    {
+      "id": 57,
+      "text": "Unifying Top-Down and Bottom-Up Scanpath Prediction Using Transformers\n\t\t\n\t\t\tZhiboYang\n\t\t\n\t\t\n\t\t\tSounakMondal\n\t\t\n\t\t\n\t\t\tSeoyoungAhn\n\t\t\n\t\t\n\t\t\tRuoyuXue\n\t\t\n\t\t\n\t\t\tGregoryZelinsky\n\t\t\n\t\t\n\t\t\tMinhHoai\n\t\t\n\t\t\n\t\t\tDimitrisSamaras\n\t\t\n\t\t10.1109/cvpr52733.2024.00166\n\t\n\t\n\t\t2024 IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)\n\t\t\n\t\t\tIEEE"
+    },
+    {
+      "id": 58,
+      "text": "Eye movements during perception of complex objects\n\t\t\n\t\t\tALYarbus\n\t\t\n\t\n\t\n\t\tEye movements and vision\n\t\t\n\t\t\tSpringer\n\t\t\t1967\n\t\t\t4\n\t\t\t9"
+    },
+    {
+      "id": 59,
+      "text": "Temporal modeling matters: A novel temporal emotional modeling approach for speech emotion recognition\n\t\t\n\t\t\tJYe\n\t\t\n\t\t\n\t\t\tX.-CWen\n\t\t\n\t\t\n\t\t\tYWei\n\t\t\n\t\t\n\t\t\tYXu\n\t\t\n\t\t\n\t\t\tKLiu\n\t\t\n\t\t\n\t\t\tHShan\n\t\t\n\t\t10.1109/ICASSP49357.2023.100963702\n\t\n\t\n\t\tICASSP 2023 -2023 IEEE International Conference on Acoustics, Speech and Signal Processing (ICASSP)\n\t\t\n\t\t\t2023\n\t\t\t8"
+    },
+    {
+      "id": 60,
+      "text": "Are Transformers Effective for Time Series Forecasting?\n\t\t\n\t\t\tAilingZeng\n\t\t\n\t\t\n\t\t\tMuxiChen\n\t\t\n\t\t\n\t\t\tLeiZhang\n\t\t\n\t\t\n\t\t\tQiangXu\n\t\t\n\t\t10.1609/aaai.v37i9.26317\n\t\n\t\n\t\tProceedings of the AAAI Conference on Artificial Intelligence\n\t\tAAAI\n\t\t2159-5399\n\t\t2374-3468\n\t\t\n\t\t\t37\n\t\t\t9\n\t\t\t\n\t\t\t2023\n\t\t\tAssociation for the Advancement of Artificial Intelligence (AAAI)"
+    },
+    {
+      "id": 61,
+      "text": "Mlpst: Mlp is all you need for spatio-temporal prediction\n\t\t\n\t\t\tZZhang\n\t\t\n\t\t\n\t\t\tZHuang\n\t\t\n\t\t\n\t\t\tZHu\n\t\t\n\t\t\n\t\t\tXZhao\n\t\t\n\t\t\n\t\t\tWWang\n\t\t\n\t\t\n\t\t\tZLiu\n\t\t\n\t\t\n\t\t\tJZhang\n\t\t\n\t\t\n\t\t\tSJQin\n\t\t\n\t\t\n\t\t\tHZhao\n\t\t\n\t\t10.1145/3583780.36149692\n\t\n\t\n\t\tProceedings of the 32nd ACM International Conference on Information and Knowledge Management, CIKM '23\n\t\tthe 32nd ACM International Conference on Information and Knowledge Management, CIKM '23New York, NY, USA\n\t\t\n\t\t\tAssociation for Computing Machinery\n\t\t\t2023"
+    },
+    {
+      "id": 62,
+      "text": "Do rnn and lstm have long memory\n\t\t\n\t\t\tJZhao\n\t\t\n\t\t\n\t\t\tFHuang\n\t\t\n\t\t\n\t\t\tJLv\n\t\t\n\t\t\n\t\t\tYDuan\n\t\t\n\t\t\n\t\t\tZQin\n\t\t\n\t\t\n\t\t\tGLi\n\t\t\n\t\t\n\t\t\tGTian\n\t\t\n\t\n\t\n\t\tInternational Conference on Machine Learning\n\t\t\n\t\t\t2020"
+    },
+    {
+      "id": 63,
+      "text": "Gaze speedup: Eye gaze assisted gesture typing in virtual reality\n\t\t\n\t\t\tMZhao\n\t\t\n\t\t\n\t\t\tAMPierce\n\t\t\n\t\t\n\t\t\tRTan\n\t\t\n\t\t\n\t\t\tTZhang\n\t\t\n\t\t\n\t\t\tTWang\n\t\t\n\t\t\n\t\t\tTRJonker\n\t\t\n\t\t\n\t\t\tHBenko\n\t\t\n\t\t\n\t\t\tAGupta\n\t\t\n\t\t10.1145/3581641.35840722\n\t\n\t\n\t\tProceedings of the 28th International Conference on Intelligent User Interfaces, IUI '23\n\t\tthe 28th International Conference on Intelligent User Interfaces, IUI '23New York, NY, USA\n\t\t\n\t\t\tAssociation for Computing Machinery\n\t\t\tMar. 2023"
+    },
+    {
+      "id": 64,
+      "text": "Fedformer: Frequency enhanced decomposed transformer for long-term series forecasting\n\t\t\n\t\t\tTZhou\n\t\t\n\t\t\n\t\t\tZMa\n\t\t\n\t\t\n\t\t\tQWen\n\t\t\n\t\t\n\t\t\tXWang\n\t\t\n\t\t\n\t\t\tLSun\n\t\t\n\t\t\n\t\t\tRJin\n\t\t\n\t\tPMLR, 2022. 2\n\t\n\t\n\t\tInternational conference on machine learning"
+    },
+    {
+      "id": 65,
+      "text": "Scandtm: A novel dual-temporal modulation scanpath prediction model for omnidirectional images\n\t\t\n\t\t\tDZhu\n\t\t\n\t\t\n\t\t\tKZhang\n\t\t\n\t\t\n\t\t\tXMin\n\t\t\n\t\t\n\t\t\tGZhai\n\t\t\n\t\t\n\t\t\tXYang\n\t\t\n\t\t10.1109/TCSVT.2025.3545908\n\t\n\t\n\t\tIEEE Transactions on Circuits and Systems for Video Technology\n\t\t\n\t\t\tAug. 2025\n\t\t\t35\n\t\t\t3"
+    }
+  ],
+  "formulas": [
+    {
+      "id": "FORMULA_1",
+      "raw": "1:T = {x 1 , x 2 , • • • , x T }, x t ∈ R d ,"
+    },
+    {
+      "id": "FORMULA_2",
+      "raw": "T +τ = {y T +1 , y T +2 , • • • , y T +τ }, y k ∈ R d ,"
+    },
+    {
+      "id": "FORMULA_3",
+      "raw": "     xb,t,c = x b,t,c -µ b,c σ b,c , µ b,c = 1 T ∑ T t=1 x b,t,c , σ 2 b,c = 1 T ∑ T t=1 (x b,t,c -µ b,c ) 2 ."
+    },
+    {
+      "id": "FORMULA_4",
+      "raw": ")1"
+    },
+    {
+      "id": "FORMULA_5",
+      "raw": "Z token = Conv1D k=3 ( X), Z token ∈ R B×T ×d ."
+    },
+    {
+      "id": "FORMULA_6",
+      "raw": ")2"
+    },
+    {
+      "id": "FORMULA_7",
+      "raw": "       Zposition(t, 2i) = sin t 10000 2i/d , Zposition(t, 2i + 1) = cos t 10000 2i/d ,(3)"
+    },
+    {
+      "id": "FORMULA_8",
+      "raw": "Z = Z token + Z position + Z time , Z ∈ R B×T ×d . (4"
+    },
+    {
+      "id": "FORMULA_9",
+      "raw": ")"
+    },
+    {
+      "id": "FORMULA_10",
+      "raw": "Z ′ = Linear(Z), Z ′ ∈ R B×(T +τ)×d .(5)"
+    },
+    {
+      "id": "FORMULA_11",
+      "raw": "Y = TimesNet(Z ′ ), Y ∈ R B×(T +τ)×d ,(6)"
+    },
+    {
+      "id": "FORMULA_12",
+      "raw": "Ŷattn = MHA(Y), Ŷattn ∈ R B×(T +τ)×C ,(7)"
+    },
+    {
+      "id": "FORMULA_13",
+      "raw": "Ŷlinear = YW linear + b linear , W linear ∈ R d×C , b linear ∈ R C . (8)"
+    },
+    {
+      "id": "FORMULA_14",
+      "raw": "Ŷ = α Ŷattn + (1 -α) Ŷlinear , α ∈ [0, 1]. (9"
+    },
+    {
+      "id": "FORMULA_15",
+      "raw": ")"
+    },
+    {
+      "id": "FORMULA_16",
+      "raw": "L comb = 1 n n ∑ i=1 || pi -p i || 2"
+    },
+    {
+      "id": "FORMULA_17",
+      "raw": "L = λ L comb + (1 -λ )L velocity + L reg 2(11)"
+    },
+    {
+      "id": "FORMULA_18",
+      "raw": "L = λ L comb + (1 -λ )L velocity + L reg 2 ."
+    },
+    {
+      "id": "FORMULA_19",
+      "raw": "CI = 1 n i ∑ n i j=1 ||p j -g i || 2 2 1 n i ∑ n i j=1 || p j -g i || 2 2 + ε , (12"
+    },
+    {
+      "id": "FORMULA_20",
+      "raw": ")"
+    },
+    {
+      "id": "FORMULA_21",
+      "raw": "AI = 1 n i ∑ n i j=1 ||p j -g i || 2 1 n i ∑ n i j=1 || p j -g i || 2 + ε . (13"
+    },
+    {
+      "id": "FORMULA_22",
+      "raw": ")"
+    },
+    {
+      "id": "FORMULA_23",
+      "raw": "AD = 1 n i n i ∑ j=1 || p j -g i || 2 .(14)"
+    },
+    {
+      "id": "FORMULA_24",
+      "raw": "η t = η 0 2 (1 + cos( π•epoch t E )),t ∈ [1, E]"
+    }
+  ]
+}

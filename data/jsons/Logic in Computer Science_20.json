@@ -1,0 +1,704 @@
+{
+  "title": "LTL f Learning Meets Boolean Set Cover",
+  "authors": [
+    {
+      "firstname": "Gabriel",
+      "surname": "Bathie",
+      "email": ""
+    },
+    {
+      "firstname": "Nathanaël",
+      "surname": "Fijalkow",
+      "email": ""
+    },
+    {
+      "firstname": "Baptiste",
+      "surname": "Mouillon",
+      "email": ""
+    },
+    {
+      "firstname": "Pierre",
+      "surname": "Vandenhove",
+      "email": ""
+    },
+    {
+      "firstname": "",
+      "surname": "",
+      "email": ""
+    },
+    {
+      "firstname": "",
+      "surname": "",
+      "email": ""
+    },
+    {
+      "firstname": "",
+      "surname": "",
+      "email": ""
+    },
+    {
+      "firstname": "",
+      "surname": "",
+      "email": ""
+    },
+    {
+      "firstname": "",
+      "surname": "",
+      "email": ""
+    },
+    {
+      "firstname": "",
+      "surname": "",
+      "email": ""
+    },
+    {
+      "firstname": "",
+      "surname": "",
+      "email": ""
+    },
+    {
+      "firstname": "",
+      "surname": "",
+      "email": ""
+    }
+  ],
+  "abstract": "Learning formulas in Linear Temporal Logic (LTL f) from finite traces is a fundamental research problem which has found applications in artificial intelligence, software engineering, programming languages, formal methods, control of cyber-physical systems, and robotics. We implement a new CPU tool called Bolt improving over the state of the art by learning formulas more than 100x faster over 70% of the benchmarks, with smaller or equal formulas in 98% of the cases. Our key insight is to leverage a problem called Boolean Set Cover as a subroutine to combine existing formulas using Boolean connectives. Thanks to the Boolean Set Cover component, our approach offers a novel trade-off between efficiency and formula size.",
+  "sections": [
+    {
+      "title": "Introduction",
+      "paragraphs": [
+        "Linear Temporal Logic (LTL) [48] is a prominent logic for specifying temporal properties over infinite traces; in this paper, we consider LTL on finite traces [29], abbreviated LTL f . The fundamental problem we study is to learn LTL f formulas from traces: given a set of positive and negative traces, find an LTL f formula separating positive from negative ones. LTL f learning spans different research communities, each contributing applications, approaches, and viewpoints on this problem. We give below a cursory cross-sectional survey of motivations and applications of LTL f learning in three communities.",
+        "Software Engineering, Programming Languages, Formal Methods. LTL f learning is an instantiation of specification mining, which is an active area of research devoted to discovering formal specifications of code. Already back in the 1970s, Wegbreit [56] and Caplain [14] propose frameworks to automatically generate properties of code. At this point, it is important to distinguish between the dynamic and the static setting: in this paper, we are interested in the dynamic setting where we observe program executions (also called traces) to infer properties of the code. The term specification mining was coined by Ammons, Bodík, and Larus [1] in a seminal paper where finite-state machines capture both temporal and data dependencies. Zeller [60] contributed a roadmap to mining specifications in 2010, highlighting its potential for software engineering. A few years later, Rozier [52] shaped an entire research program revolving around LTL Genesis, motivating and introducing the LTL learning problem as we study it here. Early works focused on mining simple temporal properties [24]. In particular, Perracotta [59] and Javert [27] focus on patterns of the form (ab) * and (ab * c) * . The first tool supporting all LTL f formulas is called Texada, and was created in 2015 [40,39]. Following Texada, a line of work focuses on scaling LTL f learning to industrial sizes, conjuring different approaches. We mention here the state-of-theart LTL f learning tools: Scarlet, based on combinatorial search [49], and a GPU-accelerated algorithm (later referred to as VFB algorithm given its authors Valizadeh, Fijalkow, and Berger) [55]. Applications of mining specifications for software include detecting malicious behaviors [17] or violations [42] and are already widely adopted in software engineering: for instance, the ARSENAL and ARSENAL2 projects [28] have been successful in constructing LTL f formulas inferred from natural language requirements, and the FRET project generates LTL f from trace descriptions [30]. We refer to the textbook [43] and the PhD thesis of Li [41] for comprehensive presentation of specification mining for software, and its relationship to data mining.",
+        "Control of Cyber-Physical Systems and Robotics. LTL f learning is extensively studied in a second area of research with different goals and very different methods: to capture properties of trajectories in models and systems. Given its quantitative nature, Signal Temporal Logic (STL) is preferred over LTL f since it involves numerical constants and can thus capture real-valued and time-varying behaviors. In particular, temporal logics allow reasoning about robustness [5] and anomaly detection [36,38]. There is a vast body of work on learning temporal logics in control and robotics, which can be divided into two: techniques aiming at fitting parameters of a fixed assumed STL formula [4,58,35], and approaches searching for both formulas and parameters [35,7]. This led to many case studies: automobile transmission controller and engine airpath control [58], assisted ventilation in intensive care patients [10], dynamics of a biological circadian oscillator and discriminating different types of cardiac malfunction from electro-cardiogram data [6], anomaly detection in a maritime environment [7], demonstrations in robotics [15], detection of attention loss in pilots [44], and analysis of computer games [31].",
+        "Artificial Intelligence. The field of AI has contributed to LTL f learning a number of applications, but also a wealth of techniques. The overarching philosophy of LTL f learning in AI is that LTL f forms a natural and explainable formalism [13] for specifying objectives [32] in various machine learning contexts. For instance, in the context of reinforcement learning, LTL f formulas have been used to either guide [11,9] or constrain policies [33,12]. Another recent application aims to speed up synthesis by separating data and control [46].",
+        "SOTA on LTL f Learning. Since learning temporal logics is computationally hard1 , different approaches have been explored. The state-of-the-art tool is Scarlet, which is based on specifically tailored fragments of LTL f [49,50]. A GPU-accelerated algorithm was published in 2024 [55], yielding an improved state of the art in a different category. Scarlet cannot reliably learn formulas of size greater than 15, which is less than ideal: we aim to change this."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Boolean Set Cover.",
+      "paragraphs": [
+        "Our key insight in this work, and what we believe is the key to scaling LTL f learning to industrial sizes, is to treat Boolean operators differently from temporal operators. To address the former, we leverage a novel solution to a problem we call Boolean Set Cover [49,51]. When enumerating LTL f formulas, we quickly hit a wall because of the exponential number of formulas. Let us say that at this point, we have enumerated the formulas φ 1 , . . . , φ k but have not found a solution. Instead of giving up, Boolean Set Cover looks for solutions in the form of Boolean combinations of the formulas φ 1 , . . . , φ k , allowing us to generate much larger and more expressive formulas. See Figure 1. Boolean Set Cover is a fundamental problem which has been studied under different names. In the 80s, when key concepts from learning theory emerged, it was known as Boolean Concept learning [53,2] (see also the textbook [3]). In logic, it has been extensively studied as extending partially defined Boolean functions; see, e.g., [18]. The name Boolean Set Cover was introduced in [49] in the context of LTL f learning, highlighting that it extends the classical Set Cover problem. For consistency in this line of work, we adhere to this terminology.",
+        "The key finding of this work is that the Boolean Set Cover problem can be solved in an approximate way very efficiently, which can then be leveraged to learn LTL f formulas of size way beyond the reach of existing tools. An overview of our general approach is depicted in Figure 1."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Our Contributions:",
+      "paragraphs": [
+        "We propose a framework for combining LTL f learning with Boolean Set Cover. We implement our algorithms in a new tool called Bolt.",
+        "We consolidate a benchmark suite for LTL f learning with over 15,000 tasks. We show through experiments that Bolt significantly improves over the state of the art, both in terms of wall-clock time and size of learned formulas.",
+        "We believe Boolean Set Cover is a fundamental problem of independent interest, which has a lot of potential applications beyond LTL f learning. We leave as future work to explore them; we discuss perspectives in Section 6.",
+        "Bolt's code is available at https://github.com/SynthesisLab/Bolt. The benchmarks used for the evaluation of our tool are available at https://github.com/SynthesisLab/ LTLf_Learning_Benchmarks."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "2",
+      "paragraphs": [],
+      "subsections": []
+    },
+    {
+      "title": "Problem Definition",
+      "paragraphs": [
+        "One of the reasons for the success of Linear Temporal Logic (LTL f ) as a logical formalism for temporal reasoning on traces is that its semantics can be conveyed using a single picture:",
+        "The syntax of LTL f is particularly simple (no variables and no quantifiers), it uses only the classical Boolean operators and two temporal operators: X!, called Strong Next, and U, called Until. 2 Informally, X! φ holds if φ holds starting from the next position, and φ U ψ holds if there exists a later position such that ψ holds, and φ holds in the meantime.",
+        "Formally, let us fix a finite set of atomic propositions AP. A (finite) trace is a (nonempty) sequence where each position holds a subset of atomic propositions; for instance, with AP = {p, q}:",
+        "We index traces from position 1 (not 0) and the letter at position i in the trace w is written w(i), so w = w(1) . . . w(ℓ) where ℓ is the length of w, written |w| = ℓ. We write w[k . . . ] = w(k) . . . w(ℓ). We only consider non-empty traces.",
+        "The syntax of Linear Temporal Logic (LTL f ) includes atomic propositions c ∈ AP as well as ⊤ and ⊥, the Boolean operators ¬, ∧, and ∨, and the temporal operators X! and U. The semantics of LTL f are defined inductively, through the notation w |= φ where w is a non-empty trace and φ is an LTL f formula. The definition is given below for the atomic propositions and temporal operators X! and U, with Boolean operators interpreted as usual. For w of length ℓ:",
+        "We say that w satisfies φ if w |= φ. We define the size of an LTL f formula φ as the number of nodes in its syntactic tree.",
+        "As customary, we include some additional temporal operators: X φ is \"weak next φ\", it is a shortcut for ¬ X! ¬φ; F φ is \"eventually φ\", it is a shortcut for ⊤ U φ; G φ is \"globally φ\", it is a shortcut for ¬ F ¬φ; φ R ψ is \"release φ\", it is a shortcut for ¬ψ U ¬φ.",
+        "The LTL f learning problem is defined as follows:",
+        "INPUT: two disjoint finite sets of traces P and N OUTPUT: an LTL f formula φ of minimal size such that all of P satisfies φ and none of N satisfies φ"
+      ],
+      "subsections": []
+    },
+    {
+      "title": "The VFB Algorithm",
+      "paragraphs": [
+        "Our first baseline for LTL f learning is an optimized enumerative algorithm from Valizadeh, Fijalkow, and Berger [55]; we call it the VFB algorithm. Simply put:",
+        "VFB algorithm = combinatorial search + fast evaluation + observational equivalence.",
+        "Combinatorial Search. The core algorithm is a bottom-up enumeration of LTL f formulas by size. First, the set of formulas of size 1 contains all atomic propositions. At step k, we generate all formulas of size k + 1. In order to do this, for each operator, we take arguments such that the sum of sizes of arguments is equal to k; this way, the generated formula will have size k + 1 by combining it with the selected operator. A property of this algorithm is that it is agnostic to the operators: it can be adapted to any fragment or be augmented with other operators, as long as we can easily compute inductively whether a trace satisfies a formula."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Fast Evaluation.",
+      "paragraphs": [
+        "The key idea is to represent the semantics of LTL f formulas on input traces using so-called \"characteristic tables\":",
+        "The characteristic sequence (CS) of a formula φ on a trace w is the bit vector v ∈ {0, 1}",
+        "The characteristic table (CT) of a formula φ over the positive traces P and the negative traces N is a sequence t such that t(i) is the CS of φ on the i th trace of P ∪ N . We give an example of characteristic sequences and tables in Figure 2.",
+        "The characteristic table is not a rectangular matrix when traces in P ∪ N do not have the same length.",
+        "With these objects, one can compute inductively the characteristic sequences and tables of formulas with only a few bitwise operations. For instance, the semantic of the strong next operator X! is simply a \"left shift\" on characteristic sequences. This idea originates from [55]. The brief Python code to compute efficiently the characteristic sequences of LTL f formulas is recalled in Appendix A."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Characteristic table",
+      "paragraphs": [
+        "Figure 2 Characteristic sequences and table of φ = X! a with P = {aabaa, baaa} and N = {abab, aab}. We also use characteristic vector for the vector of all first bits of the characteristic sequences. Looking at the characteristic vector suffices to check whether φ is a solution: it must have 1's at all positions of P and 0's at all positions of N . However, we need to keep in memory the whole characteristic table to check for observational equivalence.",
+        "Observational Equivalence. A second idea to tackle the combinatorial explosion of the number of formulas is to consider only \"semantically unique\" formulas. Observational equivalence is an idea from program synthesis [26]; in our context, two formulas are observationally equivalent on (P, N ) if they generate the same characteristic table. When enumerating formulas, we may keep a single representative for each equivalence class without losing completeness.",
+        "Scaling Issues. Despite these improvements to a simple exhaustive search, the scaling of the problem is enormous. We identified two problems limiting the depth of algorithms.",
+        "The first issue, of course, is the exponential blow-up due to the number of increasingly large formulas. The second issue is the memory used to store the evaluation of LTL f formulas in the form of characteristic tables, which is necessary to check for observational equivalence. The more input traces there are, the larger the characteristic tables are; the longer the traces are, the wider the tables are. When tables have more elements, observational equivalence is also less likely to occur."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Boolean Set Cover",
+      "paragraphs": [
+        "Let us start with defining Boolean Set Cover formally. We consider a finite set X partitioned into positive and negative elements: X = P ∪ N . We are given a (potentially large) set of atomic formulas φ 1 , . . . , φ k over X. The goal is to construct a formula separating P from N using conjunctions and disjunctions of the atomic formulas.",
+        "As an example, consider the following instance of Boolean Set Cover (adapted from [49, Fig. 1]):",
+        "Here, P = {p 1 , p 2 , p 3 } and N = {n 1 , n 2 , n 3 }. The formulas φ 1 , φ 2 , and φ 3 satisfy the points encircled in the corresponding area. In this instance, φ 1 ∨ (φ 2 ∧ φ 3 ) is a (minimal) solution.",
+        "Our idea to tackle these scaling issues is to use the VFB algorithm on the full LTL f only up to a fixed formula size, chosen based on a memory or time threshold. Since the exponential blow-up does not allow to go much further beyond size 8, we then restrict our focus to the fragment of LTL f with only ∧ and ∨ to move forward. In other words, we keep all formulas we have generated and then only combine them with ∧ or ∨. This restricted problem is an instance of Boolean Set Cover, that is solved as a subroutine in our LTL f learning algorithms.",
+        "A high-level view of the procedure is in Algorithm 1. In this algorithm, VFB-Bounded is a variant of VFB which only computes LTL f formulas up to some fixed size using operators from sets of unary and binary operators O 1 and O 2 . This fixed size is a hyperparameter called LTL2BS-switch. Algorithm VFB-Bounded returns two objects: a solution to the LTL f learning instance (or ⊥ if it has not found a solution), and a set F containing all generated formulas up to size LTL2BS-switch. If no solution was found, the generated formulas are fed to a Boolean Set Cover solver called BS-Solver. From the point of view of the Boolean Set Cover solver, the LTL f formulas are letters of a new alphabet, each being associated with a positive integer called weight."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Algorithm 1 VFB algorithm with Boolean Set Cover solver",
+      "paragraphs": [
+        "Hyperparameter: LTL2BS-switch (below, k), the maximal size of LTL f formulas to enumerate before switching to Boolean Set Cover.",
+        "return BS-Solver(F ′ , P, N )",
+        "When we send the generated formulas to a Boolean Set Cover solver, two kinds of collapses occur (represented in Algorithm 1 with function Collapse).",
+        "First, once we restrict our focus to operators ∧ and ∨, two formulas can be assumed to be observationally equivalent if and only if they have the same first bit for each row of their characteristic table. Indeed, as there is no more \"temporal phenomenon\", this is a sufficient information to determine whether a given trace satisfies a Boolean combination of (already evaluated) LTL f formulas. In other words, we move from the computation of tables to vectors (the vectors of first bits), which produces many collisions and reduces the number of formulas to consider. We quantified this collapse in practice over a small set of tasks chosen randomly. Let F denote the set of observationally non-equivalent LTL f formulas of size at most 8, and F ′ = Collapse(F) denote the set of formulas with a distinct first column in the characteristic table. On average over 780 tasks, the ratio |F|/|F ′ | is 3.54, with a minimum of 1.09, a maximum of 48.22, and a standard deviation of 5.46.",
+        "Second, storing vectors instead of tables is a massive gain: space-wise, as storing the evaluation of a formula is a bit vector of size",
+        ", where ℓ is the total number of bits in an input trace, and time-wise, as new formulas can be evaluated faster. This enables exploring much larger formulas (though in an incomplete way, as some operators are missing) at a reduced space and time cost."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Definition and Properties of Boolean Set Cover",
+      "paragraphs": [
+        "Let P and N be two disjoint finite sets. Let F be a family of sets with F ⊆ P ∪ N for all F ∈ F. We assume that a weight weight(F ) ≥ 1 is associated with each set F ∈ F (which is unrelated to the cardinality of F ).",
+        "We define positive Boolean formulas and their weights inductively: ∅ is a formula of weight 0; F ∈ F is a formula of weight weight(F ); if θ 1 and θ 2 are positive Boolean formulas, then so are θ 1 ∪ θ 2 and θ 1 ∩ θ 2 , both of weight 1 + weight(θ 1 ) + weight(θ 2 ). The interpretation θ of a positive Boolean formula θ is simply the set it describes. We adjust observational equivalence: two formulas θ and θ ′ are observationally equivalent if θ = θ ′ .",
+        "The Boolean Set Cover problem is as follows:",
+        "INPUT: two disjoint finite sets P , N and a family F of weighted subsets of P ∪ N OUTPUT: a positive Boolean formula θ of minimal weight such that θ = P (i.e., it contains all elements of P but none of N )",
+        "The Boolean Set Cover problem can be seen as a restriction of LTL f learning to a subset of the operators, namely ∧ and ∨. The Boolean Set Cover problem was briefly considered in [49] (under the name Boolean Subset Cover). We will compare our algorithm to theirs in Section 5.",
+        "Polynomial Criterion for a Solution of Arbitrary Weight. We show that we can check whether there exists a formula θ (of arbitrary weight) such that θ = P in polynomial time, just by evaluating a specific formula of length O(|P | • |F|). This allows to quickly decide the nonexistence of a solution, and when a solution exists, it gives a polynomial upper bound on the weight of formulas to consider.",
+        "▶ Lemma 1 (Existence of a solution). Let P , N , F be an instance of Boolean Set Cover. There exists a positive Boolean formula θ such that θ = P if and only if for all p ∈ P , n ∈ N , there is F ∈ F such that p ∈ F and n / ∈ F . Moreover, when it exists, there is such a formula of size O(|F| • |P |).",
+        "Proof. For the left-to-right implication, we show the contrapositive. Assume there is p ∈ P and n ∈ N such that, for all F ∈ F, p ∈ F implies n ∈ F . One can then show by induction that any formula θ ′ with p ∈ θ ′ also has n ∈ θ ′ .",
+        "For the right-to-left implication, we build a positive Boolean formula θ such that θ = P . This formula happens to be of size O(|F| • |P |), thereby also settling the claim about the size. Assume that for all p ∈ P , n ∈ N , there is F ∈ F such that p ∈ F and n / ∈ F . For p ∈ P , let θ p = F ∈F ,p∈F F and θ = p∈P θ p . Due to the hypothesis, for all p ∈ P , we have p ∈ θ p and N ∩ θ p = ∅. Hence, θ = P . ◀ Complexity. Boolean Set Cover is a generalization of the NP-complete set cover problem [37]: an instance of the set cover problem corresponds to an instance of Boolean Set Cover with N = ∅ (in which case using ∩ is futile, and minimal formulas can be obtained only using ∪). This proves NP-hardness of the decision problem for Boolean Set Cover. Since there are short solutions by Lemma 1, and since computing the set described by a Boolean formula is polynomial in its length, Boolean Set Cover is NP-complete."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Domination for positive Boolean Formulas",
+      "paragraphs": [
+        "In this section, we describe domination, a generalization of observational equivalence that identifies even more redundant objects than observational equivalence. Intuitively, we say that a formula θ 1 dominates a formula θ 2 if θ 2 can be replaced with θ 1 in any formula without increasing its weight or decreasing its \"quality\". More formally, let sat(θ) be the subset of elements of P ∪ N that θ classifies correctly, i.e., sat(θ) = ( θ ∩ P ) ∪ (N \\ θ ). The goal of Boolean Set Cover can then be rephrased as finding a formula θ such that sat(θ) = P ∪ N .",
+        "We claim that this notion corresponds to the above intuition. Formally, for a positive Boolean formula θ, let θ[θ 2 ← θ 1 ] denote the formula obtained by replacing any occurrence of θ 2 in θ by θ 1 ; this operation is defined inductively as follows:",
+        "Any occurrence of a dominated formula can be replaced with its dominating formula:",
+        "▶ Lemma 3. Let θ, θ 1 , and θ 2 be positive Boolean formulas. If",
+        "Proof. First, note that, as P and N are disjoint, then if sat(θ 2 ) ⊆ sat(θ 1 ) we have:",
+        "We now show that the sat(•) function is monotone with respect to the ∪ and ∩ operators: if sat(θ 2 ) ⊆ sat(θ 1 ), then for any formula θ, we have sat(θ 2 ∩ θ) ⊆ sat(θ 1 ∩ θ) and sat(θ 2 ∪ θ) ⊆ sat(θ 1 ∪ θ). This can be shown through direct calculation using Equation (1):",
+        "The inclusion in eq. ( 2) follows from eq. (1). A similar calculation shows the inclusion for the ∪ operator.",
+        "Similarly, the weight(•) function is also monotone: if weight(θ 1 ) ≤ weight(θ 2 ), then weight(θ 1 ∩ θ) ≤ weight(θ 2 ∩ θ) (and similarly for ∪) for any formula θ.",
+        "We can now prove that if θ 2 ⪯ θ 1 , then θ ⪯ θ[θ 2 ← θ 1 ] by structural induction over θ. The base cases follow from the definition of domination, and the cases θ = θ ′ ∩ θ ′′ or θ = θ ′ ∪ θ ′′ are handled using the monotonicity of the sat(•) and weight(•) functions. ◀ Domination can be thought of as a variation on Property dependence (see Theorem 6 in [21]), used to prune LTL f formulas for efficient model-checking.",
+        "Further Reducing the Input Set. Lemma 3 implies that we can preprocess F to only keep maximal elements for ⪯ (which means that we transform the input into an antichain for ⪯). By encoding the characteristic vectors of formulas in bits of integers, testing whether θ 1 dominates θ 2 can be implemented efficiently using bitwise operations. All our algorithms for Boolean Set Cover start by reducing F in this way.",
+        "The Need for a Heuristic. We argue that the existence of a subquadratic algorithm to completely reduce a set F with domination is unlikely. The obvious algorithm to find whether a given formula θ ∈ F is dominated by a formula θ ′ ∈ F is to go through every formula in F and check whether it dominates θ. This takes linear time, and when there are O(n) formulas θ and θ ′ , this approach takes quadratic time. We do not expect a faster algorithm: the Orthogonal Vectors problem [57] can be reduced to whether there exists a formula θ 1 ∈ A that dominates a formula θ 2 ∈ B where A, B are sets of n formulas, and a strongly subquadratic algorithm for Orthogonal Vectors would imply that the Strong Exponential Time Hypothesis is false. The reduction between our problem and the Orthogonal Vectors problem is presented in [8].",
+        "Fast Approximate Domination. Yet, a quadratic running time is prohibitive in our application where we need to test domination for millions of Boolean formulas: we therefore propose a heuristic that drastically speeds up the search of a dominating formula while allowing for some false negatives.",
+        "Instead of searching through all of F for dominating formulas, we restrict the search to a small subset of candidates with a high likelihood of dominating other formulas. For a given weight value w and an integer k, let T (w, k) denote the k formulas θ that maximize |sat(θ)| among formulas of weight w in F. Our heuristic searches for a formula θ that dominates θ ′ in the sets T (w, k) for w ≤ weight(θ ′ ). The value chosen for k controls the trade-off between speed and accuracy of the technique. We illustrate the gain in practice over a small set of tasks chosen randomly, which is substantial even for small values of k. Let F ′ be as in Algorithm 1, and F ′′ = FastNonDominated(F ′ , k) be the result of the shrinkage of F ′ by the above approximate algorithm. On average, over 780 tasks, the ratio |F ′ |/|F ′′ | is 3.45 for k = 3, 4.07 for k = 5, 4.97 for k = 10, 5.94 for k = 25, and 6.60 for k = 50."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Divide and Conquer",
+      "paragraphs": [
+        "Before describing our algorithms, we show a general procedure to extend any solver for Boolean Set Cover to mitigate its inability to find a valid solution (due to time, space, or incompleteness of the algorithm). The general idea is part of the LTL f learning algorithm from [55]. It is an application of divide and conquer: when a Boolean Set Cover solver fails to find a solution, divide P or N in two smaller subsets, solve the two subproblems, and combine them into a solution. We show the complete pseudocode for the divide-and-conquer algorithm in Algorithm 2.",
+        "The meta-algorithm first calls a Boolean Set Cover solver; we assume that this algorithm always returns a formula, but which may not be a valid solution. In case no solution is found, the problem is broken into two subproblems. If |P | ≥ |N |, then P is randomly split into two subsets P 1 , P 2 of roughly equal cardinality. From this, we consider two smaller instances of Boolean Set Cover: (P 1 , N, F ↾P1∪N ) and (P 2 , N, F ↾P2∪N ), where  Importantly, this algorithm always finds a solution if there exists one, no matter how the Boolean Set Cover solver is implemented. Indeed, if the Boolean Set Cover solver never returns a valid solution, we end up in the base case for divide and conquer (line 17 in Algorithm 2), where both P and N contain a single element -assume P = {p} and N = {n}. Per Lemma 1, an F such that p ∈ F and n ∈ F necessarily exists if there is a solution, and failure to exist immediately indicates that there is no solution to the Boolean Set Cover problem. This shows that the algorithm always returns a valid solution if there exists one, no matter how the Boolean Set Cover solver is implemented. However, there is no guarantee of minimality.",
+        "Although the idea of this algorithm originated from [55] for LTL f learning, we introduce two optimizations.",
+        "The first is to use the solution from the first subproblems to simplify the second subproblems further; if θ 1 is the returned solution to the instance (P 1 , N, F ↾P1∪N ), it may already contain elements of P 2 . It therefore suffices to solve the instance (P 2 \\ θ 1 , N, F ↾(P2\\ θ1 )∪N ) for the second subproblem. This optimization means that the solution may depend on the order in which we solve the two subproblems.",
+        "The second is related to Boolean Set Cover: the divide and conquer only combines existing formulas with operators ∪ and ∩, and can therefore be seen as a Boolean Set Cover algorithm. This means that once it is called, the other optimizations for Boolean Set Cover (reducing evaluations from tables to vectors, stronger collapse due to observational equivalence, domination reduction) can be applied."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Algorithm for Boolean Set Cover",
+      "paragraphs": [
+        "To solve Boolean Set Cover, we propose a greedy algorithm based on beam search. The gist is to enumerate formulas in order of their weight but only keep a fixed number of \"best\" formulas of each weight. The notion of \"best\" is again based on the cardinality of sat(θ), below called score. The number of formulas to keep for each weight is a hyperparameter beam-width, and the parameter D&C-switch is the depth at which we stop exploring and simplify the problem using divide-and-conquer.",
+        "We provide the full pseudocode of Beam Search in Algorithm 3. For each weight, a \"min\" priority queue pq stores the (at most) beam-width formulas of this weight with the largest score, where the priority queue allows for an efficient query of the stored formula with the lowest score."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Algorithm 3 Beam search algorithm",
+      "paragraphs": [],
+      "subsections": []
+    },
+    {
+      "title": "Hyperparameters:",
+      "paragraphs": [
+        "D&C-switch (not shown below), the weight up to which to enumerate before splitting with DivConq; beam-width (below, b), the maximal number of promising formulas to store for each weight. for i, j ≥ 1, i + j = k do  [50] per benchmark family. For each algorithm and benchmark, we also report the average time (using arithmetic mean) and average size ratio (using geometric mean) on tasks that do not time out. Bolt is faster and returns smaller formulas on average, even as we average over the 2906 tasks for which Bolt returns a formula but Scarlet does not."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Experiments",
+      "paragraphs": [
+        "We perform experiments to address the following questions:",
+        "1. What is Bolt's performance against the state of the art? 2. How is Bolt's performance impacted by the switch to the Boolean Set Cover problem? Is it better than simply enumerating all LTL formulas? For each question, there are two (independent) metrics: wall-clock time and formula size."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Benchmarks and State of the Art",
+      "paragraphs": [
+        "As discussed in Section 1, many tools have been constructed recently for LTL f learning. As an independent contribution, we propose a consolidated benchmark suite of over 15,000 LTL f learning tasks with difficulty ranging from very easy (solved by most existing tools) to very hard (not solved by any tool). Our benchmark suite includes 10 families, encompassing all publicly available benchmarks for LTL f learning we are aware of. All but one family are inspired by existing benchmarks either directly for LTL f learning, or for related problems on LTL f : in particular, we take advantage of SYNTCOMP's extensive collection of LTL f formulas [34]. The benchmark suite is available at https://github.com/SynthesisLab/ LTLf_Learning_Benchmarks.",
+        "Each of the 10 families consists of two scripts: (i) a formula-generating script for generating LTL f formulas, and (ii) a task-generating script for generating positive and negative traces for a formula in the family. Following [49], we implement a generic task-generating script based on compiling the LTL f formulas into deterministic automata (using the tool Spot [22]) and sampling accepting and rejecting runs of a given length. For some families, dedicated task-generating scripts yield finer and more challenging tasks.",
+        "Both scripts can be either deterministic or stochastic3 , and use four parameters: trace length, number of atomic propositions, number of positive traces, and number of negative traces. For generating the benchmark suite, we fixed trace lengths to be in {16, 32, 64}, and numbers of positive and negative traces to be in {5, 20, 100}. As we will see, this produces challenging benchmarks -should future progress move so far as to solve them all efficiently, changing these parameters will yield even harder benchmarks.",
+        "Let us briefly describe the 10 families.",
+        "Fixed formulas. The very first benchmarks were proposed in [47] and inspired by the seminal paper [23], which identified a set of commonly used LTL formulas. The formulas being rather small, the corresponding tasks are typically easy.",
+        "Hamming. A family of very hard tasks was created in [55]. It consists of a single positive trace and many negative traces obtained by changing a few bits from the positive one.",
+        "Deterministic parametric families. The next three families are based on parametric families of LTL f formulas: OrderedSequence considers formulas a 0 U (a 1 U (a 2 . . . )), called \"Uright\" in [34], Subword [49] considers formulas F(a 0 ∧ X! F(a 1 ∧ . . . )) that express the existence of a fixed subword, Subset [49] considers formulas F a 0 ∧ F a 1 ∧ F a 2 ∧ . . . that express the presence of a subset of atomic propositions.  [55], per benchmark family. We omit in this comparison the 4557 tasks that the GPU algorithm cannot handle due to technical constraints (trace lengths of size 64 or more). See Table 1 for an explanation of the columns. The GPU algorithm returns formulas for more tasks, but Bolt is competitive in terms of time and size ratio over tasks solved by both algorithms.",
+        "SYNTCOMP families. The next three families were defined for the SYNTCOMP competition: SingleCounter and DoubleCounter reason on counter increments, and Nim encodes the classical eponymous game.",
+        "Randomized families. The last two families are sampling methods for LTL f formulas:",
+        "RandomConjunctsFromBasis considers conjunctions of a fixed number of formulas (after applying random permutations of the variables) [19], RandomBooleanCombinationsofFactors considers random Boolean combinations of socalled patterns. This is inspired by decompositions of LTL f formulas into patterns introduced in [49,25,45]. A pattern is an LTL f formula in some normal form using F and X!; for instance, F(p ∧ X!(q ∧ X! r)), where p, q, and r are atomic propositions. This family is introduced in our paper."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Experiments",
+      "paragraphs": [
+        "Comparison with Scarlet. Since Scarlet [49,50] is a CPU algorithm which improved over its competitors by a large margin, we take it as a reference point for the state of the art. Scarlet is an \"anytime\" algorithm, meaning that it outputs a stream of formulas, each of them solutions for the task but of decreasing size, and it guarantees that the final output is minimal (within the targeted \"directed fragment of LTL f \") upon termination. When reporting on time for Scarlet, we report how long it took to output the last formula, and not termination time, which is typically a lot longer. Below, \"Bolt\" refers to our VFB algorithm implementation with beam search as a Boolean Set Cover solver, with LTL2BS-switch = 8, beam-width = 100, and D&C-switch = 70. 4 The most critical hyperparameter is LTL2BS-switch, for which 8 appears to achieve the best trade-off between running time and size ratio. Higher values of LTL2BS-switch lead to more timeouts: more time is spent enumerating small LTL f formulas, but less time is spent exploring large formulas with a Boolean Set Cover solver. With smaller values, about the same number of benchmarks are solved, but the Boolean Set Cover phase has access to fewer LTL f formulas, leading to longer solves and formulas of much larger sizes. When comparing formula size, we use size ratio, which is the ratio between the size of the returned formula and the shortest formula found by all our runs using Scarlet, Bolt, and the GPU algorithm (with a few combinations of hyperparameters). We use size ratio instead of formula size to have a uniform measure over all tasks, as different tasks may admit minimal formulas of widely different sizes. No algorithm uses randomization and we observe negligible performance shifts on runs over the same tasks.",
+        "Bolt has been implemented in Rust using standard libraries (in particular, no parallel architectures). The implementation is available at https://github.com/SynthesisLab/ Bolt. Our implementation includes two other Boolean Set Cover solvers, but we do not report on them here as they do not yield better results than the beam-search algorithm we described. The experiments were conducted on identical nodes of the Grid'5000 cluster, running Debian GNU/Linux 5.10.0-34-amd64. The hardware configuration includes an Intel(R) Xeon(R) Gold 5320 CPU @ 2.20GHz and 384GB of RAM. Bolt is implemented in the Rust programming language. Our code was compiled in release mode, using the rustc Rust compiler, version 1.87.0 (17067e9ac, 2025-05-09).",
+        "We compare Bolt against Scarlet [49] in Table 1 and Figure 3. In Table 1, we see that, except for the Subset family (where one could argue that the formulas used to generate traces correspond to the fragment of formulas manipulated by Scarlet) and the small Nim family, Bolt performs better on all benchmarks families: it returns a solution for more tasks, with a better average running time and smaller average size ratio. Figure 3 illustrates that Bolt returns solutions more than 100x faster over 70% of the benchmarks, with formulas of smaller or equal size in 98% of the cases (most of the formulas in the remaining 2% are in the Subset family).",
+        "Comparison with the GPU algorithm. In 2024, article [55] targeted a new category: GPUbased tools, meaning that the implementation specifically takes advantage of the specificities of GPUs (mainly, massively parallel computations).",
+        "We provide a brief comparison with the GPU-based algorithm of [55]. A few details that make this comparison difficult: (i) the GPU implementation is obviously highly parallelized, which is not the case for our CPU implementation Bolt; (ii) the current version of the GPU algorithm has technical limitations, such as not being able to handle tasks where the trace length is ≥ 64, which prevents us from running it on 4557 of our new benchmark tasks; (iii) the GPU algorithm always requires about 0.75 s to start, which means that Bolt is much faster on small tasks (such as the Fixed formulas benchmarks); (iv) the set of LTL f operators used by the GPU implementation is smaller than the one we use, which means that comparing the size of formulas makes little sense.",
+        "Ablation Studies. To evaluate the impact of Boolean Set Cover, we compare Bolt with the raw VFB algorithm (i.e., Bolt without Boolean Set Cover) in Figure 4. The raw VFB algorithm solves fewer tasks, which shows that switching to Boolean Set Cover helps solve more hard tasks, while sacrificing little w.r.t. the size of the formulas. Observe in the right plot that the raw VFB algorithm either finds a minimal formula or times out, as expected."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Perspectives",
+      "paragraphs": [
+        "The first contribution of this paper is a framework for combining LTL f learning with Boolean Set Cover. We proposed a new algorithm for Boolean Set Cover and, through experimental analyses, we showed that our new tool Bolt greatly improves over the state of the art for CPU algorithms. These results yield evidence toward our main thesis: Boolean Set Cover is a fundamental problem of independent interest, which has a lot of potential applications beyond LTL f learning. Our framework is generic; for instance, our tool (through the VFB algorithm) can be adapted to any kind of temporal operators, and Boolean Set Cover can be used for any logic or specification language with disjunctions and conjunctions. Natural candidates include regular expressions [54], Boolean circuits [16], and Bit-vector programs [20].",
+        "Our paper provides a first step toward efficiently and approximately solving Boolean Set Cover. We believe there are algorithms that achieve better trade-offs between compute time and size of learned formulas. In particular, we expect our algorithms to be highly parallelizable; we leave for future work an implementation of our framework for GPUs and a comparison with the CPU implementation. We also contributed a large consolidated benchmark suite, which is much needed to push further the theory and practice of LTL f learning and Boolean Set Cover."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "A",
+      "paragraphs": [
+        "Pseudocode for the VFB algorithm (Section 2)",
+        "For completeness, we show in Algorithm 4 the complete pseudocode for the VFB algorithm (Section 2.2). The way we enumerate all formulas of size k+1 is as follows: for a unary operator, we take all formulas of size k in order to produce formulas of size k + 1 and, for a binary operator, we iterate over all pairs of formulas whose sizes sum to k: (1, k -1), (2, k -2), . . . else if there is no ψ such that ψ ∼ φ ′ then 13:",
+        "M ← M ∪ {CT(φ ′ )}",
+        "As discussed in Section 2.2, we show how to compute inductively the characteristic sequences of LTL f formulas on traces with a few bitwise operations: 1. X! φ is just a (left) shift by 1 of the characteristic sequences of φ, padding it with a 0. 2. ¬φ is the bitwise negation of the characteristic sequences. 3. φ ∧ ψ is the bitwise \"and\" of the characteristic sequences of the two formulas; the same can be done for φ ∨ ψ with \"or\". 4. F φ can be seen as φ ∨ X! φ ∨ X! 2 φ ∨ . . . Since we work with finite traces, this converges to a fixed point in finite time. We can actually compute this efficiently with a logarithmic number of shifts in the trace length: simply do shifts of powers of 2 up to the length of the trace. For example, with the sequence 0000000100000001, first shift by 1 and do an \"or\": it gives us 0000001100000011. Shift by 2 and do an \"or\", we get: 0000111100001111. Now we shift by 4 and do an \"or\", giving us only 1's. If instead we have 0000000000000001, we also need to shift by 8. The example shows that since 1's propagate locally, we only need to do this operation log ℓ times, where ℓ is the trace length.",
+        "5. G φ is equivalent to ¬ F ¬φ. 6. φ U ψ can be done similarly to F φ since it is ψ ∨ (φ ∧ X! ψ) ∨ (φ ∧ X!(φ ∧ X! ψ)) ∨ . . . Intuitively, first compute φ∧X! ψ for all positions; it suffices to do an \"and\" on a shifted ψ. Now, following the same protocol as F φ, it suffices to do the same shifts and \"or\", but with the addition that before the \"or\", as φ needs to be true at all positions before, we must do an \"and\" with the shifted φ.",
+        "We include Python code for the fast inductive evaluation of LTL f formulas, based on bitwise operations. These algorithms describe the general idea of how to compute iteratively the characteristic sequences of formulas from existing ones."
+      ],
+      "subsections": []
+    }
+  ],
+  "body_paragraphs": [
+    "Linear Temporal Logic (LTL) [48] is a prominent logic for specifying temporal properties over infinite traces; in this paper, we consider LTL on finite traces [29], abbreviated LTL f . The fundamental problem we study is to learn LTL f formulas from traces: given a set of positive and negative traces, find an LTL f formula separating positive from negative ones. LTL f learning spans different research communities, each contributing applications, approaches, and viewpoints on this problem. We give below a cursory cross-sectional survey of motivations and applications of LTL f learning in three communities.",
+    "Software Engineering, Programming Languages, Formal Methods. LTL f learning is an instantiation of specification mining, which is an active area of research devoted to discovering formal specifications of code. Already back in the 1970s, Wegbreit [56] and Caplain [14] propose frameworks to automatically generate properties of code. At this point, it is important to distinguish between the dynamic and the static setting: in this paper, we are interested in the dynamic setting where we observe program executions (also called traces) to infer properties of the code. The term specification mining was coined by Ammons, Bodík, and Larus [1] in a seminal paper where finite-state machines capture both temporal and data dependencies. Zeller [60] contributed a roadmap to mining specifications in 2010, highlighting its potential for software engineering. A few years later, Rozier [52] shaped an entire research program revolving around LTL Genesis, motivating and introducing the LTL learning problem as we study it here. Early works focused on mining simple temporal properties [24]. In particular, Perracotta [59] and Javert [27] focus on patterns of the form (ab) * and (ab * c) * . The first tool supporting all LTL f formulas is called Texada, and was created in 2015 [40,39]. Following Texada, a line of work focuses on scaling LTL f learning to industrial sizes, conjuring different approaches. We mention here the state-of-theart LTL f learning tools: Scarlet, based on combinatorial search [49], and a GPU-accelerated algorithm (later referred to as VFB algorithm given its authors Valizadeh, Fijalkow, and Berger) [55]. Applications of mining specifications for software include detecting malicious behaviors [17] or violations [42] and are already widely adopted in software engineering: for instance, the ARSENAL and ARSENAL2 projects [28] have been successful in constructing LTL f formulas inferred from natural language requirements, and the FRET project generates LTL f from trace descriptions [30]. We refer to the textbook [43] and the PhD thesis of Li [41] for comprehensive presentation of specification mining for software, and its relationship to data mining.",
+    "Control of Cyber-Physical Systems and Robotics. LTL f learning is extensively studied in a second area of research with different goals and very different methods: to capture properties of trajectories in models and systems. Given its quantitative nature, Signal Temporal Logic (STL) is preferred over LTL f since it involves numerical constants and can thus capture real-valued and time-varying behaviors. In particular, temporal logics allow reasoning about robustness [5] and anomaly detection [36,38]. There is a vast body of work on learning temporal logics in control and robotics, which can be divided into two: techniques aiming at fitting parameters of a fixed assumed STL formula [4,58,35], and approaches searching for both formulas and parameters [35,7]. This led to many case studies: automobile transmission controller and engine airpath control [58], assisted ventilation in intensive care patients [10], dynamics of a biological circadian oscillator and discriminating different types of cardiac malfunction from electro-cardiogram data [6], anomaly detection in a maritime environment [7], demonstrations in robotics [15], detection of attention loss in pilots [44], and analysis of computer games [31].",
+    "Artificial Intelligence. The field of AI has contributed to LTL f learning a number of applications, but also a wealth of techniques. The overarching philosophy of LTL f learning in AI is that LTL f forms a natural and explainable formalism [13] for specifying objectives [32] in various machine learning contexts. For instance, in the context of reinforcement learning, LTL f formulas have been used to either guide [11,9] or constrain policies [33,12]. Another recent application aims to speed up synthesis by separating data and control [46].",
+    "SOTA on LTL f Learning. Since learning temporal logics is computationally hard1 , different approaches have been explored. The state-of-the-art tool is Scarlet, which is based on specifically tailored fragments of LTL f [49,50]. A GPU-accelerated algorithm was published in 2024 [55], yielding an improved state of the art in a different category. Scarlet cannot reliably learn formulas of size greater than 15, which is less than ideal: we aim to change this.",
+    "Our key insight in this work, and what we believe is the key to scaling LTL f learning to industrial sizes, is to treat Boolean operators differently from temporal operators. To address the former, we leverage a novel solution to a problem we call Boolean Set Cover [49,51]. When enumerating LTL f formulas, we quickly hit a wall because of the exponential number of formulas. Let us say that at this point, we have enumerated the formulas φ 1 , . . . , φ k but have not found a solution. Instead of giving up, Boolean Set Cover looks for solutions in the form of Boolean combinations of the formulas φ 1 , . . . , φ k , allowing us to generate much larger and more expressive formulas. See Figure 1. Boolean Set Cover is a fundamental problem which has been studied under different names. In the 80s, when key concepts from learning theory emerged, it was known as Boolean Concept learning [53,2] (see also the textbook [3]). In logic, it has been extensively studied as extending partially defined Boolean functions; see, e.g., [18]. The name Boolean Set Cover was introduced in [49] in the context of LTL f learning, highlighting that it extends the classical Set Cover problem. For consistency in this line of work, we adhere to this terminology.",
+    "The key finding of this work is that the Boolean Set Cover problem can be solved in an approximate way very efficiently, which can then be leveraged to learn LTL f formulas of size way beyond the reach of existing tools. An overview of our general approach is depicted in Figure 1.",
+    "We propose a framework for combining LTL f learning with Boolean Set Cover. We implement our algorithms in a new tool called Bolt.",
+    "We consolidate a benchmark suite for LTL f learning with over 15,000 tasks. We show through experiments that Bolt significantly improves over the state of the art, both in terms of wall-clock time and size of learned formulas.",
+    "We believe Boolean Set Cover is a fundamental problem of independent interest, which has a lot of potential applications beyond LTL f learning. We leave as future work to explore them; we discuss perspectives in Section 6.",
+    "Bolt's code is available at https://github.com/SynthesisLab/Bolt. The benchmarks used for the evaluation of our tool are available at https://github.com/SynthesisLab/ LTLf_Learning_Benchmarks.",
+    "One of the reasons for the success of Linear Temporal Logic (LTL f ) as a logical formalism for temporal reasoning on traces is that its semantics can be conveyed using a single picture:",
+    "The syntax of LTL f is particularly simple (no variables and no quantifiers), it uses only the classical Boolean operators and two temporal operators: X!, called Strong Next, and U, called Until. 2 Informally, X! φ holds if φ holds starting from the next position, and φ U ψ holds if there exists a later position such that ψ holds, and φ holds in the meantime.",
+    "Formally, let us fix a finite set of atomic propositions AP. A (finite) trace is a (nonempty) sequence where each position holds a subset of atomic propositions; for instance, with AP = {p, q}:",
+    "We index traces from position 1 (not 0) and the letter at position i in the trace w is written w(i), so w = w(1) . . . w(ℓ) where ℓ is the length of w, written |w| = ℓ. We write w[k . . . ] = w(k) . . . w(ℓ). We only consider non-empty traces.",
+    "The syntax of Linear Temporal Logic (LTL f ) includes atomic propositions c ∈ AP as well as ⊤ and ⊥, the Boolean operators ¬, ∧, and ∨, and the temporal operators X! and U. The semantics of LTL f are defined inductively, through the notation w |= φ where w is a non-empty trace and φ is an LTL f formula. The definition is given below for the atomic propositions and temporal operators X! and U, with Boolean operators interpreted as usual. For w of length ℓ:",
+    "We say that w satisfies φ if w |= φ. We define the size of an LTL f formula φ as the number of nodes in its syntactic tree.",
+    "As customary, we include some additional temporal operators: X φ is \"weak next φ\", it is a shortcut for ¬ X! ¬φ; F φ is \"eventually φ\", it is a shortcut for ⊤ U φ; G φ is \"globally φ\", it is a shortcut for ¬ F ¬φ; φ R ψ is \"release φ\", it is a shortcut for ¬ψ U ¬φ.",
+    "The LTL f learning problem is defined as follows:",
+    "INPUT: two disjoint finite sets of traces P and N OUTPUT: an LTL f formula φ of minimal size such that all of P satisfies φ and none of N satisfies φ",
+    "Our first baseline for LTL f learning is an optimized enumerative algorithm from Valizadeh, Fijalkow, and Berger [55]; we call it the VFB algorithm. Simply put:",
+    "VFB algorithm = combinatorial search + fast evaluation + observational equivalence.",
+    "Combinatorial Search. The core algorithm is a bottom-up enumeration of LTL f formulas by size. First, the set of formulas of size 1 contains all atomic propositions. At step k, we generate all formulas of size k + 1. In order to do this, for each operator, we take arguments such that the sum of sizes of arguments is equal to k; this way, the generated formula will have size k + 1 by combining it with the selected operator. A property of this algorithm is that it is agnostic to the operators: it can be adapted to any fragment or be augmented with other operators, as long as we can easily compute inductively whether a trace satisfies a formula.",
+    "The key idea is to represent the semantics of LTL f formulas on input traces using so-called \"characteristic tables\":",
+    "The characteristic sequence (CS) of a formula φ on a trace w is the bit vector v ∈ {0, 1}",
+    "The characteristic table (CT) of a formula φ over the positive traces P and the negative traces N is a sequence t such that t(i) is the CS of φ on the i th trace of P ∪ N . We give an example of characteristic sequences and tables in Figure 2.",
+    "The characteristic table is not a rectangular matrix when traces in P ∪ N do not have the same length.",
+    "With these objects, one can compute inductively the characteristic sequences and tables of formulas with only a few bitwise operations. For instance, the semantic of the strong next operator X! is simply a \"left shift\" on characteristic sequences. This idea originates from [55]. The brief Python code to compute efficiently the characteristic sequences of LTL f formulas is recalled in Appendix A.",
+    "Figure 2 Characteristic sequences and table of φ = X! a with P = {aabaa, baaa} and N = {abab, aab}. We also use characteristic vector for the vector of all first bits of the characteristic sequences. Looking at the characteristic vector suffices to check whether φ is a solution: it must have 1's at all positions of P and 0's at all positions of N . However, we need to keep in memory the whole characteristic table to check for observational equivalence.",
+    "Observational Equivalence. A second idea to tackle the combinatorial explosion of the number of formulas is to consider only \"semantically unique\" formulas. Observational equivalence is an idea from program synthesis [26]; in our context, two formulas are observationally equivalent on (P, N ) if they generate the same characteristic table. When enumerating formulas, we may keep a single representative for each equivalence class without losing completeness.",
+    "Scaling Issues. Despite these improvements to a simple exhaustive search, the scaling of the problem is enormous. We identified two problems limiting the depth of algorithms.",
+    "The first issue, of course, is the exponential blow-up due to the number of increasingly large formulas. The second issue is the memory used to store the evaluation of LTL f formulas in the form of characteristic tables, which is necessary to check for observational equivalence. The more input traces there are, the larger the characteristic tables are; the longer the traces are, the wider the tables are. When tables have more elements, observational equivalence is also less likely to occur.",
+    "Let us start with defining Boolean Set Cover formally. We consider a finite set X partitioned into positive and negative elements: X = P ∪ N . We are given a (potentially large) set of atomic formulas φ 1 , . . . , φ k over X. The goal is to construct a formula separating P from N using conjunctions and disjunctions of the atomic formulas.",
+    "As an example, consider the following instance of Boolean Set Cover (adapted from [49, Fig. 1]):",
+    "Here, P = {p 1 , p 2 , p 3 } and N = {n 1 , n 2 , n 3 }. The formulas φ 1 , φ 2 , and φ 3 satisfy the points encircled in the corresponding area. In this instance, φ 1 ∨ (φ 2 ∧ φ 3 ) is a (minimal) solution.",
+    "Our idea to tackle these scaling issues is to use the VFB algorithm on the full LTL f only up to a fixed formula size, chosen based on a memory or time threshold. Since the exponential blow-up does not allow to go much further beyond size 8, we then restrict our focus to the fragment of LTL f with only ∧ and ∨ to move forward. In other words, we keep all formulas we have generated and then only combine them with ∧ or ∨. This restricted problem is an instance of Boolean Set Cover, that is solved as a subroutine in our LTL f learning algorithms.",
+    "A high-level view of the procedure is in Algorithm 1. In this algorithm, VFB-Bounded is a variant of VFB which only computes LTL f formulas up to some fixed size using operators from sets of unary and binary operators O 1 and O 2 . This fixed size is a hyperparameter called LTL2BS-switch. Algorithm VFB-Bounded returns two objects: a solution to the LTL f learning instance (or ⊥ if it has not found a solution), and a set F containing all generated formulas up to size LTL2BS-switch. If no solution was found, the generated formulas are fed to a Boolean Set Cover solver called BS-Solver. From the point of view of the Boolean Set Cover solver, the LTL f formulas are letters of a new alphabet, each being associated with a positive integer called weight.",
+    "Hyperparameter: LTL2BS-switch (below, k), the maximal size of LTL f formulas to enumerate before switching to Boolean Set Cover.",
+    "return BS-Solver(F ′ , P, N )",
+    "When we send the generated formulas to a Boolean Set Cover solver, two kinds of collapses occur (represented in Algorithm 1 with function Collapse).",
+    "First, once we restrict our focus to operators ∧ and ∨, two formulas can be assumed to be observationally equivalent if and only if they have the same first bit for each row of their characteristic table. Indeed, as there is no more \"temporal phenomenon\", this is a sufficient information to determine whether a given trace satisfies a Boolean combination of (already evaluated) LTL f formulas. In other words, we move from the computation of tables to vectors (the vectors of first bits), which produces many collisions and reduces the number of formulas to consider. We quantified this collapse in practice over a small set of tasks chosen randomly. Let F denote the set of observationally non-equivalent LTL f formulas of size at most 8, and F ′ = Collapse(F) denote the set of formulas with a distinct first column in the characteristic table. On average over 780 tasks, the ratio |F|/|F ′ | is 3.54, with a minimum of 1.09, a maximum of 48.22, and a standard deviation of 5.46.",
+    "Second, storing vectors instead of tables is a massive gain: space-wise, as storing the evaluation of a formula is a bit vector of size",
+    ", where ℓ is the total number of bits in an input trace, and time-wise, as new formulas can be evaluated faster. This enables exploring much larger formulas (though in an incomplete way, as some operators are missing) at a reduced space and time cost.",
+    "Let P and N be two disjoint finite sets. Let F be a family of sets with F ⊆ P ∪ N for all F ∈ F. We assume that a weight weight(F ) ≥ 1 is associated with each set F ∈ F (which is unrelated to the cardinality of F ).",
+    "We define positive Boolean formulas and their weights inductively: ∅ is a formula of weight 0; F ∈ F is a formula of weight weight(F ); if θ 1 and θ 2 are positive Boolean formulas, then so are θ 1 ∪ θ 2 and θ 1 ∩ θ 2 , both of weight 1 + weight(θ 1 ) + weight(θ 2 ). The interpretation θ of a positive Boolean formula θ is simply the set it describes. We adjust observational equivalence: two formulas θ and θ ′ are observationally equivalent if θ = θ ′ .",
+    "The Boolean Set Cover problem is as follows:",
+    "INPUT: two disjoint finite sets P , N and a family F of weighted subsets of P ∪ N OUTPUT: a positive Boolean formula θ of minimal weight such that θ = P (i.e., it contains all elements of P but none of N )",
+    "The Boolean Set Cover problem can be seen as a restriction of LTL f learning to a subset of the operators, namely ∧ and ∨. The Boolean Set Cover problem was briefly considered in [49] (under the name Boolean Subset Cover). We will compare our algorithm to theirs in Section 5.",
+    "Polynomial Criterion for a Solution of Arbitrary Weight. We show that we can check whether there exists a formula θ (of arbitrary weight) such that θ = P in polynomial time, just by evaluating a specific formula of length O(|P | • |F|). This allows to quickly decide the nonexistence of a solution, and when a solution exists, it gives a polynomial upper bound on the weight of formulas to consider.",
+    "▶ Lemma 1 (Existence of a solution). Let P , N , F be an instance of Boolean Set Cover. There exists a positive Boolean formula θ such that θ = P if and only if for all p ∈ P , n ∈ N , there is F ∈ F such that p ∈ F and n / ∈ F . Moreover, when it exists, there is such a formula of size O(|F| • |P |).",
+    "Proof. For the left-to-right implication, we show the contrapositive. Assume there is p ∈ P and n ∈ N such that, for all F ∈ F, p ∈ F implies n ∈ F . One can then show by induction that any formula θ ′ with p ∈ θ ′ also has n ∈ θ ′ .",
+    "For the right-to-left implication, we build a positive Boolean formula θ such that θ = P . This formula happens to be of size O(|F| • |P |), thereby also settling the claim about the size. Assume that for all p ∈ P , n ∈ N , there is F ∈ F such that p ∈ F and n / ∈ F . For p ∈ P , let θ p = F ∈F ,p∈F F and θ = p∈P θ p . Due to the hypothesis, for all p ∈ P , we have p ∈ θ p and N ∩ θ p = ∅. Hence, θ = P . ◀ Complexity. Boolean Set Cover is a generalization of the NP-complete set cover problem [37]: an instance of the set cover problem corresponds to an instance of Boolean Set Cover with N = ∅ (in which case using ∩ is futile, and minimal formulas can be obtained only using ∪). This proves NP-hardness of the decision problem for Boolean Set Cover. Since there are short solutions by Lemma 1, and since computing the set described by a Boolean formula is polynomial in its length, Boolean Set Cover is NP-complete.",
+    "In this section, we describe domination, a generalization of observational equivalence that identifies even more redundant objects than observational equivalence. Intuitively, we say that a formula θ 1 dominates a formula θ 2 if θ 2 can be replaced with θ 1 in any formula without increasing its weight or decreasing its \"quality\". More formally, let sat(θ) be the subset of elements of P ∪ N that θ classifies correctly, i.e., sat(θ) = ( θ ∩ P ) ∪ (N \\ θ ). The goal of Boolean Set Cover can then be rephrased as finding a formula θ such that sat(θ) = P ∪ N .",
+    "We claim that this notion corresponds to the above intuition. Formally, for a positive Boolean formula θ, let θ[θ 2 ← θ 1 ] denote the formula obtained by replacing any occurrence of θ 2 in θ by θ 1 ; this operation is defined inductively as follows:",
+    "Any occurrence of a dominated formula can be replaced with its dominating formula:",
+    "▶ Lemma 3. Let θ, θ 1 , and θ 2 be positive Boolean formulas. If",
+    "Proof. First, note that, as P and N are disjoint, then if sat(θ 2 ) ⊆ sat(θ 1 ) we have:",
+    "We now show that the sat(•) function is monotone with respect to the ∪ and ∩ operators: if sat(θ 2 ) ⊆ sat(θ 1 ), then for any formula θ, we have sat(θ 2 ∩ θ) ⊆ sat(θ 1 ∩ θ) and sat(θ 2 ∪ θ) ⊆ sat(θ 1 ∪ θ). This can be shown through direct calculation using Equation (1):",
+    "The inclusion in eq. ( 2) follows from eq. (1). A similar calculation shows the inclusion for the ∪ operator.",
+    "Similarly, the weight(•) function is also monotone: if weight(θ 1 ) ≤ weight(θ 2 ), then weight(θ 1 ∩ θ) ≤ weight(θ 2 ∩ θ) (and similarly for ∪) for any formula θ.",
+    "We can now prove that if θ 2 ⪯ θ 1 , then θ ⪯ θ[θ 2 ← θ 1 ] by structural induction over θ. The base cases follow from the definition of domination, and the cases θ = θ ′ ∩ θ ′′ or θ = θ ′ ∪ θ ′′ are handled using the monotonicity of the sat(•) and weight(•) functions. ◀ Domination can be thought of as a variation on Property dependence (see Theorem 6 in [21]), used to prune LTL f formulas for efficient model-checking.",
+    "Further Reducing the Input Set. Lemma 3 implies that we can preprocess F to only keep maximal elements for ⪯ (which means that we transform the input into an antichain for ⪯). By encoding the characteristic vectors of formulas in bits of integers, testing whether θ 1 dominates θ 2 can be implemented efficiently using bitwise operations. All our algorithms for Boolean Set Cover start by reducing F in this way.",
+    "The Need for a Heuristic. We argue that the existence of a subquadratic algorithm to completely reduce a set F with domination is unlikely. The obvious algorithm to find whether a given formula θ ∈ F is dominated by a formula θ ′ ∈ F is to go through every formula in F and check whether it dominates θ. This takes linear time, and when there are O(n) formulas θ and θ ′ , this approach takes quadratic time. We do not expect a faster algorithm: the Orthogonal Vectors problem [57] can be reduced to whether there exists a formula θ 1 ∈ A that dominates a formula θ 2 ∈ B where A, B are sets of n formulas, and a strongly subquadratic algorithm for Orthogonal Vectors would imply that the Strong Exponential Time Hypothesis is false. The reduction between our problem and the Orthogonal Vectors problem is presented in [8].",
+    "Fast Approximate Domination. Yet, a quadratic running time is prohibitive in our application where we need to test domination for millions of Boolean formulas: we therefore propose a heuristic that drastically speeds up the search of a dominating formula while allowing for some false negatives.",
+    "Instead of searching through all of F for dominating formulas, we restrict the search to a small subset of candidates with a high likelihood of dominating other formulas. For a given weight value w and an integer k, let T (w, k) denote the k formulas θ that maximize |sat(θ)| among formulas of weight w in F. Our heuristic searches for a formula θ that dominates θ ′ in the sets T (w, k) for w ≤ weight(θ ′ ). The value chosen for k controls the trade-off between speed and accuracy of the technique. We illustrate the gain in practice over a small set of tasks chosen randomly, which is substantial even for small values of k. Let F ′ be as in Algorithm 1, and F ′′ = FastNonDominated(F ′ , k) be the result of the shrinkage of F ′ by the above approximate algorithm. On average, over 780 tasks, the ratio |F ′ |/|F ′′ | is 3.45 for k = 3, 4.07 for k = 5, 4.97 for k = 10, 5.94 for k = 25, and 6.60 for k = 50.",
+    "Before describing our algorithms, we show a general procedure to extend any solver for Boolean Set Cover to mitigate its inability to find a valid solution (due to time, space, or incompleteness of the algorithm). The general idea is part of the LTL f learning algorithm from [55]. It is an application of divide and conquer: when a Boolean Set Cover solver fails to find a solution, divide P or N in two smaller subsets, solve the two subproblems, and combine them into a solution. We show the complete pseudocode for the divide-and-conquer algorithm in Algorithm 2.",
+    "The meta-algorithm first calls a Boolean Set Cover solver; we assume that this algorithm always returns a formula, but which may not be a valid solution. In case no solution is found, the problem is broken into two subproblems. If |P | ≥ |N |, then P is randomly split into two subsets P 1 , P 2 of roughly equal cardinality. From this, we consider two smaller instances of Boolean Set Cover: (P 1 , N, F ↾P1∪N ) and (P 2 , N, F ↾P2∪N ), where  Importantly, this algorithm always finds a solution if there exists one, no matter how the Boolean Set Cover solver is implemented. Indeed, if the Boolean Set Cover solver never returns a valid solution, we end up in the base case for divide and conquer (line 17 in Algorithm 2), where both P and N contain a single element -assume P = {p} and N = {n}. Per Lemma 1, an F such that p ∈ F and n ∈ F necessarily exists if there is a solution, and failure to exist immediately indicates that there is no solution to the Boolean Set Cover problem. This shows that the algorithm always returns a valid solution if there exists one, no matter how the Boolean Set Cover solver is implemented. However, there is no guarantee of minimality.",
+    "Although the idea of this algorithm originated from [55] for LTL f learning, we introduce two optimizations.",
+    "The first is to use the solution from the first subproblems to simplify the second subproblems further; if θ 1 is the returned solution to the instance (P 1 , N, F ↾P1∪N ), it may already contain elements of P 2 . It therefore suffices to solve the instance (P 2 \\ θ 1 , N, F ↾(P2\\ θ1 )∪N ) for the second subproblem. This optimization means that the solution may depend on the order in which we solve the two subproblems.",
+    "The second is related to Boolean Set Cover: the divide and conquer only combines existing formulas with operators ∪ and ∩, and can therefore be seen as a Boolean Set Cover algorithm. This means that once it is called, the other optimizations for Boolean Set Cover (reducing evaluations from tables to vectors, stronger collapse due to observational equivalence, domination reduction) can be applied.",
+    "To solve Boolean Set Cover, we propose a greedy algorithm based on beam search. The gist is to enumerate formulas in order of their weight but only keep a fixed number of \"best\" formulas of each weight. The notion of \"best\" is again based on the cardinality of sat(θ), below called score. The number of formulas to keep for each weight is a hyperparameter beam-width, and the parameter D&C-switch is the depth at which we stop exploring and simplify the problem using divide-and-conquer.",
+    "We provide the full pseudocode of Beam Search in Algorithm 3. For each weight, a \"min\" priority queue pq stores the (at most) beam-width formulas of this weight with the largest score, where the priority queue allows for an efficient query of the stored formula with the lowest score.",
+    "D&C-switch (not shown below), the weight up to which to enumerate before splitting with DivConq; beam-width (below, b), the maximal number of promising formulas to store for each weight. for i, j ≥ 1, i + j = k do  [50] per benchmark family. For each algorithm and benchmark, we also report the average time (using arithmetic mean) and average size ratio (using geometric mean) on tasks that do not time out. Bolt is faster and returns smaller formulas on average, even as we average over the 2906 tasks for which Bolt returns a formula but Scarlet does not.",
+    "We perform experiments to address the following questions:",
+    "1. What is Bolt's performance against the state of the art? 2. How is Bolt's performance impacted by the switch to the Boolean Set Cover problem? Is it better than simply enumerating all LTL formulas? For each question, there are two (independent) metrics: wall-clock time and formula size.",
+    "As discussed in Section 1, many tools have been constructed recently for LTL f learning. As an independent contribution, we propose a consolidated benchmark suite of over 15,000 LTL f learning tasks with difficulty ranging from very easy (solved by most existing tools) to very hard (not solved by any tool). Our benchmark suite includes 10 families, encompassing all publicly available benchmarks for LTL f learning we are aware of. All but one family are inspired by existing benchmarks either directly for LTL f learning, or for related problems on LTL f : in particular, we take advantage of SYNTCOMP's extensive collection of LTL f formulas [34]. The benchmark suite is available at https://github.com/SynthesisLab/ LTLf_Learning_Benchmarks.",
+    "Each of the 10 families consists of two scripts: (i) a formula-generating script for generating LTL f formulas, and (ii) a task-generating script for generating positive and negative traces for a formula in the family. Following [49], we implement a generic task-generating script based on compiling the LTL f formulas into deterministic automata (using the tool Spot [22]) and sampling accepting and rejecting runs of a given length. For some families, dedicated task-generating scripts yield finer and more challenging tasks.",
+    "Both scripts can be either deterministic or stochastic3 , and use four parameters: trace length, number of atomic propositions, number of positive traces, and number of negative traces. For generating the benchmark suite, we fixed trace lengths to be in {16, 32, 64}, and numbers of positive and negative traces to be in {5, 20, 100}. As we will see, this produces challenging benchmarks -should future progress move so far as to solve them all efficiently, changing these parameters will yield even harder benchmarks.",
+    "Let us briefly describe the 10 families.",
+    "Fixed formulas. The very first benchmarks were proposed in [47] and inspired by the seminal paper [23], which identified a set of commonly used LTL formulas. The formulas being rather small, the corresponding tasks are typically easy.",
+    "Hamming. A family of very hard tasks was created in [55]. It consists of a single positive trace and many negative traces obtained by changing a few bits from the positive one.",
+    "Deterministic parametric families. The next three families are based on parametric families of LTL f formulas: OrderedSequence considers formulas a 0 U (a 1 U (a 2 . . . )), called \"Uright\" in [34], Subword [49] considers formulas F(a 0 ∧ X! F(a 1 ∧ . . . )) that express the existence of a fixed subword, Subset [49] considers formulas F a 0 ∧ F a 1 ∧ F a 2 ∧ . . . that express the presence of a subset of atomic propositions.  [55], per benchmark family. We omit in this comparison the 4557 tasks that the GPU algorithm cannot handle due to technical constraints (trace lengths of size 64 or more). See Table 1 for an explanation of the columns. The GPU algorithm returns formulas for more tasks, but Bolt is competitive in terms of time and size ratio over tasks solved by both algorithms.",
+    "SYNTCOMP families. The next three families were defined for the SYNTCOMP competition: SingleCounter and DoubleCounter reason on counter increments, and Nim encodes the classical eponymous game.",
+    "Randomized families. The last two families are sampling methods for LTL f formulas:",
+    "RandomConjunctsFromBasis considers conjunctions of a fixed number of formulas (after applying random permutations of the variables) [19], RandomBooleanCombinationsofFactors considers random Boolean combinations of socalled patterns. This is inspired by decompositions of LTL f formulas into patterns introduced in [49,25,45]. A pattern is an LTL f formula in some normal form using F and X!; for instance, F(p ∧ X!(q ∧ X! r)), where p, q, and r are atomic propositions. This family is introduced in our paper.",
+    "Comparison with Scarlet. Since Scarlet [49,50] is a CPU algorithm which improved over its competitors by a large margin, we take it as a reference point for the state of the art. Scarlet is an \"anytime\" algorithm, meaning that it outputs a stream of formulas, each of them solutions for the task but of decreasing size, and it guarantees that the final output is minimal (within the targeted \"directed fragment of LTL f \") upon termination. When reporting on time for Scarlet, we report how long it took to output the last formula, and not termination time, which is typically a lot longer. Below, \"Bolt\" refers to our VFB algorithm implementation with beam search as a Boolean Set Cover solver, with LTL2BS-switch = 8, beam-width = 100, and D&C-switch = 70. 4 The most critical hyperparameter is LTL2BS-switch, for which 8 appears to achieve the best trade-off between running time and size ratio. Higher values of LTL2BS-switch lead to more timeouts: more time is spent enumerating small LTL f formulas, but less time is spent exploring large formulas with a Boolean Set Cover solver. With smaller values, about the same number of benchmarks are solved, but the Boolean Set Cover phase has access to fewer LTL f formulas, leading to longer solves and formulas of much larger sizes. When comparing formula size, we use size ratio, which is the ratio between the size of the returned formula and the shortest formula found by all our runs using Scarlet, Bolt, and the GPU algorithm (with a few combinations of hyperparameters). We use size ratio instead of formula size to have a uniform measure over all tasks, as different tasks may admit minimal formulas of widely different sizes. No algorithm uses randomization and we observe negligible performance shifts on runs over the same tasks.",
+    "Bolt has been implemented in Rust using standard libraries (in particular, no parallel architectures). The implementation is available at https://github.com/SynthesisLab/ Bolt. Our implementation includes two other Boolean Set Cover solvers, but we do not report on them here as they do not yield better results than the beam-search algorithm we described. The experiments were conducted on identical nodes of the Grid'5000 cluster, running Debian GNU/Linux 5.10.0-34-amd64. The hardware configuration includes an Intel(R) Xeon(R) Gold 5320 CPU @ 2.20GHz and 384GB of RAM. Bolt is implemented in the Rust programming language. Our code was compiled in release mode, using the rustc Rust compiler, version 1.87.0 (17067e9ac, 2025-05-09).",
+    "We compare Bolt against Scarlet [49] in Table 1 and Figure 3. In Table 1, we see that, except for the Subset family (where one could argue that the formulas used to generate traces correspond to the fragment of formulas manipulated by Scarlet) and the small Nim family, Bolt performs better on all benchmarks families: it returns a solution for more tasks, with a better average running time and smaller average size ratio. Figure 3 illustrates that Bolt returns solutions more than 100x faster over 70% of the benchmarks, with formulas of smaller or equal size in 98% of the cases (most of the formulas in the remaining 2% are in the Subset family).",
+    "Comparison with the GPU algorithm. In 2024, article [55] targeted a new category: GPUbased tools, meaning that the implementation specifically takes advantage of the specificities of GPUs (mainly, massively parallel computations).",
+    "We provide a brief comparison with the GPU-based algorithm of [55]. A few details that make this comparison difficult: (i) the GPU implementation is obviously highly parallelized, which is not the case for our CPU implementation Bolt; (ii) the current version of the GPU algorithm has technical limitations, such as not being able to handle tasks where the trace length is ≥ 64, which prevents us from running it on 4557 of our new benchmark tasks; (iii) the GPU algorithm always requires about 0.75 s to start, which means that Bolt is much faster on small tasks (such as the Fixed formulas benchmarks); (iv) the set of LTL f operators used by the GPU implementation is smaller than the one we use, which means that comparing the size of formulas makes little sense.",
+    "Ablation Studies. To evaluate the impact of Boolean Set Cover, we compare Bolt with the raw VFB algorithm (i.e., Bolt without Boolean Set Cover) in Figure 4. The raw VFB algorithm solves fewer tasks, which shows that switching to Boolean Set Cover helps solve more hard tasks, while sacrificing little w.r.t. the size of the formulas. Observe in the right plot that the raw VFB algorithm either finds a minimal formula or times out, as expected.",
+    "The first contribution of this paper is a framework for combining LTL f learning with Boolean Set Cover. We proposed a new algorithm for Boolean Set Cover and, through experimental analyses, we showed that our new tool Bolt greatly improves over the state of the art for CPU algorithms. These results yield evidence toward our main thesis: Boolean Set Cover is a fundamental problem of independent interest, which has a lot of potential applications beyond LTL f learning. Our framework is generic; for instance, our tool (through the VFB algorithm) can be adapted to any kind of temporal operators, and Boolean Set Cover can be used for any logic or specification language with disjunctions and conjunctions. Natural candidates include regular expressions [54], Boolean circuits [16], and Bit-vector programs [20].",
+    "Our paper provides a first step toward efficiently and approximately solving Boolean Set Cover. We believe there are algorithms that achieve better trade-offs between compute time and size of learned formulas. In particular, we expect our algorithms to be highly parallelizable; we leave for future work an implementation of our framework for GPUs and a comparison with the CPU implementation. We also contributed a large consolidated benchmark suite, which is much needed to push further the theory and practice of LTL f learning and Boolean Set Cover.",
+    "Pseudocode for the VFB algorithm (Section 2)",
+    "For completeness, we show in Algorithm 4 the complete pseudocode for the VFB algorithm (Section 2.2). The way we enumerate all formulas of size k+1 is as follows: for a unary operator, we take all formulas of size k in order to produce formulas of size k + 1 and, for a binary operator, we iterate over all pairs of formulas whose sizes sum to k: (1, k -1), (2, k -2), . . . else if there is no ψ such that ψ ∼ φ ′ then 13:",
+    "M ← M ∪ {CT(φ ′ )}",
+    "As discussed in Section 2.2, we show how to compute inductively the characteristic sequences of LTL f formulas on traces with a few bitwise operations: 1. X! φ is just a (left) shift by 1 of the characteristic sequences of φ, padding it with a 0. 2. ¬φ is the bitwise negation of the characteristic sequences. 3. φ ∧ ψ is the bitwise \"and\" of the characteristic sequences of the two formulas; the same can be done for φ ∨ ψ with \"or\". 4. F φ can be seen as φ ∨ X! φ ∨ X! 2 φ ∨ . . . Since we work with finite traces, this converges to a fixed point in finite time. We can actually compute this efficiently with a logarithmic number of shifts in the trace length: simply do shifts of powers of 2 up to the length of the trace. For example, with the sequence 0000000100000001, first shift by 1 and do an \"or\": it gives us 0000001100000011. Shift by 2 and do an \"or\", we get: 0000111100001111. Now we shift by 4 and do an \"or\", giving us only 1's. If instead we have 0000000000000001, we also need to shift by 8. The example shows that since 1's propagate locally, we only need to do this operation log ℓ times, where ℓ is the trace length.",
+    "5. G φ is equivalent to ¬ F ¬φ. 6. φ U ψ can be done similarly to F φ since it is ψ ∨ (φ ∧ X! ψ) ∨ (φ ∧ X!(φ ∧ X! ψ)) ∨ . . . Intuitively, first compute φ∧X! ψ for all positions; it suffices to do an \"and\" on a shifted ψ. Now, following the same protocol as F φ, it suffices to do the same shifts and \"or\", but with the addition that before the \"or\", as φ needs to be true at all positions before, we must do an \"and\" with the shifted φ.",
+    "We include Python code for the fast inductive evaluation of LTL f formulas, based on bitwise operations. These algorithms describe the general idea of how to compute iteratively the characteristic sequences of formulas from existing ones.",
+    "14:for θ 1 ∈ pq i , θ 2 ∈ pq j do 15: for op ∈ {∪, ∩} do 16: θ ← θ 1 op θ 2 ▷ θ has weight k + 1 17: if there exists θ ′ ∈ M s.t. θ ′ and θ are observationally equivalent then 18: continue 19: if there exists θ ′ ∈ M s.t. θ ⪯ θ ′ then",
+    "7:for op ∈ O 1 do 8:for φ ∈ F k do 9: φ ′ ← op(φ) ▷ Size k + 1 10: if φ ′ is a solution then 11:return φ ′ 12:",
+    "7:for op ∈ O 1 do 8:for φ ∈ F k do 9: φ ′ ← op(φ) ▷ Size k + 1 10: if φ ′ is a solution then 11:",
+    "7:for op ∈ O 1 do 8:",
+    "It is NP-complete, even for restricted fragments of LTL f[25,45].",
+    "The temporal operators F and G will be derived from U.",
+    "In case of stochastic scripts, they are seeded for reproducibility.",
+    "We have performed experiments on a small training set (containing 20% of the data) to determine good hyperparameters; we do not include these experiments here."
+  ],
+  "references": [
+    {
+      "id": 1,
+      "text": "Mining specifications\n\t\t\n\t\t\tGlennAmmons\n\t\t\n\t\t\n\t\t\tRastislavBodík\n\t\t\n\t\t\n\t\t\tJamesRLarus\n\t\t\n\t\t10.1145/503272.503275\n\t\n\t\n\t\tProceedings of the 29th ACM SIGPLAN-SIGACT symposium on Principles of programming languages\n\t\tthe 29th ACM SIGPLAN-SIGACT symposium on Principles of programming languages\n\t\t\n\t\t\tACM\n\t\t\t2002"
+    },
+    {
+      "id": 2,
+      "text": "Queries and Concept Learning\n\t\t\n\t\t\tDanaAngluin\n\t\t\n\t\t10.1023/a:1022821128753\n\t\n\t\n\t\tMachine Learning\n\t\tMachine Learning\n\t\t0885-6125\n\t\t1573-0565\n\t\t\n\t\t\t2\n\t\t\t4\n\t\t\t\n\t\t\t1988\n\t\t\tSpringer Science and Business Media LLC"
+    },
+    {
+      "id": 3,
+      "text": "Computational Learning Theory. Cambridge Tracts in Theoretical Computer Science\n\t\t\n\t\t\tMAnthony\n\t\t\n\t\t\n\t\t\tNBiggs\n\t\t\n\t\t\n\t\t\t1997\n\t\t\tCambridge University Press"
+    },
+    {
+      "id": 4,
+      "text": "Parametric Identification of Temporal Properties\n\t\t\n\t\t\tEugeneAsarin\n\t\t\n\t\t\n\t\t\tAlexandreDonzé\n\t\t\n\t\t\n\t\t\tOdedMaler\n\t\t\n\t\t\n\t\t\tDejanNickovic\n\t\t\n\t\t10.1007/978-3-642-29860-8_12\n\t\n\t\n\t\tLecture Notes in Computer Science\n\t\t\n\t\t\tSarfrazKhurshid\n\t\t\n\t\t\n\t\t\tKoushikSen\n\t\t\n\t\tBerlin Heidelberg\n\t\t\n\t\t\tSpringer Berlin Heidelberg\n\t\t\t2012"
+    },
+    {
+      "id": 5,
+      "text": "System design of stochastic models using robustness of temporal properties\n\t\t\n\t\t\tEzioBartocci\n\t\t\t0000-0002-8004-6601\n\t\t\n\t\t\n\t\t\tLucaBortolussi\n\t\t\n\t\t\n\t\t\tLauraNenzi\n\t\t\n\t\t\n\t\t\tGuidoSanguinetti\n\t\t\n\t\t10.1016/j.tcs.2015.02.046\n\t\n\t\n\t\tTheoretical Computer Science\n\t\tTheoretical Computer Science\n\t\t0304-3975\n\t\t\n\t\t\t587\n\t\t\t\n\t\t\t2015\n\t\t\tElsevier BV"
+    },
+    {
+      "id": 6,
+      "text": "Data-Driven Statistical Learning of Temporal Logic Properties\n\t\t\n\t\t\tEzioBartocci\n\t\t\n\t\t\n\t\t\tLucaBortolussi\n\t\t\n\t\t\n\t\t\tGuidoSanguinetti\n\t\t\n\t\t10.1007/978-3-319-10512-3_3\n\t\n\t\n\t\tLecture Notes in Computer Science\n\t\tLecture Notes in Computer Science\n\t\t\n\t\t\tAxelLegay\n\t\t\n\t\t\n\t\t\tMariusBozga\n\t\t\n\t\t\n\t\t\tSpringer International Publishing\n\t\t\t2014\n\t\t\t8711"
+    },
+    {
+      "id": 7,
+      "text": "A Decision Tree Approach to Data Classification using Signal Temporal Logic\n\t\t\n\t\t\tGiuseppeBombara\n\t\t\n\t\t\n\t\t\tCristian-IoanVasile\n\t\t\n\t\t\n\t\t\tFranciscoPenedo\n\t\t\n\t\t\n\t\t\tHirotoshiYasuoka\n\t\t\n\t\t\n\t\t\tCalinBelta\n\t\t\n\t\t10.1145/2883817.2883843\n\t\n\t\n\t\tProceedings of the 19th International Conference on Hybrid Systems: Computation and Control\n\t\tthe 19th International Conference on Hybrid Systems: Computation and Control\n\t\t\n\t\t\tACM\n\t\t\t2016"
+    },
+    {
+      "id": 8,
+      "text": "Into the Square: On the Complexity of Some Quadratic-time Solvable Problems\n\t\t\n\t\t\tMicheleBorassi\n\t\t\n\t\t\n\t\t\tPierluigiCrescenzi\n\t\t\n\t\t\n\t\t\tMichelHabib\n\t\t\n\t\t10.1016/j.entcs.2016.03.005\n\t\n\t\n\t\tElectronic Notes in Theoretical Computer Science\n\t\tElectronic Notes in Theoretical Computer Science\n\t\t\n\t\t\tPierluigiCrescenzi\n\t\t\n\t\t\n\t\t\tMicheleLoreti\n\t\t\n\t\t1571-0661\n\t\t\n\t\t\t322\n\t\t\t\n\t\t\t2015\n\t\t\tElsevier BV"
+    },
+    {
+      "id": 9,
+      "text": "LTLf/LDLf Non-Markovian Rewards\n\t\t\n\t\t\tRonenIBrafman\n\t\t\n\t\t\n\t\t\tGiuseppeDe Giacomo\n\t\t\n\t\t\n\t\t\tFabioPatrizi\n\t\t\n\t\t10.1609/aaai.v32i1.11572\n\t\n\t\n\t\tProceedings of the AAAI Conference on Artificial Intelligence\n\t\tAAAI\n\t\t\n\t\t\tSheilaAMcilraith\n\t\t\n\t\t\n\t\t\tKilianQWeinberger\n\t\t\n\t\t2159-5399\n\t\t2374-3468\n\t\t\n\t\t\t32\n\t\t\t1\n\t\t\t\n\t\t\t2018\n\t\t\tAssociation for the Advancement of Artificial Intelligence (AAAI)"
+    },
+    {
+      "id": 10,
+      "text": "Temporal Logic Based Monitoring of Assisted Ventilation in Intensive Care Patients\n\t\t\n\t\t\tSaraBufo\n\t\t\n\t\t\n\t\t\tEzioBartocci\n\t\t\n\t\t\n\t\t\tGuidoSanguinetti\n\t\t\n\t\t\n\t\t\tMassimoBorelli\n\t\t\n\t\t\n\t\t\tUmbertoLucangelo\n\t\t\n\t\t\n\t\t\tLucaBortolussi\n\t\t\n\t\t10.1007/978-3-662-45231-8_30\n\t\n\t\n\t\tLecture Notes in Computer Science\n\t\tLecture Notes in Computer Science\n\t\t\n\t\t\tTizianaMargaria\n\t\t\n\t\t\n\t\t\tBernhardSteffen\n\t\t\n\t\t\n\t\t\tSpringer Berlin Heidelberg\n\t\t\t2014\n\t\t\t8803"
+    },
+    {
+      "id": 11,
+      "text": "Non-Markovian Rewards Expressed in LTL: Guiding Search Via Reward Shaping\n\t\t\n\t\t\tAlbertoCamacho\n\t\t\n\t\t\n\t\t\tOscarChen\n\t\t\n\t\t\n\t\t\tScottSanner\n\t\t\n\t\t\n\t\t\tSheilaAMcilraith\n\t\t\n\t\t10.1609/socs.v8i1.18421\n\t\n\t\n\t\tProceedings of the International Symposium on Combinatorial Search\n\t\tSOCS\n\t\t2832-9171\n\t\t2832-9163\n\t\t\n\t\t\t8\n\t\t\t1\n\t\t\t\n\t\t\t2017\n\t\t\tAssociation for the Advancement of Artificial Intelligence (AAAI)\n\t\t\n\t\n\tAlex Fukunaga and Akihiro Kishimoto"
+    },
+    {
+      "id": 12,
+      "text": "LTL and Beyond: Formal Languages for Reward Function Specification in Reinforcement Learning\n\t\t\n\t\t\tAlbertoCamacho\n\t\t\n\t\t\n\t\t\tRodrigoToro Icarte\n\t\t\n\t\t\n\t\t\tTorynQKlassen\n\t\t\n\t\t\n\t\t\tRichardAnthonyValenzano\n\t\t\n\t\t\n\t\t\tSheilaAMcilraith\n\t\t\n\t\t10.24963/ijcai.2019/840\n\t\n\t\n\t\tProceedings of the Twenty-Eighth International Joint Conference on Artificial Intelligence\n\t\t\n\t\t\tSaritKraus\n\t\t\n\t\tthe Twenty-Eighth International Joint Conference on Artificial Intelligence\n\t\t\n\t\t\tInternational Joint Conferences on Artificial Intelligence Organization\n\t\t\t2019"
+    },
+    {
+      "id": 13,
+      "text": "Learning Interpretable Models Expressed in Linear Temporal Logic\n\t\t\n\t\t\tAlbertoCamacho\n\t\t\n\t\t\n\t\t\tSheilaAMcilraith\n\t\t\n\t\t10.1609/icaps.v29i1.3529\n\t\n\t\n\t\tProceedings of the International Conference on Automated Planning and Scheduling\n\t\tICAPS\n\t\t2334-0835\n\t\t2334-0843\n\t\t\n\t\t\t29\n\t\t\t\n\t\t\t2019\n\t\t\tAssociation for the Advancement of Artificial Intelligence (AAAI)"
+    },
+    {
+      "id": 14,
+      "text": "Finding Invariant assertions for proving programs\n\t\t\n\t\t\tMichelCaplain\n\t\t\n\t\t10.1145/800027.808436\n\t\n\t\n\t\tProceedings of the international conference on Reliable software -\n\t\t\n\t\t\tMartinLShooman\n\t\t\n\t\t\n\t\t\tRaymondTYeh\n\t\t\n\t\tthe international conference on Reliable software\n\t\t\n\t\t\tACM Press\n\t\t\t1975"
+    },
+    {
+      "id": 15,
+      "text": "Explaining Multi-stage Tasks by Learning Temporal Logic Formulas from Suboptimal Demonstrations\n\t\t\n\t\t\tGlenChou\n\t\t\n\t\t\n\t\t\tNecmiyeOzay\n\t\t\n\t\t\n\t\t\tDmitryBerenson\n\t\t\n\t\t10.15607/rss.2020.xvi.097\n\t\n\t\n\t\tRobotics: Science and Systems XVI\n\t\t\n\t\t\tMarcToussaint\n\t\t\n\t\t\n\t\t\tAntonioBicchi\n\t\t\n\t\t\n\t\t\tTuckerHermans\n\t\t\n\t\t\n\t\t\tRobotics: Science and Systems Foundation\n\t\t\t2020"
+    },
+    {
+      "id": 16,
+      "text": "Retrieval-guided reinforcement learning for Boolean circuit minimization\n\t\t\n\t\t\tAnimeshBasak\n\t\t\n\t\t\n\t\t\tChowdhury\n\t\t\n\t\t\n\t\t\tMarcoRomanelli\n\t\t\n\t\t\n\t\t\tBenjaminTan\n\t\t\n\t\t\n\t\t\tRameshKarri\n\t\t\n\t\t\n\t\t\tSiddharthGarg\n\t\t\n\t\n\t\n\t\tInternational Conference on Learning Representations\n\t\t\n\t\t\t2024"
+    },
+    {
+      "id": 17,
+      "text": "Mining specifications of malicious behavior\n\t\t\n\t\t\tMihaiChristodorescu\n\t\t\n\t\t\n\t\t\tSomeshJha\n\t\t\n\t\t\n\t\t\tChristopherKruegel\n\t\t\n\t\t10.1145/1287624.1287628\n\t\n\t\n\t\tProceedings of the the 6th joint meeting of the European software engineering conference and the ACM SIGSOFT symposium on The foundations of software engineering\n\t\tthe the 6th joint meeting of the European software engineering conference and the ACM SIGSOFT symposium on The foundations of software engineering\n\t\t\n\t\t\tACM\n\t\t\t2007\n\t\t\t\n\t\t\n\t\n\tIvica Crnkovic and Antonia Bertolino"
+    },
+    {
+      "id": 18,
+      "text": "Cause-effect relationships and partially defined Boolean functions\n\t\t\n\t\t\tYvesCrama\n\t\t\n\t\t\n\t\t\tPeterLHammer\n\t\t\n\t\t\n\t\t\tToshihideIbaraki\n\t\t\n\t\t10.1007/bf02283750\n\t\n\t\n\t\tAnnals of Operations Research\n\t\t\n\t\t\t16\n\t\t\t1\n\t\t\t\n\t\t\t1988"
+    },
+    {
+      "id": 19,
+      "text": "Improved Automata Generation for Linear Temporal Logic\n\t\t\n\t\t\tMarcoDaniele\n\t\t\n\t\t\n\t\t\tFaustoGiunchiglia\n\t\t\n\t\t\n\t\t\tMosheYVardi\n\t\t\n\t\t10.1007/3-540-48683-6_23\n\t\n\t\n\t\tLecture Notes in Computer Science\n\t\t\n\t\t\tSpringer Berlin Heidelberg\n\t\t\t1999"
+    },
+    {
+      "id": 20,
+      "text": "Enhanced Enumeration Techniques for Syntax-Guided Synthesis of Bit-Vector Manipulations\n\t\t\n\t\t\tYuantianDing\n\t\t\t0009-0008-9941-6394\n\t\t\n\t\t\n\t\t\tXiaokangQiu\n\t\t\t0000-0001-9476-7349\n\t\t\n\t\t10.1145/3632913\n\t\n\t\n\t\tProceedings of the ACM on Programming Languages\n\t\tProc. ACM Program. Lang.\n\t\t2475-1421\n\t\t\n\t\t\t8\n\t\t\tPOPL\n\t\t\t\n\t\t\t2024\n\t\t\tAssociation for Computing Machinery (ACM)"
+    },
+    {
+      "id": 21,
+      "text": "More Scalable LTL Model Checking via Discovering Design-Space Dependencies ( $$D^{3}$$ D 3 )\n\t\t\n\t\t\tRohitDureja\n\t\t\t0000-0002-7152-8115\n\t\t\n\t\t\n\t\t\tKristinYvonneRozier\n\t\t\t0000-0002-6718-2828\n\t\t\n\t\t10.1007/978-3-319-89960-2_17\n\t\n\t\n\t\tLecture Notes in Computer Science\n\t\tLecture Notes in Computer Science\n\t\t\n\t\t\tSpringer International Publishing\n\t\t\t2018\n\t\t\t3"
+    },
+    {
+      "id": 22,
+      "text": "From Spot 2.0 to Spot 2.10: What’s New?\n\t\t\n\t\t\tAlexandreDuret-Lutz\n\t\t\t0000-0002-6623-2512\n\t\t\n\t\t\n\t\t\tEtienneRenault\n\t\t\t0000-0001-9013-4413\n\t\t\n\t\t\n\t\t\tMaximilienColange\n\t\t\t0000-0003-4769-3302\n\t\t\n\t\t\n\t\t\tFlorianRenkin\n\t\t\t0000-0002-5066-1726\n\t\t\n\t\t\n\t\t\tAlexandreGbaguidi Aisse\n\t\t\n\t\t\n\t\t\tPhilippSchlehuber-Caissier\n\t\t\t0000-0002-6611-9659\n\t\t\n\t\t\n\t\t\tThomasMedioni\n\t\t\n\t\t\n\t\t\tAntoineMartin\n\t\t\t0000-0002-3263-7669\n\t\t\n\t\t\n\t\t\tJérômeDubois\n\t\t\n\t\t\n\t\t\tClémentGillard\n\t\t\n\t\t\n\t\t\tHenrichLauko\n\t\t\t0000-0002-5422-5884\n\t\t\n\t\t10.1007/978-3-031-13188-2_9\n\t\n\t\n\t\tLecture Notes in Computer Science\n\t\tLecture Notes in Computer Science\n\t\t\n\t\t\tSpringer International Publishing\n\t\t\t\n\t\t\t13372\n\t\t\t\n\t\t\n\t\n\tCAV 2022, Proceedings, Part II"
+    },
+    {
+      "id": 23,
+      "text": "Patterns in property specifications for finite-state verification\n\t\t\n\t\t\tBMatthew\n\t\t\n\t\t\n\t\t\tGeorgeSDwyer\n\t\t\n\t\t\n\t\t\tJamesCAvrunin\n\t\t\n\t\t\n\t\t\tCorbett\n\t\t\n\t\t10.1145/302405.302672\n\t\n\t\n\t\tInternational Conference on Software Engineering, ICSE\n\t\t\n\t\t\tACM\n\t\t\t1999"
+    },
+    {
+      "id": 24,
+      "text": "Bugs as deviant behavior\n\t\t\n\t\t\tDawsonREngler\n\t\t\n\t\t\n\t\t\tDavidYuChen\n\t\t\n\t\t\n\t\t\tSethHallem\n\t\t\n\t\t\n\t\t\tAndyChou\n\t\t\n\t\t\n\t\t\tBenjaminChelf\n\t\t\n\t\t10.1145/502034.502041\n\t\n\t\n\t\tProceedings of the eighteenth ACM symposium on Operating systems principles\n\t\t\n\t\t\tKeithMarzullo\n\t\t\n\t\t\n\t\t\tMahadevSatyanarayanan\n\t\t\n\t\tthe eighteenth ACM symposium on Operating systems principles\n\t\t\n\t\t\tACM\n\t\t\t2001"
+    },
+    {
+      "id": 25,
+      "text": "The complexity of learning linear temporal formulas from examples\n\t\t\n\t\t\tNathanaëlFijalkow\n\t\t\n\t\t\n\t\t\tGuillaumeLagarde\n\t\t\n\t\n\t\n\t\tInternational Conference on Grammatical Inference\n\t\t\n\t\t\t2021\n\t\t\t153\n\t\t\t\n\t\t\n\t\n\tProceedings of Machine Learning Research"
+    },
+    {
+      "id": 26,
+      "text": "Observable Behaviors and Equivalences of Logic Programs\n\t\t\n\t\t\tMaurizioGabbrielli\n\t\t\n\t\t\n\t\t\tGiorgioLevi\n\t\t\n\t\t\n\t\t\tMariaCMeo\n\t\t\n\t\t10.1006/inco.1995.1138\n\t\n\t\n\t\tInformation and Computation\n\t\tInformation and Computation\n\t\t0890-5401\n\t\t\n\t\t\t122\n\t\t\t1\n\t\t\t\n\t\t\t1992\n\t\t\tElsevier BV"
+    },
+    {
+      "id": 27,
+      "text": "Javert\n\t\t\n\t\t\tMarkGabel\n\t\t\n\t\t\n\t\t\tZhendongSu\n\t\t\n\t\t10.1145/1453101.1453150\n\t\n\t\n\t\tProceedings of the 16th ACM SIGSOFT International Symposium on Foundations of software engineering\n\t\tthe 16th ACM SIGSOFT International Symposium on Foundations of software engineeringNew York, NY, USA\n\t\t\n\t\t\tACM\n\t\t\t2008"
+    },
+    {
+      "id": 28,
+      "text": "ARSENAL: Automatic Requirements Specification Extraction from Natural Language\n\t\t\n\t\t\tShaliniGhosh\n\t\t\n\t\t\n\t\t\tDanielElenius\n\t\t\n\t\t\n\t\t\tWenchaoLi\n\t\t\n\t\t\n\t\t\tPatrickLincoln\n\t\t\n\t\t\n\t\t\tNatarajanShankar\n\t\t\n\t\t\n\t\t\tWilfriedSteiner\n\t\t\n\t\t10.1007/978-3-319-40648-0_4\n\t\n\t\n\t\tLecture Notes in Computer Science\n\t\tLecture Notes in Computer Science\n\t\t\n\t\t\tSanjaiRayadurgam\n\t\t\n\t\t\n\t\t\tOksanaTkachuk\n\t\t\n\t\t\n\t\t\tSpringer International Publishing\n\t\t\t2016\n\t\t\t9690"
+    },
+    {
+      "id": 29,
+      "text": "Linear temporal logic and linear dynamic logic on finite traces\n\t\t\n\t\t\tGiuseppeDe\n\t\t\n\t\t\n\t\t\tGiacomo\n\t\t\n\t\t\n\t\t\tMosheYVardi\n\t\t\n\t\n\t\n\t\tInternational Joint Conference on Artificial Intelligence, IJCAI'13\n\t\t\n\t\t\tFrancescaRossi\n\t\t\n\t\t\n\t\t\t2013\n\t\t\t\n\t\t\n\t\n\tIJCAI/AAAI"
+    },
+    {
+      "id": 30,
+      "text": "Generation of Formal Requirements from Structured Natural Language\n\t\t\n\t\t\tDimitraGiannakopoulou\n\t\t\n\t\t\n\t\t\tThomasPressburger\n\t\t\n\t\t\n\t\t\tAnastasiaMavridou\n\t\t\n\t\t\n\t\t\tJohannSchumann\n\t\t\n\t\t10.1007/978-3-030-44429-7_2\n\t\n\t\n\t\tLecture Notes in Computer Science\n\t\tCEUR Workshop Proceedings. CEUR-WS.org\n\t\t\n\t\t\tSpringer International Publishing\n\t\t\t2020\n\t\t\t2584"
+    },
+    {
+      "id": 31,
+      "text": "Explaining and Clustering Playtraces Using Temporal Logics\n\t\t\n\t\t\tPabloGutiérrez-Sánchez\n\t\t\t0000-0002-6702-5726\n\t\t\n\t\t\n\t\t\tDiegoPérez-Liébana\n\t\t\t0000-0003-1958-0212\n\t\t\n\t\t\n\t\t\tRalucaDGaina\n\t\t\t0000-0002-0283-8312\n\t\t\n\t\t10.1145/3723498.3723719\n\t\n\t\n\t\tProceedings of the 20th International Conference on the Foundations of Digital Games\n\t\tthe 20th International Conference on the Foundations of Digital Games\n\t\t\n\t\t\tACM"
+    },
+    {
+      "id": 32,
+      "text": "Teaching multiple tasks to an RL agent using LTL\n\t\t\n\t\t\tRodrigoToro Icarte\n\t\t\n\t\t\n\t\t\tTorynQKlassen\n\t\t\n\t\t\n\t\t\tRichardAnthonyValenzano\n\t\t\n\t\t\n\t\t\tSheilaAMcilraith\n\t\t\n\t\n\t\n\t\tInternational Foundation for Autonomous Agents and Multiagent Systems\n\t\t\n\t\t\tElisabethAndré\n\t\t\n\t\t\n\t\t\tSvenKoenig\n\t\t\n\t\t\n\t\t\tMehdiDastani\n\t\t\n\t\t\n\t\t\tGitaSukthankar\n\t\t\n\t\tRichland, SC, USA\n\t\t\n\t\t\tACM\n\t\t\t2018\n\t\t\t\n\t\t\n\t\n\tInternational Conference on Autonomous Agents and MultiAgent Systems"
+    },
+    {
+      "id": 33,
+      "text": "Reward Machines: Exploiting Reward Function Structure in Reinforcement Learning\n\t\t\n\t\t\tRodrigoToro Icarte\n\t\t\t0000-0002-7734-099X\n\t\t\n\t\t\n\t\t\tTorynQKlassen\n\t\t\n\t\t\n\t\t\tRichardAnthonyValenzano\n\t\t\n\t\t\n\t\t\tSheilaAMcilraith\n\t\t\n\t\t10.1613/jair.1.12440\n\t\n\t\n\t\tJournal of Artificial Intelligence Research\n\t\tjair\n\t\t\n\t\t\tJenniferGDy\n\t\t\n\t\t\n\t\t\tAndreasKrause\n\t\t\n\t\t1076-9757\n\t\t\n\t\t\t73\n\t\t\t\n\t\t\t2018\n\t\t\tAI Access Foundation"
+    },
+    {
+      "id": 34,
+      "text": "The Reactive Synthesis Competition (SYNTCOMP): 2018–2021\n\t\t\n\t\t\tSwenJacobs\n\t\t\n\t\t\n\t\t\tGuillermoAPérez\n\t\t\n\t\t\n\t\t\tRemcoAbraham\n\t\t\n\t\t\n\t\t\tVéroniqueBruyère\n\t\t\n\t\t\n\t\t\tMichaëlCadilhac\n\t\t\n\t\t\n\t\t\tMaximilienColange\n\t\t\n\t\t\n\t\t\tCharlyDelfosse\n\t\t\n\t\t\n\t\t\tTomVan Dijk\n\t\t\n\t\t\n\t\t\tAlexandreDuret-Lutz\n\t\t\n\t\t\n\t\t\tPeterFaymonville\n\t\t\n\t\t\n\t\t\tBerndFinkbeiner\n\t\t\n\t\t\n\t\t\tAyratKhalimov\n\t\t\n\t\t\n\t\t\tFelixKlein\n\t\t\n\t\t\n\t\t\tMichaelLuttenberger\n\t\t\n\t\t\n\t\t\tKlaraJMeyer\n\t\t\n\t\t\n\t\t\tThibaudMichaud\n\t\t\n\t\t\n\t\t\tAdrienPommellet\n\t\t\n\t\t\n\t\t\tFlorianRenkin\n\t\t\n\t\t\n\t\t\tPhilippSchlehuber-Caissier\n\t\t\n\t\t\n\t\t\tMouhammadSakr\n\t\t\n\t\t\n\t\t\tSalomonSickert\n\t\t\n\t\t\n\t\t\tGaëtanStaquet\n\t\t\n\t\t\n\t\t\tClémentTamines\n\t\t\n\t\t\n\t\t\tLeanderTentrup\n\t\t\n\t\t\n\t\t\tAdamWalker\n\t\t\n\t\t10.1007/s10009-024-00754-1\n\t\n\t\n\t\tInternational Journal on Software Tools for Technology Transfer\n\t\tInt J Softw Tools Technol Transfer\n\t\t1433-2779\n\t\t1433-2787\n\t\t\n\t\t\t26\n\t\t\t5\n\t\t\t\n\t\t\t2024\n\t\t\tSpringer Science and Business Media LLC"
+    },
+    {
+      "id": 35,
+      "text": "Mining Requirements From Closed-Loop Control Models\n\t\t\n\t\t\tXiaoqingJin\n\t\t\n\t\t\n\t\t\tAlexandreDonze\n\t\t\n\t\t\n\t\t\tJyotirmoyVDeshmukh\n\t\t\n\t\t\n\t\t\tSanjitASeshia\n\t\t\n\t\t10.1109/tcad.2015.2421907\n\t\n\t\n\t\tIEEE Transactions on Computer-Aided Design of Integrated Circuits and Systems\n\t\tIEEE Trans. Comput.-Aided Des. Integr. Circuits Syst.\n\t\t0278-0070\n\t\t1937-4151\n\t\t\n\t\t\t34\n\t\t\t11\n\t\t\t\n\t\t\t2015\n\t\t\tInstitute of Electrical and Electronics Engineers (IEEE)"
+    },
+    {
+      "id": 36,
+      "text": "Anomaly detection in cyber-physical systems: A formal methods approach\n\t\t\n\t\t\tAustinJones\n\t\t\n\t\t\n\t\t\tZhaodanKong\n\t\t\n\t\t\n\t\t\tCalinBelta\n\t\t\n\t\t10.1109/cdc.2014.7039487\n\t\n\t\n\t\t53rd IEEE Conference on Decision and Control\n\t\t\n\t\t\tIEEE\n\t\t\t2014"
+    },
+    {
+      "id": 37,
+      "text": "Reducibility among Combinatorial Problems\n\t\t\n\t\t\tRichardMKarp\n\t\t\n\t\t10.1007/978-1-4684-2001-2_9\n\t\n\t\n\t\tComplexity of Computer Computations\n\t\t\n\t\t\tRaymondEMiller\n\t\t\n\t\t\n\t\t\tJamesWThatcher\n\t\t\n\t\tNew York\n\t\t\n\t\t\tSpringer US\n\t\t\t1972"
+    },
+    {
+      "id": 38,
+      "text": "Temporal Logics for Learning and Detection of Anomalous Behavior\n\t\t\n\t\t\tZhaodanKong\n\t\t\n\t\t\n\t\t\tAustinJones\n\t\t\n\t\t\n\t\t\tCalinBelta\n\t\t\n\t\t10.1109/tac.2016.2585083\n\t\n\t\n\t\tIEEE Transactions on Automatic Control\n\t\tIEEE Trans. Automat. Contr.\n\t\t0018-9286\n\t\t1558-2523\n\t\t\n\t\t\t62\n\t\t\t3\n\t\t\t\n\t\t\t2017\n\t\t\tInstitute of Electrical and Electronics Engineers (IEEE)"
+    },
+    {
+      "id": 39,
+      "text": "Investigating Program Behavior Using the Texada LTL Specifications Miner\n\t\t\n\t\t\tCarolineLemieux\n\t\t\n\t\t\n\t\t\tIvanBeschastnikh\n\t\t\n\t\t10.1109/ase.2015.94\n\t\n\t\n\t\t2015 30th IEEE/ACM International Conference on Automated Software Engineering (ASE)\n\t\t\n\t\t\tIEEE\n\t\t\t2015"
+    },
+    {
+      "id": 40,
+      "text": "General LTL Specification Mining (T)\n\t\t\n\t\t\tCarolineLemieux\n\t\t\n\t\t\n\t\t\tDennisPark\n\t\t\n\t\t\n\t\t\tIvanBeschastnikh\n\t\t\n\t\t10.1109/ase.2015.71\n\t\n\t\n\t\t2015 30th IEEE/ACM International Conference on Automated Software Engineering (ASE)\n\t\t\n\t\t\tIEEE\n\t\t\t2015"
+    },
+    {
+      "id": 41,
+      "text": "A randomised evaluation of the effects of an agricultural insurance programme on rural households’ behaviour: evidence from China\n\t\t\n\t\t\tJingCai\n\t\t\n\t\t\n\t\t\tAlainDeJanvry\n\t\t\n\t\t\n\t\t\tElisabethSadoulet\n\t\t\n\t\t10.23846/ow2130\n\t\n\t\n\t\tSpecification Mining: New Formalisms, Algorithms and Applications\n\t\tBerkeley, USA\n\t\t\n\t\t\tInternational Initiative for Impact Evaluation\n\t\t\t2013\n\t\t\n\t\t\n\t\t\tUniversity of California\n\t\t\n\t\n\tPhD thesis"
+    },
+    {
+      "id": 42,
+      "text": "PR-Miner\n\t\t\n\t\t\tZhenminLi\n\t\t\n\t\t\n\t\t\tYuanyuanZhou\n\t\t\n\t\t10.1145/1081706.1081755\n\t\n\t\n\t\tProceedings of the 10th European software engineering conference held jointly with 13th ACM SIGSOFT international symposium on Foundations of software engineering\n\t\t\n\t\t\tMichelWermelinger\n\t\t\n\t\t\n\t\t\tHaraldCGall\n\t\t\n\t\tthe 10th European software engineering conference held jointly with 13th ACM SIGSOFT international symposium on Foundations of software engineering\n\t\t\n\t\t\tACM\n\t\t\t2005"
+    },
+    {
+      "id": 43,
+      "text": "Mining Software Specifications\n\t\t\n\t\t\tDavidLo\n\t\t\n\t\t\n\t\t\tSiau-ChengKhoo\n\t\t\n\t\t\n\t\t\tJiaweiHan\n\t\t\n\t\t\n\t\t\tChaoLiu\n\t\t\n\t\t10.1201/b10928\n\t\t\n\t\t\t2017\n\t\t\tCRC Press\n\t\t\n\t\n\tUSA, 1st edition"
+    },
+    {
+      "id": 44,
+      "text": "VALIO: Visual attention-based linear temporal logic method for explainable out-of-the-loop identification\n\t\t\n\t\t\tMengtaoLyu\n\t\t\t0000-0003-1505-1970\n\t\t\n\t\t\n\t\t\tFanLi\n\t\t\t0000-0002-3929-6625\n\t\t\n\t\t\n\t\t\tChing-HungLee\n\t\t\t0000-0002-4093-556X\n\t\t\n\t\t\n\t\t\tChun-HsienChen\n\t\t\t0000-0003-2193-5270\n\t\t\n\t\t10.1016/j.knosys.2024.112086\n\t\n\t\n\t\tKnowledge-Based Systems\n\t\tKnowledge-Based Systems\n\t\t0950-7051\n\t\t\n\t\t\t299\n\t\t\t112086\n\t\t\t\n\t\t\tElsevier BV"
+    },
+    {
+      "id": 45,
+      "text": "Learning temporal formulas from examples is hard\n\t\t\n\t\t\tCortoMascle\n\t\t\n\t\t\n\t\t\tNathanaëlFijalkow\n\t\t\n\t\t\n\t\t\tGuillaumeLagarde\n\t\t\n\t\t10.48550/arXiv.2312.16336\n\t\tarXiv:2312.16336\n\t\t\n\t\t\t2023"
+    },
+    {
+      "id": 46,
+      "text": "Guiding LLM temporal logic generation with explicit separation of data and control\n\t\t\n\t\t\tWilliamMurphy\n\t\t\n\t\t\n\t\t\tNikolausHolzer\n\t\t\n\t\t\n\t\t\tNathanKoenig\n\t\t\n\t\t\n\t\t\tLeyiCui\n\t\t\n\t\t\n\t\t\tRavenRothkopf\n\t\t\n\t\t\n\t\t\tFeitongQiao\n\t\t\n\t\t\n\t\t\tMarkSantolucito\n\t\t\n\t\t10.48550/ARXIV.2406.07400\n\t\tarXiv:2406.07400\n\t\t\n\t\t\t2024"
+    },
+    {
+      "id": 47,
+      "text": "Learning Linear Temporal Properties\n\t\t\n\t\t\tDanielNeider\n\t\t\n\t\t\n\t\t\tIvanGavran\n\t\t\n\t\t10.23919/fmcad.2018.8603016\n\t\n\t\n\t\t2018 Formal Methods in Computer Aided Design (FMCAD)\n\t\t\n\t\t\tIEEE\n\t\t\t2018"
+    },
+    {
+      "id": 48,
+      "text": "The temporal logic of programs\n\t\t\n\t\t\tAmirPnueli\n\t\t\n\t\t10.1109/sfcs.1977.32\n\t\n\t\n\t\t18th Annual Symposium on Foundations of Computer Science (sfcs 1977)\n\t\t\n\t\t\tIEEE\n\t\t\t1977"
+    },
+    {
+      "id": 49,
+      "text": "Scalable anytime algorithms for learning fragments of linear temporal logic\n\t\t\n\t\t\tRitamRaha\n\t\t\n\t\t\n\t\t\tRajarshiRoy\n\t\t\n\t\t\n\t\t\tNathanaëlFijalkow\n\t\t\n\t\t\n\t\t\tDanielNeider\n\t\t\n\t\t10.1007/978-3-030-99524-9_14\n\t\n\t\n\t\tInternational Conference on Tools and Algorithms for the Construction and Analysis of Systems, volume 13243 of TACAS'22\n\t\t\n\t\t\tSpringer\n\t\t\t2022"
+    },
+    {
+      "id": 50,
+      "text": "Scarlet: Scalable Anytime Algorithms for Learning Fragments of Linear Temporal Logic\n\t\t\n\t\t\tRitamRaha\n\t\t\t0000-0003-1467-1182\n\t\t\n\t\t\n\t\t\tRajarshiRoy\n\t\t\t0000-0002-0202-1169\n\t\t\n\t\t\n\t\t\tNathanaëlFijalkow\n\t\t\t0000-0002-6576-4680\n\t\t\n\t\t\n\t\t\tDanielNeider\n\t\t\t0000-0001-9276-6342\n\t\t\n\t\t10.21105/joss.05052\n\t\n\t\n\t\tJournal of Open Source Software\n\t\tJOSS\n\t\t2475-9066\n\t\t\n\t\t\t9\n\t\t\t93\n\t\t\t5052\n\t\t\t2024\n\t\t\tThe Open Journal"
+    },
+    {
+      "id": 51,
+      "text": "Learning probabilistic temporal logic specifications for stochastic systems\n\t\t\n\t\t\tRajarshiRoy\n\t\t\n\t\t\n\t\t\tYashPote\n\t\t\n\t\t\n\t\t\tDavidParker\n\t\t\n\t\t\n\t\t\tMartaKwiatkowska\n\t\t\n\t\tarXiv:2505.12107v1"
+    },
+    {
+      "id": 52,
+      "text": "Specification: The biggest bottleneck in formal methods and autonomy\n\t\t\n\t\t\tYvonneKristin\n\t\t\n\t\t\n\t\t\tRozier\n\t\t\n\t\t10.1007/978-3-319-48869-1_2\n\t\n\t\n\t\tInternational Conference on Verified Software. Theories, Tools, and Experiments\n\t\tLecture Notes in Computer Science\n\t\t\n\t\t\t2016\n\t\t\t9971\n\t\t\t\n\t\t\n\t\n\tSandrine Blazy and Marsha Chechik"
+    },
+    {
+      "id": 53,
+      "text": "A theory of the learnable\n\t\t\n\t\t\tLGValiant\n\t\t\n\t\t10.1145/1968.1972\n\t\n\t\n\t\tCommunications of the ACM\n\t\tCommun. ACM\n\t\t0001-0782\n\t\t1557-7317\n\t\t\n\t\t\t27\n\t\t\t11\n\t\t\t\n\t\t\t1984\n\t\t\tAssociation for Computing Machinery (ACM)"
+    },
+    {
+      "id": 54,
+      "text": "Search-Based Regular Expression Inference on a GPU\n\t\t\n\t\t\tMojtabaValizadeh\n\t\t\t0000-0003-1582-3213\n\t\t\n\t\t\n\t\t\tMartinBerger\n\t\t\t0000-0003-3239-5812\n\t\t\n\t\t10.1145/3591274\n\t\n\t\n\t\tProceedings of the ACM on Programming Languages\n\t\tProc. ACM Program. Lang.\n\t\t2475-1421\n\t\t\n\t\t\t7\n\t\t\tPLDI\n\t\t\t\n\t\t\t2023\n\t\t\tAssociation for Computing Machinery (ACM)"
+    },
+    {
+      "id": 55,
+      "text": "LTL Learning on GPUs\n\t\t\n\t\t\tMojtabaValizadeh\n\t\t\t0000-0003-1582-3213\n\t\t\n\t\t\n\t\t\tNathanaëlFijalkow\n\t\t\t0000-0002-6576-4680\n\t\t\n\t\t\n\t\t\tMartinBerger\n\t\t\t0000-0003-3239-5812\n\t\t\n\t\t10.1007/978-3-031-65633-0_10\n\t\n\t\n\t\tLecture Notes in Computer Science\n\t\tLecture Notes in Computer Science\n\t\t\n\t\t\tSpringer Nature Switzerland\n\t\t\t\n\t\t\t14683"
+    },
+    {
+      "id": 56,
+      "text": "The synthesis of loop predicates\n\t\t\n\t\t\tBenWegbreit\n\t\t\n\t\t10.1145/360827.360850\n\t\n\t\n\t\tCommunications of the ACM\n\t\tCommun. ACM\n\t\t0001-0782\n\t\t1557-7317\n\t\t\n\t\t\t17\n\t\t\t2\n\t\t\t\n\t\t\t1974\n\t\t\tAssociation for Computing Machinery (ACM)"
+    },
+    {
+      "id": 57,
+      "text": "A new algorithm for optimal 2-constraint satisfaction and its implications\n\t\t\n\t\t\tRyanWilliams\n\t\t\n\t\t10.1016/j.tcs.2005.09.023\n\t\n\t\n\t\tTheoretical Computer Science\n\t\tTheoretical Computer Science\n\t\t0304-3975\n\t\t\n\t\t\t348\n\t\t\t2-3\n\t\t\t\n\t\t\t2005\n\t\t\tElsevier BV"
+    },
+    {
+      "id": 58,
+      "text": "Querying Parametric Temporal Logic Properties on Embedded Systems\n\t\t\n\t\t\tHengyiYang\n\t\t\n\t\t\n\t\t\tBardhHoxha\n\t\t\n\t\t\n\t\t\tGeorgiosEFainekos\n\t\t\n\t\t10.1007/978-3-642-34691-0_11\n\t\n\t\n\t\tLecture Notes in Computer Science\n\t\tLecture Notes in Computer Science\n\t\t\n\t\t\tBrianNielsen\n\t\t\n\t\t\n\t\t\tCarstenWeise\n\t\t\n\t\t\n\t\t\tSpringer Berlin Heidelberg\n\t\t\t2012\n\t\t\t7641"
+    },
+    {
+      "id": 59,
+      "text": "Perracotta\n\t\t\n\t\t\tJinlinYang\n\t\t\n\t\t\n\t\t\tDavidEvans\n\t\t\n\t\t\n\t\t\tDeepaliBhardwaj\n\t\t\n\t\t\n\t\t\tThirumaleshBhat\n\t\t\n\t\t\n\t\t\tManuvirDas\n\t\t\n\t\t10.1145/1134285.1134325\n\t\n\t\n\t\tProceedings of the 28th international conference on Software engineering\n\t\tthe 28th international conference on Software engineering\n\t\t\n\t\t\tACM\n\t\t\t2006"
+    },
+    {
+      "id": 60,
+      "text": "Mining Specifications: A Roadmap\n\t\t\n\t\t\tAndreasZeller\n\t\t\n\t\t10.1007/978-3-642-15187-3_13\n\t\n\t\n\t\tThe Future of Software Engineering\n\t\t\n\t\t\tSebastianNanz\n\t\t\n\t\t\n\t\t\tSpringer Berlin Heidelberg\n\t\t\t2010"
+    }
+  ],
+  "formulas": [
+    {
+      "id": "FORMULA_1",
+      "raw": "w |= ⊤ and w ̸ |= ⊥. w |= c, with c ∈ AP, if c ∈ w(1). w |= X! φ if ℓ > 1 and w[2 . . . ] |= φ (strong next). w |= φ U ψ if there is i ∈ [1, ℓ] such that for j ∈ [1, i -1] we have w[j . . . ] |= φ, and w[i . . . ] |= ψ (until)."
+    },
+    {
+      "id": "FORMULA_2",
+      "raw": "|w| such that w[i . . .] |= φ if and only if v(i) = 1;"
+    },
+    {
+      "id": "FORMULA_3",
+      "raw": "1: procedure Search(AP, O1, O2, P, N, k) 2: S, F ← VFB-Bounded(AP, O1, O2, k) 3: if S ̸ = ⊥ then ▷ If the VFB"
+    },
+    {
+      "id": "FORMULA_4",
+      "raw": "F ′ ← Collapse(F) 7:"
+    },
+    {
+      "id": "FORMULA_5",
+      "raw": "|P | + |N | instead of ℓ • (|P | + |N |)"
+    },
+    {
+      "id": "FORMULA_6",
+      "raw": "▶ Definition 2. A formula θ 2 is dominated by a formula θ 1 , denoted θ 2 ⪯ θ 1 , if weight(θ 1 ) ≤ weight(θ 2 ) and sat(θ 2 ) ⊆ sat(θ 1 )."
+    },
+    {
+      "id": "FORMULA_7",
+      "raw": "F i [θ 2 ← θ 1 ] = θ 1 if F i = θ 2 F i otherwise, θ 2 [θ 2 ← θ 1 ] = θ 1 , (θ ∩ θ ′ )[θ 2 ← θ 1 ] = θ[θ 2 ← θ 1 ] ∩ θ ′ [θ 2 ← θ 1 ],"
+    },
+    {
+      "id": "FORMULA_8",
+      "raw": "(θ ∪ θ ′ )[θ 2 ← θ 1 ] = θ[θ 2 ← θ 1 ] ∪ θ ′ [θ 2 ← θ 1 ]."
+    },
+    {
+      "id": "FORMULA_9",
+      "raw": "θ 2 ⪯ θ 1 , then θ ⪯ θ[θ 2 ← θ 1 ]."
+    },
+    {
+      "id": "FORMULA_10",
+      "raw": "θ 2 ∩ P ⊆ θ 1 ∩ P and N \\ θ 2 ⊆ N \\ θ 1 . (1"
+    },
+    {
+      "id": "FORMULA_11",
+      "raw": ")"
+    },
+    {
+      "id": "FORMULA_12",
+      "raw": "sat(θ 2 ∩ θ) = ( θ 2 ∩ θ ∩ P ) ∪ (N \\ θ 2 ∩ θ ) = ( θ 2 ∩ θ ∩ P ) ∪ (N \\ ( θ 2 ∩ θ )) = (( θ 2 ∩ P ) ∩ θ ) ∪ ((N \\ θ 2 ) ∪ (N \\ θ )) ⊆ (( θ 1 ∩ P ) ∩ θ ) ∪ ((N \\ θ 1 ) ∪ (N \\ θ )) (2) = ( θ 1 ∩ θ ∩ P ) ∪ (N \\ ( θ 1 ∩ θ )) = sat(θ 1 ∩ θ)."
+    },
+    {
+      "id": "FORMULA_13",
+      "raw": "F ↾U = {F ∩ U | F ∈ F }."
+    },
+    {
+      "id": "FORMULA_14",
+      "raw": "F k+1 ← F k+1 ∪ {φ ′ } 14:"
+    },
+    {
+      "id": "FORMULA_15",
+      "raw": "k ← k + 1 ▷ No solution of size k + 1"
+    }
+  ]
+}

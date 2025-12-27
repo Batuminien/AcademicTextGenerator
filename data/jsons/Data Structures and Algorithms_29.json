@@ -1,0 +1,271 @@
+{
+  "title": "Optimally revealing bits for rejection sampling",
+  "authors": [
+    {
+      "firstname": "Louis-Roy",
+      "surname": "Langevin",
+      "email": "louis-roy.langevin@mail.mcgill.ca"
+    },
+    {
+      "firstname": "Alex",
+      "surname": "Waese-Perlman",
+      "email": "alex.waese-perlman@mail.mcgill.ca"
+    }
+  ],
+  "abstract": "Rejection sampling is a popular method used to generate numbers that follow some given distribution. We study the use of this method to generate random numbers in the unit interval from increasing probability density functions. We focus on the problem of sampling from n correlated random variables from a joint distribution whose marginal distributions are all increasing. We show that, in the worst case, the expected number of random bits required to accept or reject a sample grows at least linearly and at most quadratically with n.",
+  "sections": [
+    {
+      "title": "I. INTRODUCTION",
+      "paragraphs": [
+        "Understanding how much information we need to learn about a number to answer questions about it is a fundamental problem in computer science. Imagine you pick a random number X uniformly between 0 and 1, but you don't know its exact value. Instead, you can reveal the digits of its binary representation one at a time. For example, if X = 1/3, its binary form is 0.010101..., and each digit gives a clue about where X lies.",
+        "Each digit of X is like a fair coin toss -either 0 or 1 with equal chance. If you want to know whether X is less than some fixed number x, on average you need to look only at the two first bits of X to find out. Now, consider two random numbers, X1 and X2, chosen independently and uniformly between 0 and 1. Our goal is to decide if X1 < X2 by revealing bits from either number, one by one, in any order we choose. The best way is to alternate between revealing bits from X1 and X2. With this strategy, we expect to reveal about 4 bits in total before finding out the answer.",
+        "We can generalize this question: given a known increasing function f , how many bits from X1 and X2 must we reveal to decide if f (X1) < X2 on average? This question is central to our work and has important applications in a classic technique called rejection sampling."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "A. Rejection sampling",
+      "paragraphs": [
+        "The challenge of generating random numbers has been addressed by many, including Devroye [2], and remains an active topic of interest in computer science. Various methods based on quantum computing [3] and spin electronics [4] have been recently developed and have many applications in statistics, physics, finance, etc.",
+        "Rejection sampling is a popular method for generating random samples from given probability distributions. First introduced by John von Neumann in 1951 [1], it is widely used in many fields including machine learning [5] [6], cryptography [7], and numerical analysis.",
+        "Here is how it works: given a function f that corresponds to a probability density for the points in [0, 1) n , we repeatedly pick random points (X1, . . . , Xn) and Xn+1 uniformly and independently in [0, 1) n and [0, 1), respectively. We keep doing this until f (X) is less than Xn+1. The point X we stop at then follows a distribution proportional to f . In the following picture, we ran rejection sampling many times with n = 1. The points in blue are the ones that have been accepted and outputted because they lie under the function f . Notice that the values of X for which f is higher are outputted more often than those where f has low value, as highlighted by the two blue intervals. When implementing rejection sampling on a computer, one challenge is to minimize how many bits of these numbers we need to reveal before knowing if f (X) < Xn+1. This is the problem we focus on in this paper.",
+        "We assume we can compute f (x) instantly for any input f (x), so the challenge is to minimize queries to the bits of the Xj's.",
+        "We focus on the case where f is increasing: if every coordinate of x ′ is less than or equal to the corresponding coordinate of x, then f (x ′ ) ≤ f (x). This property lets us use just two points to decide if f (X) is bigger or smaller than Xn+1, which makes the algorithm much more realistic to implement."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "B. The setup",
+      "paragraphs": [
+        "Given a number x ∈ [0, 1), let x (i) ∈ {0, 1} be the i'th bit of its binary expansion, i.e. x = 0.x (1) x (2) x (3) . . .. We assume that (x (i) ) i≥1 does not end with a tail of repeating 1's. This way, we have a bijection between [0, 1) and all such binary sequences. Finally, denote Fn to be the set of all increasing functions from [0, 1] n to [0, 1).",
+        "To represent the algorithms we are studying, we will first consider deterministic inputs rather than random variables. We introduce the alphabet {x1, . . . , xn+1}, where x1, . . . , xn+1 are symbols that we call cuts. An algorithm takes in a point (x, xn+1) ∈ [0, 1) n+1 and an increasing function f ∈ Fn, and outputs a string in {x1, . . . , xn+1} * (possibly of infinite length) that represents the exact sequence of bits that have been revealed. For example, if the output of the algorithm is x1 x2 x1 xn+1 x1, it means that the bits x",
+        "have been revealed in this exact order."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Such an algorithm is thus a function",
+      "paragraphs": [
+        "with certain restrictions. Let p1, . . . , pn+1 ≥ 1 be integers and",
+        "that contains x(j) at most pj times for all 1 ≤ j ≤ n + 1, then any prefixes of lengths |s|+1 or less of A(f, x, xn+1) and A(f, x ′ , x ′ n+1 ) must be identical. This restriction ensures that the values of the bits that are not revealed cannot have an impact on which bit is queried next.",
+        "The last restriction is that given (x, xn+1) ∈ [0, 1) n+1 and f ∈ Fn, the string of revealed bits outputted by these algorithms must provide sufficient information to determine whether f (x) < xn+1 or not. Let s be a string of cuts, ki be the number of x (i) 's in s, and",
+        "i . . . x (k i ) , i.e. x * i is the number consisting of the first ki bits of xi. After revealing its first ki bits, xi could take any value in",
+        ") the feasible set of A after string s, i.e. the set of possible values of (x, xn+1). If s does not satisfy any of the two halting conditions mentioned in the previous paragraph, then the algorithm cannot halt after outputting s. In this case, we say that f crosses S, because this means that S ∩ {(x, xn+1) : f (x) < xn+1} and S ∩ {(x, xn+1) : f (x) > xn+1} both have positive measure."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "C. The problem and our results",
+      "paragraphs": [
+        "The goal of this paper is to determine which algorithms query the lowest total number of bits from X1, . . . , Xn+1 in the worst case, on average. Formally, letting A(f ) = A(f, X1, . . . , Xn+1), we want to study the value and the asymptotic behavior of",
+        "and find good algorithms that reach this value for all n ≥ 1. We also aim to find what functions maximize the expected number of bits these algorithms reveal, i.e. the worst case functions.",
+        "In section II, we find a general upper bound on the value of B(n). We prove in Theorem 1 that this bound grows at most quadratically with n, i.e. that B(n) is O(n 2 ). In Section III, we show that B(n"
+      ],
+      "subsections": []
+    },
+    {
+      "title": "D. Preliminary results",
+      "paragraphs": [
+        "Throughout this paper, we will use the fact that if N ≥ 0 is an integer valued random variable, then",
+        "This can be seen after writing N = ℓ≥0 1 N >ℓ and using linearity of expectation on the right hand side.",
+        "Next, let x ≥ 0 be any real number and n ≥ 1 be an integer. Then,",
+        "with equality if and only if x = 0. To see this, take the derivatives on both sides to obtain n(1 -x) n-1 and n, respectively. For every x > 0, the derivative of the right hand side is strictly bigger, which gives us the inequality."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "II. AN UPPER BOUND FOR B(n)",
+      "paragraphs": [
+        "First, we bound B(n) above by constructing the naive alternating algorithm ALTn defined as follows. ALTn(f, x, xn+1) is equal to the shortest possible prefix of (x1 x2 . . . xn+1)",
+        "* that allows the algorithm to halt (of infinite length if and only if f (x) = xn+1). Clearly the two conditions for ALTn to be in An are satisfied. We start the analysis of the efficiency of ALTn with the following preliminary result. Proposition 1. Let M1, . . . , Mn+1 ≥ 1 be integers and let f :",
+        "Then, the number of such Iz's the function f crosses is at most n+1 j=1 Mj -n+1 j=1 (Mj -1).",
+        "Proof. Let Z be the set of all Iz * 's such that z * n+1 = Mn+1 or z * i = 1 for some 1 ≤ i ≤ n. For each Iz * ∈ Z, let Iz * be the set of all Iz such that there exists an m ≥ 0 with zn+1 = z * n+1 -m and zi = z * i + m for all 1 ≤ i ≤ n. We show that f cannot cross more than one rectangle in any Iz * . Let Iz, I z ′ ∈ Iz * and assume that zn+1 ≤ z ′ n+1 -1. If f crosses Iz, then f (z1 -1, . . . , zn -1) < zn+1, which implies f does not cross",
+        "Finally, notice that the total number of Iz's is n+1 j=1 Mj, and the number of Iz's that are not in Z is n+1 j=1 (Mj -1). Furthermore, every Iz is contained in some Iz * , and since at most one Iz per Iz * can be crossed by f , this implies that at most n+1 j=1 Mj -n+1 j=1 (Mj -1) of the Iz's can be crossed by f in total, i.e. at most one for each Iz * . Theorem 1. Let f : [0, 1) n → [0, 1) be any increasing function. Then,",
+        "In particular, B(n) = O(n 2 ).",
+        "Proof. Let 0 ≤ i ≤ n and k ≥ 0 be integers. By observing the algorithm, we see that if ALTn has not halted after k(n + 1) + i queries, then its current string contains k + 1 occurrences of each of x1, . . . , xi, and k occurrences of each of xi+1, . . . , xn).",
+        "Let 1 ≤ mj ≤ 2 k+1 be integers for 1 ≤ j ≤ i and let",
+        ". Since X1, . . . , Xn+1 are uniform on [0, 1), every Im is equally likely to contain (X1, . . . , Xn+1). Applying Proposition 1 on a rescaling of [0, 1) n+1",
+        "gives us that at most 2 k(n+1)+i -(2 k+1 -1) i (2 k -1) n+1-i of the Im can be crossed by f . Since the feasible set of ALTn must be equal to some Im after k(n + 1) + i cuts, this means the probability that f still crosses the feasible set after k(n + 1)",
+        "thus equation 1 gives us the upper bound we are looking for.",
+        "To see that B(n) = O(n 2 ), note that since P(|ALTn(f )| > ℓ) decreases when ℓ increases, then we can naively bound the right hand side of this Theorem's inequality with",
+        "The terms inside of the double sum can be written as 1",
+        ". We can now apply equation 2 to bound this above with (n + 1)2 -k . In the end, this gives us an upper bound of",
+        "When we plot original theorem's equation in Desmos and compare it with 2(n + 1) 2 , we notice a clear gap between them. This could be due either to the bound in equation 3 or the bound in equation 4. After plotting the three, it looks like equation 3 is very tight and may only alter the upper bound by a constant factor. However, equation 4 seems to make the bound go from a function that seems empirically close to Θ(n 1.175 ) to a quadratic one.",
+        "Here are the plots we are referring to. In red, we have the first Theorem's inequality. In green, we have the bound from equation 3.",
+        "In purple, we have the bound from equation 4. Both the green and the red functions look like they follow asymptotic behaviors of order Θ(n 1.175 ). This can be seen by changing the value of b to match the function. This leads us to believe that the upper bound can be drastically improved if we find an alternative bound to equation 4."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "III. A LOWER BOUND FOR B(n)",
+      "paragraphs": [
+        "In this section, we now prove that B(n) ≥ n + 1, letting us conclude that B(n) = Ω(n). We denote hn : [0, 1) n → [0, 1) to be the function in Fn defined as hn(x) = min 1 -2 -(n+1) , (2 n+1 -1) min 1≤i≤n xi . Plots of hn are shown in the following figure for n = 1 and n = 2: We use hn to prove our lower bound in the following Theorem. Proof. Let A ∈ An be any algorithm and let s be a prefix of length less than n of A(f, x, xn+1). By the pigeonhole principle, there must be one of x(1) , . . . , x(n+1) that isn't included in s. Let S be the current feasible set of A. If x(n+1) / ∈ s, then S contains points with xn+1-value 0 and points with xn+1-value bigger than 1 -2 -(n+1) . Since 0 < hn ≤ 1 -2 -(n+1) almost everywhere, this implies that f crosses S, meaning that A cannot halt. Now, if x(n+1) is included in s, then choose 1 ≤ i ≤ n such that x(i) is not included in s. This means that S contains a point (x, xn+1) with xi = 0 and xn+1 > 0, thus hn(x) < xn+1 since hn(x) = 0 by observation. Furthermore, since s contains at most n cuts, then S must contain a point ( n+1) . Thus, hn(x ′ ) > xn+1 since hn(x ′ ) = 1 -2 -(n+1) by observation. The existence of x and x ′ implies that hn strictly crosses S, and so that A cannot halt. Since s is an arbitrary string of length at most n, this implies that A needs at least n + 1 cuts to halt, i.e. |A(hn, x, xn+1)| ≥ n + 1 for any (x, xn+1) ∈ [0, 1) n+1 , proving the desired result.",
+        "We can use this deterministic result and replace x and xn+1 by X and Xn+1, respectively, to get that A(hn) ≥ n + 1. Taking the supremum over any function f ∈ Fn gives that sup f ∈Fn A(f ) ≥ n + 1, and since this inequality is true for any algorithm A ∈ An, we can conclude that B(n) ≥ n + 1."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "IV. CONCLUSION",
+      "paragraphs": [
+        "To generate random numbers that follow a given distribution on [0, 1) n , we use rejection sampling driven by sequences of independent random bits. We show that the expected total number of bits that must be revealed to implement this method grows at least linearly and at most quadratically in n in the worst case.",
+        "Closing the gap between these lower and upper bounds remains an open problem. In particular, we conjecture that both the lower and upper bounds can be improved. It would also be interesting to determine the exact value of B(n) for small values of n."
+      ],
+      "subsections": []
+    }
+  ],
+  "body_paragraphs": [
+    "Understanding how much information we need to learn about a number to answer questions about it is a fundamental problem in computer science. Imagine you pick a random number X uniformly between 0 and 1, but you don't know its exact value. Instead, you can reveal the digits of its binary representation one at a time. For example, if X = 1/3, its binary form is 0.010101..., and each digit gives a clue about where X lies.",
+    "Each digit of X is like a fair coin toss -either 0 or 1 with equal chance. If you want to know whether X is less than some fixed number x, on average you need to look only at the two first bits of X to find out. Now, consider two random numbers, X1 and X2, chosen independently and uniformly between 0 and 1. Our goal is to decide if X1 < X2 by revealing bits from either number, one by one, in any order we choose. The best way is to alternate between revealing bits from X1 and X2. With this strategy, we expect to reveal about 4 bits in total before finding out the answer.",
+    "We can generalize this question: given a known increasing function f , how many bits from X1 and X2 must we reveal to decide if f (X1) < X2 on average? This question is central to our work and has important applications in a classic technique called rejection sampling.",
+    "The challenge of generating random numbers has been addressed by many, including Devroye [2], and remains an active topic of interest in computer science. Various methods based on quantum computing [3] and spin electronics [4] have been recently developed and have many applications in statistics, physics, finance, etc.",
+    "Rejection sampling is a popular method for generating random samples from given probability distributions. First introduced by John von Neumann in 1951 [1], it is widely used in many fields including machine learning [5] [6], cryptography [7], and numerical analysis.",
+    "Here is how it works: given a function f that corresponds to a probability density for the points in [0, 1) n , we repeatedly pick random points (X1, . . . , Xn) and Xn+1 uniformly and independently in [0, 1) n and [0, 1), respectively. We keep doing this until f (X) is less than Xn+1. The point X we stop at then follows a distribution proportional to f . In the following picture, we ran rejection sampling many times with n = 1. The points in blue are the ones that have been accepted and outputted because they lie under the function f . Notice that the values of X for which f is higher are outputted more often than those where f has low value, as highlighted by the two blue intervals. When implementing rejection sampling on a computer, one challenge is to minimize how many bits of these numbers we need to reveal before knowing if f (X) < Xn+1. This is the problem we focus on in this paper.",
+    "We assume we can compute f (x) instantly for any input f (x), so the challenge is to minimize queries to the bits of the Xj's.",
+    "We focus on the case where f is increasing: if every coordinate of x ′ is less than or equal to the corresponding coordinate of x, then f (x ′ ) ≤ f (x). This property lets us use just two points to decide if f (X) is bigger or smaller than Xn+1, which makes the algorithm much more realistic to implement.",
+    "Given a number x ∈ [0, 1), let x (i) ∈ {0, 1} be the i'th bit of its binary expansion, i.e. x = 0.x (1) x (2) x (3) . . .. We assume that (x (i) ) i≥1 does not end with a tail of repeating 1's. This way, we have a bijection between [0, 1) and all such binary sequences. Finally, denote Fn to be the set of all increasing functions from [0, 1] n to [0, 1).",
+    "To represent the algorithms we are studying, we will first consider deterministic inputs rather than random variables. We introduce the alphabet {x1, . . . , xn+1}, where x1, . . . , xn+1 are symbols that we call cuts. An algorithm takes in a point (x, xn+1) ∈ [0, 1) n+1 and an increasing function f ∈ Fn, and outputs a string in {x1, . . . , xn+1} * (possibly of infinite length) that represents the exact sequence of bits that have been revealed. For example, if the output of the algorithm is x1 x2 x1 xn+1 x1, it means that the bits x",
+    "have been revealed in this exact order.",
+    "with certain restrictions. Let p1, . . . , pn+1 ≥ 1 be integers and",
+    "that contains x(j) at most pj times for all 1 ≤ j ≤ n + 1, then any prefixes of lengths |s|+1 or less of A(f, x, xn+1) and A(f, x ′ , x ′ n+1 ) must be identical. This restriction ensures that the values of the bits that are not revealed cannot have an impact on which bit is queried next.",
+    "The last restriction is that given (x, xn+1) ∈ [0, 1) n+1 and f ∈ Fn, the string of revealed bits outputted by these algorithms must provide sufficient information to determine whether f (x) < xn+1 or not. Let s be a string of cuts, ki be the number of x (i) 's in s, and",
+    "i . . . x (k i ) , i.e. x * i is the number consisting of the first ki bits of xi. After revealing its first ki bits, xi could take any value in",
+    ") the feasible set of A after string s, i.e. the set of possible values of (x, xn+1). If s does not satisfy any of the two halting conditions mentioned in the previous paragraph, then the algorithm cannot halt after outputting s. In this case, we say that f crosses S, because this means that S ∩ {(x, xn+1) : f (x) < xn+1} and S ∩ {(x, xn+1) : f (x) > xn+1} both have positive measure.",
+    "The goal of this paper is to determine which algorithms query the lowest total number of bits from X1, . . . , Xn+1 in the worst case, on average. Formally, letting A(f ) = A(f, X1, . . . , Xn+1), we want to study the value and the asymptotic behavior of",
+    "and find good algorithms that reach this value for all n ≥ 1. We also aim to find what functions maximize the expected number of bits these algorithms reveal, i.e. the worst case functions.",
+    "In section II, we find a general upper bound on the value of B(n). We prove in Theorem 1 that this bound grows at most quadratically with n, i.e. that B(n) is O(n 2 ). In Section III, we show that B(n",
+    "Throughout this paper, we will use the fact that if N ≥ 0 is an integer valued random variable, then",
+    "This can be seen after writing N = ℓ≥0 1 N >ℓ and using linearity of expectation on the right hand side.",
+    "Next, let x ≥ 0 be any real number and n ≥ 1 be an integer. Then,",
+    "with equality if and only if x = 0. To see this, take the derivatives on both sides to obtain n(1 -x) n-1 and n, respectively. For every x > 0, the derivative of the right hand side is strictly bigger, which gives us the inequality.",
+    "First, we bound B(n) above by constructing the naive alternating algorithm ALTn defined as follows. ALTn(f, x, xn+1) is equal to the shortest possible prefix of (x1 x2 . . . xn+1)",
+    "* that allows the algorithm to halt (of infinite length if and only if f (x) = xn+1). Clearly the two conditions for ALTn to be in An are satisfied. We start the analysis of the efficiency of ALTn with the following preliminary result. Proposition 1. Let M1, . . . , Mn+1 ≥ 1 be integers and let f :",
+    "Then, the number of such Iz's the function f crosses is at most n+1 j=1 Mj -n+1 j=1 (Mj -1).",
+    "Proof. Let Z be the set of all Iz * 's such that z * n+1 = Mn+1 or z * i = 1 for some 1 ≤ i ≤ n. For each Iz * ∈ Z, let Iz * be the set of all Iz such that there exists an m ≥ 0 with zn+1 = z * n+1 -m and zi = z * i + m for all 1 ≤ i ≤ n. We show that f cannot cross more than one rectangle in any Iz * . Let Iz, I z ′ ∈ Iz * and assume that zn+1 ≤ z ′ n+1 -1. If f crosses Iz, then f (z1 -1, . . . , zn -1) < zn+1, which implies f does not cross",
+    "Finally, notice that the total number of Iz's is n+1 j=1 Mj, and the number of Iz's that are not in Z is n+1 j=1 (Mj -1). Furthermore, every Iz is contained in some Iz * , and since at most one Iz per Iz * can be crossed by f , this implies that at most n+1 j=1 Mj -n+1 j=1 (Mj -1) of the Iz's can be crossed by f in total, i.e. at most one for each Iz * . Theorem 1. Let f : [0, 1) n → [0, 1) be any increasing function. Then,",
+    "In particular, B(n) = O(n 2 ).",
+    "Proof. Let 0 ≤ i ≤ n and k ≥ 0 be integers. By observing the algorithm, we see that if ALTn has not halted after k(n + 1) + i queries, then its current string contains k + 1 occurrences of each of x1, . . . , xi, and k occurrences of each of xi+1, . . . , xn).",
+    "Let 1 ≤ mj ≤ 2 k+1 be integers for 1 ≤ j ≤ i and let",
+    ". Since X1, . . . , Xn+1 are uniform on [0, 1), every Im is equally likely to contain (X1, . . . , Xn+1). Applying Proposition 1 on a rescaling of [0, 1) n+1",
+    "gives us that at most 2 k(n+1)+i -(2 k+1 -1) i (2 k -1) n+1-i of the Im can be crossed by f . Since the feasible set of ALTn must be equal to some Im after k(n + 1) + i cuts, this means the probability that f still crosses the feasible set after k(n + 1)",
+    "thus equation 1 gives us the upper bound we are looking for.",
+    "To see that B(n) = O(n 2 ), note that since P(|ALTn(f )| > ℓ) decreases when ℓ increases, then we can naively bound the right hand side of this Theorem's inequality with",
+    "The terms inside of the double sum can be written as 1",
+    ". We can now apply equation 2 to bound this above with (n + 1)2 -k . In the end, this gives us an upper bound of",
+    "When we plot original theorem's equation in Desmos and compare it with 2(n + 1) 2 , we notice a clear gap between them. This could be due either to the bound in equation 3 or the bound in equation 4. After plotting the three, it looks like equation 3 is very tight and may only alter the upper bound by a constant factor. However, equation 4 seems to make the bound go from a function that seems empirically close to Θ(n 1.175 ) to a quadratic one.",
+    "Here are the plots we are referring to. In red, we have the first Theorem's inequality. In green, we have the bound from equation 3.",
+    "In purple, we have the bound from equation 4. Both the green and the red functions look like they follow asymptotic behaviors of order Θ(n 1.175 ). This can be seen by changing the value of b to match the function. This leads us to believe that the upper bound can be drastically improved if we find an alternative bound to equation 4.",
+    "In this section, we now prove that B(n) ≥ n + 1, letting us conclude that B(n) = Ω(n). We denote hn : [0, 1) n → [0, 1) to be the function in Fn defined as hn(x) = min 1 -2 -(n+1) , (2 n+1 -1) min 1≤i≤n xi . Plots of hn are shown in the following figure for n = 1 and n = 2: We use hn to prove our lower bound in the following Theorem. Proof. Let A ∈ An be any algorithm and let s be a prefix of length less than n of A(f, x, xn+1). By the pigeonhole principle, there must be one of x(1) , . . . , x(n+1) that isn't included in s. Let S be the current feasible set of A. If x(n+1) / ∈ s, then S contains points with xn+1-value 0 and points with xn+1-value bigger than 1 -2 -(n+1) . Since 0 < hn ≤ 1 -2 -(n+1) almost everywhere, this implies that f crosses S, meaning that A cannot halt. Now, if x(n+1) is included in s, then choose 1 ≤ i ≤ n such that x(i) is not included in s. This means that S contains a point (x, xn+1) with xi = 0 and xn+1 > 0, thus hn(x) < xn+1 since hn(x) = 0 by observation. Furthermore, since s contains at most n cuts, then S must contain a point ( n+1) . Thus, hn(x ′ ) > xn+1 since hn(x ′ ) = 1 -2 -(n+1) by observation. The existence of x and x ′ implies that hn strictly crosses S, and so that A cannot halt. Since s is an arbitrary string of length at most n, this implies that A needs at least n + 1 cuts to halt, i.e. |A(hn, x, xn+1)| ≥ n + 1 for any (x, xn+1) ∈ [0, 1) n+1 , proving the desired result.",
+    "We can use this deterministic result and replace x and xn+1 by X and Xn+1, respectively, to get that A(hn) ≥ n + 1. Taking the supremum over any function f ∈ Fn gives that sup f ∈Fn A(f ) ≥ n + 1, and since this inequality is true for any algorithm A ∈ An, we can conclude that B(n) ≥ n + 1.",
+    "To generate random numbers that follow a given distribution on [0, 1) n , we use rejection sampling driven by sequences of independent random bits. We show that the expected total number of bits that must be revealed to implement this method grows at least linearly and at most quadratically in n in the worst case.",
+    "Closing the gap between these lower and upper bounds remains an open problem. In particular, we conjecture that both the lower and upper bounds can be improved. It would also be interesting to determine the exact value of B(n) for small values of n.",
+    "Here \"almost surely\" means that the set of values of (x, x n+1 ) that makes the equation false has measure 0."
+  ],
+  "references": [
+    {
+      "id": 1,
+      "text": "Annual report 1951 National Bureau of Standards\n\t\t\n\t\t\tJNeumann\n\t\t\n\t\t10.6028/nbs.mp.204\n\t\n\t\n\t\tNational Bureau of Standards, Applied Math Series\n\t\t\n\t\t\t12\n\t\t\t\n\t\t\t1951\n\t\t\tNational Institute of Standards and Technology"
+    },
+    {
+      "id": 2,
+      "text": "Non-Uniform Random Variate Generation\n\t\t\n\t\t\tLucDevroye\n\t\t\n\t\t10.1007/978-1-4613-8643-8\n\t\t\n\t\t\t1986\n\t\t\tSpringer New York\n\t\t\tNew York"
+    },
+    {
+      "id": 3,
+      "text": "Quantum random number generators\n\t\t\n\t\t\tMCollantes\n\t\t\n\t\t\n\t\t\tJEscartin\n\t\t\n\t\n\t\n\t\tReviews of Modern Physics\n\t\t\n\t\t\t89\n\t\t\t15004\n\t\t\t2017"
+    },
+    {
+      "id": 4,
+      "text": "One Trillion True Random Bits Generated With a Field-Programmable Gate Array Actuated Magnetic Tunnel Junction\n\t\t\n\t\t\tAndreDubovski\n\t\t\t0009-0000-0353-3601\n\t\t\n\t\t\n\t\t\tTroyCriss\n\t\t\n\t\t\n\t\t\tAhmedSidi ElValli\n\t\t\t0000-0003-1106-2664\n\t\t\n\t\t\n\t\t\tLauraRehm\n\t\t\t0000-0002-3019-6505\n\t\t\n\t\t\n\t\t\tAndrewDKent\n\t\t\t0000-0002-9050-8822\n\t\t\n\t\t\n\t\t\tAndrewHaas\n\t\t\t0000-0002-4832-0455\n\t\t\n\t\t10.1109/lmag.2024.3416091\n\t\n\t\n\t\tIEEE Magnetics Letters\n\t\tIEEE Magn. Lett.\n\t\t1949-307X\n\t\t1949-3088\n\t\t\n\t\t\t15\n\t\t\t\n\t\t\t2024\n\t\t\tInstitute of Electrical and Electronics Engineers (IEEE)"
+    },
+    {
+      "id": 5,
+      "text": "RCT Rejection Sampling for Causal Estimation Evaluation\n\t\t\n\t\t\tKKeith\n\t\t\n\t\t\n\t\t\tSFeldman\n\t\t\n\t\t\n\t\t\tDJurgens\n\t\t\n\t\t\n\t\t\tJBragg\n\t\t\n\t\t\n\t\t\tRBhattacharya\n\t\t\n\t\n\t\n\t\tTransactions on Machine Learning Research\n\t\t\n\t\t\tTMLR\n\t\t\t2023"
+    },
+    {
+      "id": 6,
+      "text": "WXiong\n\t\t\n\t\t\n\t\t\tJYao\n\t\t\n\t\t\n\t\t\tYXu\n\t\t\n\t\t\n\t\t\tBPang\n\t\t\n\t\t\n\t\t\tLWang\n\t\t\n\t\t\n\t\t\tDSahoo\n\t\t\n\t\t\n\t\t\tJLi\n\t\t\n\t\t\n\t\t\tNJiang\n\t\t\n\t\t\n\t\t\tTZhang\n\t\t\n\t\t\n\t\t\tCXiong\n\t\t\n\t\t\n\t\t\tHDong\n\t\t\n\t\tarXiv:2504.11343\n\t\tA Minimalist Approach to LLM Reasoning: from Rejection Sampling to Reinforce\n\t\t\n\t\t\t2025"
+    },
+    {
+      "id": 7,
+      "text": "JAwan\n\t\t\n\t\t\n\t\t\tVRao\n\t\t\n\t\tarXiv:2108.00965\n\t\tPrivacy-Aware Rejection Sampling\n\t\t\n\t\t\t2021"
+    }
+  ],
+  "formulas": [
+    {
+      "id": "FORMULA_1",
+      "raw": "(1) 1 , x (1) 2 , x (2) 1 , x (n+1) 1 , x(3) 1"
+    },
+    {
+      "id": "FORMULA_2",
+      "raw": "A : Fn × [0, 1) n+1 → {x1, . . . , xn+1} * ,"
+    },
+    {
+      "id": "FORMULA_3",
+      "raw": "f ∈ Fn. If (x, xn+1), (x ′ , x ′ n+1 ) ∈ [0, 1) n are such that x (i) j = x ′(i) j for all 1 ≤ i ≤ pj, 1 ≤ j ≤ n + 1, then if s is a prefix of A(f, x, xn+1)"
+    },
+    {
+      "id": "FORMULA_4",
+      "raw": "x * i = 0.x(1) i x (2)"
+    },
+    {
+      "id": "FORMULA_5",
+      "raw": "[x * i , x * i + 2 -k i ). We thus have that f (x) < xn+1 almost surely 1 if and only if f (x * 1 + 2 -k 1 , . . . , x * n + 2 -kn ) < x * n+1 , and f (x) > xn+1 almost surely if and only if f (x * ) > x * n+1 + 2 -k n+1 . Note that f (x) ̸ = xn+1 almost surely. Let us call S = [x * 1 , x * 1 + 2 -k 1 ) × . . . × [x * n+1 , x * n+1 + 2 -k n+1"
+    },
+    {
+      "id": "FORMULA_6",
+      "raw": "B(n) = inf A∈An sup f ∈Fn E|A(f )|"
+    },
+    {
+      "id": "FORMULA_7",
+      "raw": ") ≥ n + 1, meaning that B(n) is Ω(n)."
+    },
+    {
+      "id": "FORMULA_8",
+      "raw": "E[N ] = ℓ≥0 P(N > ℓ).(1)"
+    },
+    {
+      "id": "FORMULA_9",
+      "raw": "1 -(1 -x) n ≤ nx(2)"
+    },
+    {
+      "id": "FORMULA_10",
+      "raw": "[0, M1) × [0, Mn) → [0, Mn+1) be an increasing function. For z = (z1, . . . , zn+1) ∈ {1, 2, . . .} n+1 with 1 ≤ zj ≤ Mj, let Iz = [z1 - 1, z1) × . . . × [zn+1 -1, zn+1)."
+    },
+    {
+      "id": "FORMULA_11",
+      "raw": "I z ′ since z ′ i ≤ zi -1 for all 1 ≤ i ≤ n, and thus f (z ′ 1 , . . . , z ′ n ) < z ′ n+1 -1 since f is increasing."
+    },
+    {
+      "id": "FORMULA_12",
+      "raw": "E |ALTn(f )| ≤ k≥0 n i=0 1 - (2 k+1 -1) i (2 k -1) n+1-i 2 k(n+1)+i ."
+    },
+    {
+      "id": "FORMULA_13",
+      "raw": "1 ≤ mj ≤ 2 k be integers for i < j ≤ n + 1. Then, let Im = 2 -k-1 (m1 -1), 2 -k-1 m1 × . . . × 2 -k-1 (mn+1 -1), 2 -k-1 mn+1"
+    },
+    {
+      "id": "FORMULA_14",
+      "raw": "+ i cuts is at most [2 k(n+1)+i -(2 k+1 -1) i (2 k -1) n+1-i ] • P(Im). Since P(Im) = 2 -k(n+1)-i , this means that P(|ALTn(f )| > k(n + 1) + i) = 1 - (2 k+1 -1) i (2 k -1) n+1-i 2 k(n+1)+i ,"
+    },
+    {
+      "id": "FORMULA_15",
+      "raw": "k≥0 n i=0 1 - (2 k -1) n+1 2 k(n+1) .(3)"
+    },
+    {
+      "id": "FORMULA_16",
+      "raw": "-(1 - 2 -k ) n+1"
+    },
+    {
+      "id": "FORMULA_17",
+      "raw": "k≥0 (n + 1) 2 2 -k = 2(n + 1) 2 . (4"
+    },
+    {
+      "id": "FORMULA_18",
+      "raw": ")"
+    },
+    {
+      "id": "FORMULA_19",
+      "raw": "x ′ , x ′ n+1 ) such that x ′ i > 2 -(n+1) for all 1 ≤ i ≤ n and x ′ n+1 < 1 -2 -("
+    }
+  ]
+}

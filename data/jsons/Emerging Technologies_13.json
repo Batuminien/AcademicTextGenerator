@@ -1,0 +1,1439 @@
+{
+  "title": "Orchestrating multi-level magic state distillation: a dynamic pipeline architecture",
+  "authors": [
+    {
+      "firstname": "Junshi",
+      "surname": "Wang",
+      "email": ""
+    },
+    {
+      "firstname": "Prakash",
+      "surname": "Murali",
+      "email": ""
+    },
+    {
+      "firstname": "Andreas",
+      "surname": "Bengtsson",
+      "email": ""
+    },
+    {
+      "firstname": "Sergio",
+      "surname": "Boixo",
+      "email": ""
+    },
+    {
+      "firstname": "Gina",
+      "surname": "Bortoli",
+      "email": ""
+    },
+    {
+      "firstname": "Alexandre",
+      "surname": "Bourassa",
+      "email": ""
+    },
+    {
+      "firstname": "Jenna",
+      "surname": "Bovaird",
+      "email": ""
+    },
+    {
+      "firstname": "Leon",
+      "surname": "Brill",
+      "email": ""
+    },
+    {
+      "firstname": "Michael",
+      "surname": "Broughton",
+      "email": ""
+    },
+    {
+      "firstname": "Bob",
+      "surname": "Buckley",
+      "email": ""
+    },
+    {
+      "firstname": "David",
+      "surname": "Buell",
+      "email": ""
+    },
+    {
+      "firstname": "Tim",
+      "surname": "Burger",
+      "email": ""
+    },
+    {
+      "firstname": "Brian",
+      "surname": "Burkett",
+      "email": ""
+    },
+    {
+      "firstname": "Nicholas",
+      "surname": "Bushnell",
+      "email": ""
+    },
+    {
+      "firstname": "Yu",
+      "surname": "Chen",
+      "email": ""
+    },
+    {
+      "firstname": "Zi- Jun",
+      "surname": "Chen",
+      "email": ""
+    },
+    {
+      "firstname": "Ben",
+      "surname": "Chiaro",
+      "email": ""
+    },
+    {
+      "firstname": "Josh",
+      "surname": "Cogan",
+      "email": ""
+    },
+    {
+      "firstname": "Roberto",
+      "surname": "Collins",
+      "email": ""
+    },
+    {
+      "firstname": "Paul",
+      "surname": "Conner",
+      "email": ""
+    },
+    {
+      "firstname": "William",
+      "surname": "Courtney",
+      "email": ""
+    },
+    {
+      "firstname": "Alexander",
+      "surname": "Crook",
+      "email": ""
+    },
+    {
+      "firstname": "Ben",
+      "surname": "Curtin",
+      "email": ""
+    },
+    {
+      "firstname": "Dripto",
+      "surname": "De- Broy",
+      "email": ""
+    },
+    {
+      "firstname": "Alexander",
+      "surname": "Toro Barba",
+      "email": ""
+    },
+    {
+      "firstname": "Sean",
+      "surname": "Demura",
+      "email": ""
+    },
+    {
+      "firstname": "Andrew",
+      "surname": "Dunsworth",
+      "email": ""
+    },
+    {
+      "firstname": "Daniel",
+      "surname": "Eppens",
+      "email": ""
+    },
+    {
+      "firstname": "Catherine",
+      "surname": "Erickson",
+      "email": ""
+    },
+    {
+      "firstname": "Lara",
+      "surname": "Faoro",
+      "email": ""
+    },
+    {
+      "firstname": "Edward",
+      "surname": "Farhi",
+      "email": ""
+    },
+    {
+      "firstname": "Reza",
+      "surname": "Fatemi",
+      "email": ""
+    },
+    {
+      "firstname": "Leslie",
+      "surname": "Flores Burgos",
+      "email": ""
+    },
+    {
+      "firstname": "Ebrahim",
+      "surname": "Forati",
+      "email": ""
+    },
+    {
+      "firstname": "Austin",
+      "surname": "Fowler",
+      "email": ""
+    },
+    {
+      "firstname": "Brooks",
+      "surname": "Foxen",
+      "email": ""
+    },
+    {
+      "firstname": "William",
+      "surname": "Giang",
+      "email": ""
+    },
+    {
+      "firstname": "Craig",
+      "surname": "Gidney",
+      "email": ""
+    },
+    {
+      "firstname": "Dar",
+      "surname": "Gilboa",
+      "email": ""
+    },
+    {
+      "firstname": "Marissa",
+      "surname": "Giustina",
+      "email": ""
+    },
+    {
+      "firstname": "Alejandro",
+      "surname": "Dau",
+      "email": ""
+    },
+    {
+      "firstname": "Jonathan",
+      "surname": "Gross",
+      "email": ""
+    },
+    {
+      "firstname": "Steve",
+      "surname": "Habegger",
+      "email": ""
+    },
+    {
+      "firstname": "Michael",
+      "surname": "Hamilton",
+      "email": ""
+    },
+    {
+      "firstname": "Matthew",
+      "surname": "Harrigan",
+      "email": ""
+    },
+    {
+      "firstname": "Sean",
+      "surname": "Harrington",
+      "email": ""
+    },
+    {
+      "firstname": "Oscar",
+      "surname": "Higgott",
+      "email": ""
+    },
+    {
+      "firstname": "Jeremy",
+      "surname": "Hilton",
+      "email": ""
+    },
+    {
+      "firstname": "Markus",
+      "surname": "Hoffmann",
+      "email": ""
+    },
+    {
+      "firstname": "Sabrina",
+      "surname": "Hong",
+      "email": ""
+    },
+    {
+      "firstname": "Trent",
+      "surname": "Huang",
+      "email": ""
+    },
+    {
+      "firstname": "Ash- Ley",
+      "surname": "Huff",
+      "email": ""
+    },
+    {
+      "firstname": "William",
+      "surname": "Huggins",
+      "email": ""
+    },
+    {
+      "firstname": "Lev",
+      "surname": "Ioffe",
+      "email": ""
+    },
+    {
+      "firstname": "Sergei",
+      "surname": "Isakov",
+      "email": ""
+    },
+    {
+      "firstname": "Justin",
+      "surname": "Iveland",
+      "email": ""
+    },
+    {
+      "firstname": "Evan",
+      "surname": "Jeffrey",
+      "email": ""
+    },
+    {
+      "firstname": "Zhang",
+      "surname": "Jiang",
+      "email": ""
+    },
+    {
+      "firstname": "Cody",
+      "surname": "Jones",
+      "email": ""
+    },
+    {
+      "firstname": "Pavol",
+      "surname": "Juhas",
+      "email": ""
+    },
+    {
+      "firstname": "Dvir",
+      "surname": "Kafri",
+      "email": ""
+    },
+    {
+      "firstname": "Kostyantyn",
+      "surname": "Kechedzhi",
+      "email": ""
+    },
+    {
+      "firstname": "Julian",
+      "surname": "Kelly",
+      "email": ""
+    },
+    {
+      "firstname": "Tanuj",
+      "surname": "Khattar",
+      "email": ""
+    },
+    {
+      "firstname": "Mostafa",
+      "surname": "Khezri",
+      "email": ""
+    },
+    {
+      "firstname": "Mária",
+      "surname": "Kieferová",
+      "email": ""
+    },
+    {
+      "firstname": "Seon",
+      "surname": "Kim",
+      "email": ""
+    },
+    {
+      "firstname": "Alexei",
+      "surname": "Kitaev",
+      "email": ""
+    },
+    {
+      "firstname": "Paul",
+      "surname": "Klimov",
+      "email": ""
+    },
+    {
+      "firstname": "Andrey",
+      "surname": "Klots",
+      "email": ""
+    },
+    {
+      "firstname": "Alexander",
+      "surname": "Korotkov",
+      "email": ""
+    },
+    {
+      "firstname": "Fedor",
+      "surname": "Kostritsa",
+      "email": ""
+    },
+    {
+      "firstname": "John",
+      "surname": "Kreikebaum",
+      "email": ""
+    },
+    {
+      "firstname": "David",
+      "surname": "Landhuis",
+      "email": ""
+    },
+    {
+      "firstname": "Pavel",
+      "surname": "Laptev",
+      "email": ""
+    },
+    {
+      "firstname": "Kim-Ming",
+      "surname": "Lau",
+      "email": ""
+    },
+    {
+      "firstname": "Lily",
+      "surname": "Laws",
+      "email": ""
+    },
+    {
+      "firstname": "Joonho",
+      "surname": "Lee",
+      "email": ""
+    },
+    {
+      "firstname": "Kenny",
+      "surname": "Lee",
+      "email": ""
+    },
+    {
+      "firstname": "Brian",
+      "surname": "Lester",
+      "email": ""
+    },
+    {
+      "firstname": "Alexander",
+      "surname": "Lill",
+      "email": ""
+    },
+    {
+      "firstname": "Wayne",
+      "surname": "Liu",
+      "email": ""
+    },
+    {
+      "firstname": "Aditya",
+      "surname": "Locharla",
+      "email": ""
+    },
+    {
+      "firstname": "Erik",
+      "surname": "Lucero",
+      "email": ""
+    },
+    {
+      "firstname": "Fionn",
+      "surname": "Malone",
+      "email": ""
+    },
+    {
+      "firstname": "Jeffrey",
+      "surname": "Marshall",
+      "email": ""
+    },
+    {
+      "firstname": "Orion",
+      "surname": "Martin",
+      "email": ""
+    },
+    {
+      "firstname": "Jarrod",
+      "surname": "Mcclean",
+      "email": ""
+    },
+    {
+      "firstname": "Trevor",
+      "surname": "Mccourt",
+      "email": ""
+    },
+    {
+      "firstname": "Matt",
+      "surname": "Mcewen",
+      "email": ""
+    },
+    {
+      "firstname": "Anthony",
+      "surname": "Megrant",
+      "email": ""
+    },
+    {
+      "firstname": "Bernardo",
+      "surname": "Meurer Costa",
+      "email": ""
+    },
+    {
+      "firstname": "Xiao",
+      "surname": "Mi",
+      "email": ""
+    },
+    {
+      "firstname": "Kevin",
+      "surname": "Miao",
+      "email": ""
+    },
+    {
+      "firstname": "Masoud",
+      "surname": "Mohseni",
+      "email": ""
+    },
+    {
+      "firstname": "Shirin",
+      "surname": "Montazeri",
+      "email": ""
+    },
+    {
+      "firstname": "Alexis",
+      "surname": "Morvan",
+      "email": ""
+    },
+    {
+      "firstname": "Emily",
+      "surname": "Mount",
+      "email": ""
+    },
+    {
+      "firstname": "Wojciech",
+      "surname": "Mruczkiewicz",
+      "email": ""
+    },
+    {
+      "firstname": "Ofer",
+      "surname": "Naaman",
+      "email": ""
+    },
+    {
+      "firstname": "Matthew",
+      "surname": "Neeley",
+      "email": ""
+    },
+    {
+      "firstname": "Charles",
+      "surname": "Neill",
+      "email": ""
+    },
+    {
+      "firstname": "Ani",
+      "surname": "Nersisyan",
+      "email": ""
+    },
+    {
+      "firstname": "Hartmut",
+      "surname": "Neven",
+      "email": ""
+    },
+    {
+      "firstname": "Michael",
+      "surname": "Newman",
+      "email": ""
+    },
+    {
+      "firstname": "Jiun",
+      "surname": "Ng",
+      "email": ""
+    },
+    {
+      "firstname": "An- Thony",
+      "surname": "Nguyen",
+      "email": ""
+    },
+    {
+      "firstname": "Murray",
+      "surname": "Nguyen",
+      "email": ""
+    },
+    {
+      "firstname": "Yuezhen",
+      "surname": "Murphy",
+      "email": ""
+    },
+    {
+      "firstname": "Thomas",
+      "surname": "Niu",
+      "email": ""
+    },
+    {
+      "firstname": "Alex",
+      "surname": "O'brien",
+      "email": ""
+    },
+    {
+      "firstname": "John",
+      "surname": "Opremcak",
+      "email": ""
+    },
+    {
+      "firstname": "Andre",
+      "surname": "Platt",
+      "email": ""
+    },
+    {
+      "firstname": "Rebecca",
+      "surname": "Petukhov",
+      "email": ""
+    },
+    {
+      "firstname": "Leonid",
+      "surname": "Pot- Ter",
+      "email": ""
+    },
+    {
+      "firstname": "Chris",
+      "surname": "Pryadko",
+      "email": ""
+    },
+    {
+      "firstname": "Pedram",
+      "surname": "Quintana",
+      "email": ""
+    },
+    {
+      "firstname": "Nicholas",
+      "surname": "Roushan",
+      "email": ""
+    },
+    {
+      "firstname": "Negar",
+      "surname": "Rubin",
+      "email": ""
+    },
+    {
+      "firstname": "Daniel",
+      "surname": "Saei",
+      "email": ""
+    },
+    {
+      "firstname": "Kannan",
+      "surname": "Sank",
+      "email": ""
+    },
+    {
+      "firstname": "Kevin",
+      "surname": "Sankaragomathi",
+      "email": ""
+    },
+    {
+      "firstname": "Henry",
+      "surname": "Satzinger",
+      "email": ""
+    },
+    {
+      "firstname": "Christopher",
+      "surname": "Schurkus",
+      "email": ""
+    },
+    {
+      "firstname": "Michael",
+      "surname": "Schuster",
+      "email": ""
+    },
+    {
+      "firstname": "Aaron",
+      "surname": "Shearn",
+      "email": ""
+    },
+    {
+      "firstname": "Vladimir",
+      "surname": "Shorter",
+      "email": ""
+    },
+    {
+      "firstname": "Jindra",
+      "surname": "Shvarts",
+      "email": ""
+    },
+    {
+      "firstname": "Vadim",
+      "surname": "Skruzny",
+      "email": ""
+    },
+    {
+      "firstname": "",
+      "surname": "Smelyanskiy",
+      "email": ""
+    },
+    {
+      "firstname": "",
+      "surname": "",
+      "email": ""
+    },
+    {
+      "firstname": "",
+      "surname": "",
+      "email": ""
+    },
+    {
+      "firstname": "",
+      "surname": "",
+      "email": ""
+    },
+    {
+      "firstname": "",
+      "surname": "",
+      "email": ""
+    }
+  ],
+  "abstract": "Practical quantum computation requires high-fidelity instruction executions on qubits. Among them, Clifford instructions are relatively easy to perform, while non-Clifford instructions require the use of magic states. This makes magic state distillation a central procedure in fault-tolerant quantum computing. A magic state distillation factory consumes many low-fidelity input magic states and produces fewer, higher-fidelity states. To reach high fidelities, multiple distillation factories are typically chained together into a multi-level pipeline, consuming significant quantum computational resources. Our work optimizes the resource usage of distillation pipelines by introducing a novel dynamic pipeline architecture. Observing that distillation pipelines consume magic states in a burst-then-steady pattern, we develop dynamic factory scheduling and resource allocation techniques that go beyond existing static pipeline organizations. Dynamic pipelines reduce the qubit cost by 16%-70% for large-scale quantum applications and achieve average reductions of 26%-37% in qubit-time volume on generated distillation benchmarks compared to state-of-the-art static architectures. By significantly reducing the resource overhead of this building block, our work accelerates progress towards the practical realization of fault-tolerant quantum computers.",
+  "sections": [
+    {
+      "title": "Introduction",
+      "paragraphs": [
+        "Quantum computing is a computational paradigm that leverages quantum mechanics to solve problems that are intractable on classical computers. Current noisy intermediate-scale quantum (NISQ) devices are susceptible to physical noise [73], resulting in high error rates that limit the size of the problems that these devices can solve. To achieve practical quantum advantage, we must tackle large problems that scale beyond classical computational limits [44]. This requires faulttolerant quantum computing (FTQC) where quantum error correction (QEC) is used to protect quantum information by redundantly encoding quantum information across multiple physical qubits. This results in logical qubits which have improved error rates compared to their physical qubits [67].",
+        "Universal quantum computation on logical qubits requires both Clifford and non-Clifford gates [31], but typical QEC codes natively support only Clifford gates [24]. To support non-Clifford gates, magic state injection is used. That is, a magic state is prepared using some procedure and injected into the logical qubit where the non-Clifford operations is desired. The quality of the injected states directly impacts the logical error rate, making the preparation of high-quality magic states an important component of a quantum computer. To prepare high-quality magic states, magic state distillation [9] is the standard method. It converts multiple lowfidelity input magic states into fewer, high-fidelity ones. For example, the Reed-Muller protocol [9] takes 15 input noisy magic states to produce one high-quality magic state, reducing error rates by a cubic factor. Since practical applications will require magic states in fidelities below 10 -10 , one round of distillation typically does not suffice [7]. Distillation is usually performed in a multi-level fashion, where each level includes a set of distillation circuits (factories), ultimately producing very high fidelity magic states [52]. This process, however, is costly: some applications devote up to 95% of their total qubits to distillation [7]. Optimizing this multilevel distillation pipeline is therefore the focus of our work.",
+        "Prior works on distillation pipelines adopt fixed architectures, where the pipeline structure is statically defined and does not adapt to runtime conditions. There are two types of fixed pipelines: sequential and parallel. In the sequential pipeline [7], distillation levels are executed in a strict sequence on the same set of qubits (Fig. 1(a)). The scheduling order and resource assignments are predetermined and unchanging. In the parallel pipeline [78], all levels run concurrently in dedicated qubit regions with one region feeding states to the next region (Fig. 1(b)). The number of factories at each level is fixed in advance to match production and consumption rates. At face value, the sequential architecture uses fewer qubits but takes more time, while the parallel architecture achieves lower execution time at the expense of more qubits. However, our work shows that both designs suffer from resource inefficiencies due to their rigid pipeline structures, leaving many qubits underutilized. Importantly, we also observe that these works assume a factory can begin only when previous levels of the pipeline are completed.",
+        "Our work proposes a novel dynamic magic state distillation architecture, shown in Figure 1. Our work rests on the observation that magic-state factories exhibit a burstthen-steady consumption pattern: it consumes a burst of magic states at the beginning and then consumes them gradually. This enables a supply-driven perspective to design Existing distillation pipeline architectures and our dynamic architecture. Each horizontal plane represents a snapshot of the running factories at a particular time step. Factories at higher levels use logical qubits with larger code distances, leading to larger patches. (a) Each distillation level executes in sequence. Many low-level factories can run in parallel, with only a few high-level factories can be packed within the available qubits. (b) All levels are allocated dedicated qubit regions and execute in parallel. (c) Partial-input launch allows launching high-level distillation before all input magic states are ready, reducing the number of active low-level factories and saving qubits. (d) When high-level factories stall due to insufficient magic-state input, some regions of the idling high-level factory can be reused to host more low-level factories, making subsequent distillation faster. (e) Our architecture not only reduces both qubit and time usage, but also exposes the full space-time trade-off space.",
+        "the pipeline, where magic states are only required to be supplied on time to meet the consumption pattern, rather than preparing all required magic states before execution.",
+        "Based on this observation, we design a dynamic distillation pipeline architecture that allows the pipeline structure to evolve dynamically based on the magic-state availability from currently completed distillation levels and available compute resources.",
+        "To enable dynamism, we use two strategies. First, partial input launch allows high-level factories to start execution as soon as some inputs are available, with the remaining inputs supplied gradually (Fig. 1(c)). Second, when a highlevel factory stalls due to insufficient inputs, we introduce ancilla qubit reuse during stalls to repurpose qubits to host additional low-level factories and accelerate the production of magic states (Fig. 1(d)).",
+        "We tackle the challenge of constructing an efficient dynamic pipeline with these two strategies. We break the problem of multi-level distillation into a series of independent subproblems, each involving only a two-level pipeline. To optimize two-level pipelines, we introduce (1) a dynamic scheduler, which addresses the temporal dimension by determining when factories should be launched, and (2) a resource allocator, which addresses the spatial dimension by selecting the appropriate types of low-level factories and allocating qubits to these factories and the buffer.",
+        "We implemented our architecture in simulation and compared its resource usage to state-of-the-art static designs. On large-scale real-world quantum applications, our architecture reduces total qubit requirements by up to 70% (Heisenberg model) and 30% (Ising model) compared to sequential [7] and parallel [78] baselines, respectively, with most cases showing at least a 25% reduction. On generated distillation benchmarks, it achieves up to 65% and 31% reductions in qubit-time volume (with average reductions of 37% and 26%) compared to the baselines. Our key contributions are:",
+        "• Our work is the first to propose the dynamic magic distillation pipelines, overcoming key limitations of existing works [7,78]. • Dynamic pipelines offer significant resource improvements over static pipelines. They can be implemented with additional software control and do not need any fundamental changes to quantum error correction or qubit design. This makes them an attractive technique for future FTQC system designs. • Our work exposes new trade-offs between distillation space (qubits) and time (Fig. 1(e)). While existing architectures each yields only a single distillation pipeline configuration (a fixed point on the spacetime diagram), our method produces a spectrum of configurations that form the Pareto front. This allows quantum architects to select the configurations best suited to their hardware capabilities and application requirements."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Background",
+      "paragraphs": [
+        "2.1 Fault tolerant quantum computing Surface code. The surface code is a leading QEC scheme due to its practical hardware requirements [24,25] and has been prototyped experimentally [1]. A logical qubit is encoded in a 𝑑 × 𝑑 patch of physical qubits, where the code distance 𝑑 determines error suppression: larger 𝑑 offers stronger protection but requires more qubits and longer runtime.",
+        "Error correction relies on repeated stabilizer (parity) measurements using ancilla qubits. A round of stabilizer measurement has hardware-determined constant duration",
+        "where 𝑇 2q and 𝑇 meas are the durations of two-qubit gates and measurement, respectively. One logical cycle includes 𝑑 consecutive stabilizer measurements, so it takes 𝑑 •𝑇 stab time.",
+        "The physical-to-logical error suppression per cycle can be approximated by",
+        "where 𝑝 is the physical error rate and the constants are numerically determined [7,24]. We assume the surface code as our underlying code, following existing studies on distillation pipelines and resource estimation [7,27,62,63], though our ideas are widely applicable across QEC codes. Our work focuses on logical qubits rather than physical qubits.",
+        "Logical operations. The standard method for implementing Clifford logical operations (e.g., CNOT and H) in the surface code is lattice surgery [47]. Quantum circuits are compiled into sequences of multi-Pauli measurements [62,79], which perform Clifford operations by merging and splitting the involved logical qubit patches. These patches can also be moved by deforming and relocating to the target position, requiring only one logical cycle regardless of the movement distance [62]. For non-Clifford operations (e.g., 𝑇 ), lattice surgery is combined with magic state injection, which consumes qubits that have been pre-prepared in the special state",
+        ", known as the magic state [9,47]."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Magic state distillation",
+      "paragraphs": [
+        "Since direct preparation of magic states is noisy, magic state distillation is employed to convert many noisy magic states into fewer, higher-fidelity ones [9]. The 15-to-1 protocol based on Reed-Muller code is a widely used scheme, which consumes 15 input and produces a single output. Figure 2 shows a factory implementing this protocol. When realized on the surface code, the output magic state error rate of a factory can be estimated [7] by",
+        "Multi-level distillation. Practical-scale quantum computers are expected to apply multi-level distillation [52] to achieve fidelities beyond what is attainable from only cubic suppression, as shown in Equation (3). For example, resource estimates [7] show that quantum chemistry requires magicstate fidelities below 10 -14 , while superconducting devices typically generate raw magic states with error rates on the order of 10 -4 [7], necessitating two or three levels of distillation. Table 1 illustrates an example of a three-level distillation pipeline, where each level employs a 15-to-1 factory.",
+        "However, although each round of distillation reduces the magic-state error rate cubically, this improvement is finally limited by the logical error rate 𝑝 𝐿 , which is not suppressed by distillation (Eq. ( 3)). Therefore, the code distance 𝑑 must be increased across levels to reduce 𝑝 𝐿 accordingly (Eq. (2)) and to keep 𝜖 3 in and 𝑝 𝐿 within comparable regimes."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Limitations of existing architectures",
+      "paragraphs": [
+        "In the sequential architecture [7], all physical qubits are allocated to the first level of distillation at the beginning. Then, these qubits are reused for the second level and so on. Although factory size increases with each level, the number of factories decreases. As a result, higher-level factories typically either fail to fully utilize all available qubits (Fig. 3(a)) or occupy more qubits than lower-level factories. Both situations lead to a substantial number of qubits unused, reducing the efficiency of magic-state production.",
+        "In the parallel architecture [78], all qubits are allocated to all factories which operate in parallel. To balance production and consumption speed across levels, one must carefully tune the number of factories at each level. However, due to the discrete execution time of factories, perfect matching is nearly impossible. Excess magic-state production at a lower level factory leads to high buffer overhead, while insufficient production stalls higher-level factories and wastes their qubits (Fig. 3(b)). These limitations reveal a key insight: fixing either the spatial or temporal structure of the pipeline hinders overall optimization opportunities."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Key insight: the burst-then-steady pattern",
+      "paragraphs": [
+        "Litinski [62] proposed a quantum circuit simplification technique that pushes all Clifford gates to the end of a circuit using gate commutation techniques, reducing the circuit to a sequence of non-Clifford rotations. When applied to magic state distillation, every distillation protocol can be simplified to a sequence of rotations, each consuming one magic state [63]. This technique reveals a key structural property of distillation circuits: each factory consumes magic states in a burst-then-steady pattern, requiring multiple states initially followed by periodic single-state consumption. For example, Figure 2 illustrates the simplified 15-to-1 distillation protocol, which consists of 11 non-Clifford rotations. Four magic states are consumed for initialization, and 11 consecutive rotations are then steadily performed, each of which consumes one magic state. This pattern changes the pipeline design paradigm from a prepare-then-execute model to a supply-ondemand model. Instead of pre-preparing all required magic states, the pipeline can supply magic states on demand as factories consume them."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Our approach: making the pipeline dynamic",
+      "paragraphs": [
+        "Based on the observation from the burst-then-steady consumption pattern, we propose a fully dynamic pipeline architecture. Our approach dynamically adjusts the pipeline structure based on available qubits and magic-state demand, allowing factories at different levels to execute at arbitrary times. We overcome the limitations of existing designs by carefully controlling the factory scheduling (Fig. 3(c)). Resource waste from unused qubits and idle factories can be reduced by deploying additional factories using these residual and vacant qubits. Buffer overhead can also be reduced by dynamically supplying magic states on demand, rather than preloading them. Since the fully dynamic pipeline can adjust the factories in flexible ways, the existing sequential and parallel pipelines can be viewed as special cases of our more general framework. This leads us to our core question: how do we construct an efficient dynamic pipeline? The challenge is to determine when each factory should execute and how many qubits should be allocated to each factory."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Problem formulation",
+      "paragraphs": [
+        "Factory model. We assume each factory has the following properties:",
+        "(1) Input pattern: the number of required input magic states and the timesteps at which they are consumed in the distillation circuit. (2) Output: the number of output magic states and their fidelity as a function of input state fidelity. (3) Resource cost: execution time and qubit usage. (4) Success probability as a function of input state fidelity.",
+        "This design allows us to ensure generality across distillation protocols and implementations, hiding low-level details such as lattice surgery operations. Techniques like physical layout optimization are beyond the scope of this work, but can be applied in a complementary fashion.",
+        "Problem input. We are given a sequence of distillation factories for each level, each of which has the model above. Following prior works on resource estimation [7,36], we only consider a single type of factory at each level. Thus, the input can be represented as a sequence of code distances, which determines other factory parameters. Table 1 shows an example of a (3, 9, 15) pipeline with three rounds of distillation using 15-to-1 factories with code distances 3, 9 and 15 at each level. In practice, application requirements (e.g. desired accuracy, magic-state count) are used to determine this input. We note that buffer size is not assumed to be part of the input, as our architecture design selects the optimal buffer size automatically (see Sec. 5.4).",
+        "Optimization objectives and output. We construct the dynamic pipeline by scheduling factories and allocating qubit resources to factories. We aim to jointly optimise both space and time and produce a Pareto front [49], where each point represents a valid dynamic pipeline configuration. This subsumes work that focuses on either space (sequential pipelines) or time (parallel pipelines) minimization [7,78].",
+        "Constraints. The distillation pipeline resembles a multilevel supply chain, with the fundamental constraint being that magic states must be produced before consumption by the next level. Since perfect production-consumption synchronization introduces rigidity and failure vulnerability [43], we employ buffers to temporarily store magic states between levels, which is a common practice in distillation architectures [43,78]. Through a combination of scheduling and buffer provisioning, we must ensure that buffer levels never become negative (demand outstrips production), maintaining feasible operation throughout the pipeline."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Dynamic pipeline design 5.1 Decomposition into two-level subproblems",
+      "paragraphs": [
+        "We begin by decomposing the multi-level factory scheduling problem into a sequence of subproblems, since solving it directly is challenging. This problem resembles the NP-hard project scheduling problem under resource constraints [19], and the multi-level nature of the pipeline adds additional complexity. However, for multi-level pipelines, the magic states produced by the first ℓ levels can only be consumed by level-(ℓ+1) factories. This locality allows us to perform scheduling independently between adjacent levels and compose the schedules.",
+        "We start by constructing and optimizing the dynamic pipeline schedule for the first two levels. We obtain a Pareto front of pipeline configurations with their qubit and time usage, represented as qubit-time pairs {(𝑄 𝑖 ,𝑇 𝑖 )}. To incorporate the third level, we treat the optimized first two levels as a single low-level factory and the third level as the high-level factory. For example, if both of the first two levels use 15-to-1 protocols, we view them as a single 225-to-1 factory while making decisions for the third level. Since multiple two-level schedules exist with different qubit-time trade-offs, we can choose any combination of low-level factories to supply the magic states for the third-level factory.",
+        "In summary, the factory scheduling problem reduces to a recursive sequence of two-level subproblems, which can be solved from a supply-driven perspective, with low-level factories as producers and high-level factories as consumers:",
+        "• Input: A set of low-level factories with qubit-time trade-offs {(𝑄 𝑖 ,𝑇 𝑖 )} and one high-level factory. • Objective: Select and schedule any combination of low-level factories to supply magic states for the highlevel factory, minimising both qubit and time usage.",
+        "𝑖 ,𝑇 ′ 𝑖 )}, which corresponds to different schedules for the combined pipeline."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Dynamic pipeline strategies",
+      "paragraphs": [
+        "To solve the two-level subproblem, we describe our strategies that enable dynamism in the pipeline, followed by the techniques for scheduling and qubit resource allocation.",
+        "Key strategy 1: partial-input launch. To supply the initial burst demand, we first deploy as many low-level factories as possible to rapidly fill the buffer before launching the high-level factory. After its deployment and launch, the remaining qubits are used to run additional low-level factories in parallel to maintain a steady supply. Unlike traditional pipelines, this strategy allows the high-level factory to start before all inputs are prepared.",
+        "Can we avoid factory stalls solely through partial-input launch? A high-level factory stalls when the buffer becomes empty, which occurs when the production falls short of the consumption. Although adjusting the launch time can reduce stall risk, complete elimination is rarely achievable. Since distillation protocols use post-selection to filter erroneous magic states, distillation failures are unavoidable [63]. Although enlarging the buffer can mitigate the impact of such failures, it incurs additional qubit overhead. Therefore, we require mechanisms to mitigate the impact of stalls.",
+        "Key strategy 2: ancilla reuse during stalls. We can leverage idle qubits during stalls to run additional low-level factories to accelerate distillation. In a typical implementation of the 15-to-1 distillation protocol (Fig. 4(a)), only 5 logical qubits store data, while the remaining 10 serve as temporary ancilla qubits. These qubits are reset and reused in each non-Clifford rotation (Fig. 4(b)), and thus can be safely reused during stalls without disturbing the protocol.",
+        "To accommodate more low-level factories, we temporarily move the data qubits aside when a stall occurs (Fig. 4(c)). These moves can be performed in parallel, and in lattice surgery each move costs one stabilizer measurement round, independent of distance [62]. Moving data qubits introduces minimal delay: most data qubits are moved in a single step, with a second step needed only if some paths overlap, and a third step is rarely necessary. Once space is freed, we can deploy additional low-level factories in the vacated region to accelerate the magic-state production (Fig. 4(d)).",
+        "Three-phase execution. With these strategies, the overall execution of the two-level distillation pipeline proceeds in three phases. (1) Distillation begins with all qubits dedicated to running low-level factories until the buffer accumulates enough magic states. (2) The high-level factory is then launched, with the remaining qubits allocated to low-level factories running in parallel to provide a steady supply. (3) When the high-level factory stalls due to insufficient input magic states, the system enters the third phase, reusing its ancilla qubits to run additional low-level factories. Once enough magic states are buffered, the high-level factory resumes, returning the system to the second phase.",
+        "There are two additional techniques required to complete our design. Temporally, we design a factory scheduler that determines when to start factories and switch between execution phases. Spatially, we implement a resource allocator that selects the optimal combination of low-level factories for each phase and determines the best buffer size."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Factory scheduler",
+      "paragraphs": [
+        "We present the design of a scheduler that keeps querying the buffer's magic-state count during execution and determines the launch and resumption time of the high-level factory.",
+        "The goal is to align the magic-state production with the consumption pattern, since the discrepancy between them leads to either excessive buffer requirements (production exceeds consumption), or frequent stalls (production falls short of consumption). Specifically, we calculate buffer thresholds 𝑁 th and 𝑁 ′ th for launching and resuming the high-level factory, respectively. Our scheduler triggers the corresponding action when the buffer count reaches these thresholds.",
+        "Two parameters that impact these decisions are the steadystate consumption rate of the high-level factory and the maximum production rate of the low-level factories. The consumption rate is set by the distillation protocol. It equals the inverse of the time interval 𝜏 between consecutive magicstate consumptions, i.e. 𝑅 cons = 1/𝜏. Suppose the set of lowlevel factories is denoted by ℱ, the total production rate is then 𝑅 prod = 𝑓 ∈ℱ 𝑀 𝑓 /𝑇 𝑓 , where 𝑀 𝑓 is the number of magic states produced by factory 𝑓 and 𝑇 𝑓 is the time taken to produce them. If 𝑅 prod ≥ 𝑅 cons , launching immediately after preparing the first burst inputs suffices. If 𝑅 prod < 𝑅 cons , additional inputs must be pre-buffered to avoid stalls.",
+        "In the latter case, our strategy is to prepare slightly more magic states than the initial burst demand before launching the high-level factory, but not too many, as shown in Figure 5. We pre-buffer just enough magic states to compensate for the production shortfall during execution (Fig. 5(a)). Preparing more only increases buffer size without benefit (Fig. 5(b)), while preparing fewer leads to stalls (Fig. 5(c)). Although we can rely on ancilla reuse to produce magic states during these stalls, its production rate is lower than normal execution, since data qubits for high-level factory cannot be reused, leading to fewer qubits available for low-level factories.",
+        "The required number of pre-buffered magic states is",
+        "where 𝑁 is the total number of magic states required by the high-level factory and 𝑁 burst is the initial burst demand.",
+        "The remaining 𝑁 -𝑁 burst states are the steady-state demand.",
+        "Considering buffer capacity, the actual launch threshold is 𝑁 th = min {𝑁 slack , 𝑁 buf }, where 𝑁 buf denotes the buffer size. The resumption threshold is computed similarly, but the number of remaining magic-state demand depends on how many rotations are still pending in the high-level factory. Let 𝑛 rot denote this number, then the required number of pre-buffered magic states is",
+        "Considering the buffer size, the resumption threshold is 𝑁 ′ th = min 𝑁 ′ slack , 𝑁 buf . Unlike the high-level factory launch threshold 𝑁 th which could be computed statically, the resumption threshold 𝑁 ′ th depends on the number of remaining rotations 𝑛 rot and is computed dynamically at run time."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Resource allocator",
+      "paragraphs": [
+        "In this section, we discuss resource allocation in the twolevel dynamic pipeline. Our primary goal is to determine an appropriate combination of low-level factories to deploy for each execution phase and the buffer size.",
+        "In both the dedicated low-level factory phase (before the high-level factory launches) and the ancilla-reuse phase (after it stalls), the objective is to minimize the time to reach the buffer threshold (either the launch threshold 𝑁 th or resumption threshold 𝑁 ′ th ), subject to a fixed qubit budget. This leads to a constrained bin-packing problem, which we formulate as an integer linear program. Let 𝑁 threshold denote the threshold and let 𝑄 max denote the available qubit budget for only low-level factories. The problem can then be formulated as min 𝑇 subject to",
+        "𝑛 𝑖 , 𝑘 𝑖 ∈ Z ≥0 , 𝑇 ∈ Z ≥0 (10) where 𝑄 𝑖 , 𝑀 𝑖 ,𝑇 𝑖 are qubit usage, number of magic states produced, and time taken by the 𝑖-th factory, respectively. The variables 𝑛 𝑖 and 𝑘 𝑖 represent the 𝑖-th factory is instantiated 𝑛 𝑖 copies to run in parallel, each of which executes 𝑘 𝑖 times within time 𝑇 , as constrained by Equation (9). Equation ( 7) ensures total qubit usage does not exceed the qubit budget, and Equation ( 8) ensures the target threshold is met. When both low-and high-level factories are executing in parallel, there is no buffer threshold, as execution continues until the system stalls or completes. The objective is instead to maximize the production rate under a fixed qubit budget 𝑄 max . Similarly, we formulate the optimization problem as max 𝑅 prod subject to",
+        "where Equation ( 11) constraints the qubit budget, and Equation ( 12) calculates the production rate of magic states for the set of low-level factories. These optimizations are fast and scalable. The first optimization can be solved using a standard ILP solver, with approximately 150 variables and 80 constraints for threelevel pipelines, yielding a solution in 0.2 seconds. The second problem degenerates into a standard bin-packing problem, which can be solved efficiently via dynamic programming.",
+        "Optimize the buffer size. Buffer size is another critical design parameter that directly impacts performance. While buffering has been introduced into distillation pipelines in prior work [43,78], the choice of buffer size has not been considered. We observe that buffering overhead is substantial, necessitating buffer-size optimization. For example, a typical 15-to-1 factory shown in Figure 4(a) occupies 15 patches, and storing a single magic state occupies 1 patch. Thus, buffering only 8 magic states consumes more than half the space of the entire factory. On the other hand, a smaller buffer leads to frequent stalls, impacting the overall time efficiency.",
+        "To trade off buffer overhead and time efficiency, we exhaustively search all candidate buffer sizes and evaluate performance via simulation. The search space is small enough for enumeration, as buffer size must be at least the initial burst demand 𝑁 burst of the high-level factory and at most its total demand 𝑁 . For the 15-to-1 protocol, this range is 4-15."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Putting it all together",
+      "paragraphs": [
+        "We integrate the factory scheduler and the resource allocator into a unified dynamic pipeline architecture. The set of available low-level factories is computed recursively, incorporating one higher-level factory at each step. The total qubit budget 𝑄 and the buffer size 𝑁 buf are tunable parameters used to explore space-time trade-offs.",
+        "Before execution, the scheduler statically determines the set of low-level factories to be deployed in the initial phase prior to launching the high-level factory, as well as those to run in parallel alongside the high-level factory after its launch. The launch threshold 𝑁 th for initiating the high-level factory is also determined at this stage. The scheduler then instructs the quantum device to begin the distillation process with the selected low-level factories. During execution, the scheduler monitors the buffer magic-state count. Once it reaches the threshold 𝑁 th , it triggers the launch of the highlevel factory, transitioning the system into the second phase where low-and high-level factories execute in parallel. Each time the high-level factory stalls, the scheduler dynamically determines both the set of low-level factories to deploy while reusing ancilla qubits, and the resumption threshold 𝑁 ′ th required to resume high-level distillation. The system ends when the high-level factory completes.",
+        "Outlook for hardware deployment. Large-scale distillation pipelines target future quantum computers, as current hardware lacks the scale to support practical quantum applications or distillation [7]. We therefore discuss the prospective deployment method of our dynamic pipeline architecture on future systems. Our proposed factory scheduler and resource allocator can be implemented on classical hardware, acting as a control unit that issues commands to the quantum computer and reacts to runtime conditions. This forms a classical-quantum hybrid system, where the classical controller may be implemented using a CPU [5,92], FPGA [46,75,82,91], or SoC [81]. Recent experiments already demonstrate the feasibility of classical control of quantum devices and indicate that low-latency communication between classical and quantum components is achievable [14,18,21]."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Experimental setup",
+      "paragraphs": [
+        "Simulation. We implemented a logical-cycle-accurate distillation pipeline simulator in Python, using gurobi version 12.0.3 as our ILP solver [32]. The simulation proceeds in discrete time steps, with the stabilizer measurement cycle 𝑇 stab as the time unit (see Sec. 2), so that we can model the behavior of factories with different code distances.",
+        "Since magic-state factories can probabilistically fail, we require a technique to estimate their scheduling impact. The low failure probability prevents us from directly simulating the failures; even under a pessimistic physical error rate 𝜖 = 10 -3 and the smallest code distance 3, the failure rate of a 15to-1 factory remains below 0.2% [7]. Instead, we analytically estimate this delay and add it to the total execution time to ensure accuracy. These failures are modeled using a Markov chain, details are available in Appendix A.",
+        "Physical parameters. We mainly use superconducting qubit parameters [4,7,53] with a two-qubit gate time 𝑇 2q = 50 𝜇s and a measurement time 𝑇 meas = 100 𝜇s. A single round of stabilizer measurement therefore takes 𝑇 stab = 400 𝜇s, which is the time unit for our simulation (Eq. ( 1)). This conversion allows us to translate simulation time into real-time units for interpretation. We set both the error rate of input raw magic states and physical gates to be 𝜖 = 10 -4 , which is a slightly optimistic estimation based on experimental implementations [4,7,53]. This setting affects the distillation levels and code distance choice to achieve the target fidelity.",
+        "Basic factory type. Following the baselines, we use the 15-to-1 distillation protocol. We use its compact lattice surgery implementation introduced in Ref. [62]. Each factory occupies 15 logical qubits, of which 5 are data qubits. It requires an initial burst demand of 4 magic states and a steady demand of 11. Each non-Clifford rotation takes one logical step, so the total execution time without delay is 11 logical steps.",
+        "Distillation benchmarks. We enumerate combinations of code distances from 3 to 47 to construct benchmarks for two-and three-level pipelines, which cover a wide range of application distillation scenarios. Scalable applications on superconducting platforms [4,20,57] typically require two-level distillation, and other physical platforms, e.g. Majorana [55], may require three-level distillation [7].",
+        "To validate the practicality of our approach, we also evaluate on five large-scale applications, which capture the core areas of quantum computing [73,74]. These include quantum simulation [10,23], represented by the Ising, Heisenberg, and Hubbard models [38,64,65]. We also include a quantum chemistry application [86] and factoring [27,77]. All programs are taken from the Azure resource estimator [68,85].",
+        "Baselines. We compare our method with the sequential [7] and parallel [78] baselines. Since the original works involve broader architectural concerns such as code distance selection and layout design, we reimplement the core distillation pipeline models to enable fair comparison. For each architecture, we compute the number of physical qubits 𝑄 and the time 𝑇 required to distill a single high-fidelity magic state.",
+        "For sequential architecture [7], the distillation levels run in sequence while reusing the same qubits. Their work increases the number of low-level factories to 16 to tolerate failures and ensure > 99% success. Using 𝑛 ℓ to demonstrate the number of factory copies of level ℓ, we set 𝑛 ℓ = 16 𝐿-ℓ . The total qubit cost is the peak demand across all levels 𝑄 seq = max 𝐿 ℓ=1 {𝑛 ℓ • 𝑄 ℓ }, and the total time cost is the sum of execution times 𝑇 seq = 𝐿 ℓ=1 𝑇 ℓ , where 𝑄 ℓ and 𝑇 ℓ are the physical qubit cost and runtime for a level-ℓ factory, respectively. The routing time is ignored, as assumed by all approaches.",
+        "For parallel architecture [78], all levels run concurrently. We fix the number of the highest-level factory 𝑛 𝐿 = 1 and, following their method, recursively compute the number of factory copies 𝑛 ℓ at each lower level by matching production and consumption rates as 𝑛 ℓ -1 𝑀 ℓ -1 𝑃 ℓ -1 /𝑇 ℓ -1 = 𝑛 ℓ 𝑁 ℓ /𝑇 ℓ for all ℓ = 2, . . . , 𝐿, where 𝑃 ℓ , 𝑁 ℓ , 𝑀 ℓ , and 𝑇 ℓ denote the success probability, magic-state demand, output state count, and runtime of a level-ℓ factory, respectively. The total qubit cost includes factory and buffer regions 𝑄 par = ℓ 𝑛 ℓ (𝑄 ℓ + 𝐵 ℓ ), where 𝐵 ℓ is the physical qubit cost for buffer space at level ℓ. We follow their manually constructed buffer sizes and set 4 logical qubits for the first level's buffer and 8 logical qubits for other levels' buffers. The total time cost is the runtime for one execution of the highest-level factory 𝑇 par = 𝑇 𝐿 . This estimate relies on the optimistic assumption that the 𝐿-level pipeline operates continuously without stalls. However, our analysis shows that stalls are inevitable in practice, making this estimate slightly overoptimistic.",
+        "Metrics. Each baseline yields a specific (𝑄,𝑇 ) pair, while our approach produces a Pareto frontier of all feasible pipeline schedules. To compare with baselines, we use the qubit-time or space-time volume (𝑄 • 𝑇 ) as the main metric.",
+        "This metric has a clear physical interpretation. Suppose a program requires 𝑀 prog magic states and should complete within time 𝑇 prog , assuming no delay from magic state supply. A distillation pipeline with cost (𝑄,𝑇 ) can produce ⌊𝑇 prog /𝑇 ⌋ magic states within this time by continuous execution. To meet the demand, at least 𝑀 prog /⌊𝑇 prog /𝑇 ⌋ copies of pipelines must be deployed, resulting in a total qubit count",
+        "which is approximately proportional to (𝑄 • 𝑇 ). Therefore, this metric fairly indicates the resource efficiency of a distillation pipeline."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Results",
+      "paragraphs": [],
+      "subsections": []
+    },
+    {
+      "title": "Improvements on distillation benchmarks",
+      "paragraphs": [
+        "Two-level distillation pipeline. We first enumerate all code-distance pairs from 3 to 21 for two-level distillation pipelines and compare the results of our dynamic pipeline with the baselines. Among the enumerated pairs, the best output error rate achieved is 2 × 10 -23 .",
+        "Figure 6 shows the qubit-time volume reduction for each pair of code distances. The results demonstrate our method reduces qubit-time volume across diverse code-distance combinations, achieving average improvements of 30% and 15% over the sequential and parallel baselines, respectively. When code distances differ significantly (e.g., (3,21)), the high-level factory dominates both qubit and time cost, so improvements over the sequential baseline are limited. When code distances are closer (e.g., (5, 7)), the dynamic pipeline achieves substantial gains over the sequential baseline by avoiding unused qubits, while improvements over the parallel baseline are smaller due to reduced opportunities for ancilla reuse.  Only 3 out of 90 benchmarks show a negative improvment, at worst up to -4%, which we attribute to the baselines' overly optimistic evaluation assumptions. The sequential baseline ignores its residual failure probability, while the parallel baseline assumes perfect synchronization without any production-consumption mismatches. Our dynamic pipeline architecture subsumes both baselines as special cases, so in principle it should not underperform either of them.",
+        "Furthermore, code-distance combinations that yield such negative results are rarely used in practice. We find that adjacent levels in these cases use distances that are either too close or too far apart. However, a distillation level contributes to overall fidelity improvement only when the logical error rate (determined by the code distance) is reduced at the same pace as the cubic suppression of the magic-state error rate (see Sec. 2). Consequently, only configurations with moderate code-distance growth across levels are practically effective and meaningful for evaluation.",
+        "Three-level distillation pipeline. To assess our architecture with more stringent fidelity requirements, we also consider three-level pipelines. For charting results, we enumerate error-rate thresholds and compute the minimum required distillation qubit-time volumes. Specifically, for each threshold, we search over all feasible code-distance sequences that achieve it and report the minimum qubit-time volume among the corresponding pipelines. This approach also filters out impractical code-distance combinations, ensuring fair evaluation.",
+        "Figure 7 presents the results for error-rate thresholds ranging from 10 -10 to 10 -50 . It shows that our dynamic pipeline consistently achieves lower qubit-time volume across all thresholds. The results are plotted on a logarithmic scale; in general, the stricter the error-rate threshold, the more pronounced the advantage of our method. This trend highlights the scalability of our approach in meeting the stringent fidelity requirements of larger-scale applications. Error rate threshold For each threshold on the x-axis, we enumerate all feasible two-and three-level distillation pipelines that achieve it and report the minimum volume among them. Our method consistently reduces the required volume compared to both baselines [7,78], with the advantage becoming more pronounced under stricter error-rate requirements.",
+        "Table 2 summarizes the reduction statistics across all evaluated error-rate thresholds. Overall, our dynamic architecture achieves average reductions of 26%-37% in qubit-time volume. For the sequential baseline, only two data points exhibit the worst-case reduction of 1%, while all other cases show improvements of at least 18%. For the parallel baseline, our method achieves at least 22% reduction."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Improvements on applications",
+      "paragraphs": [
+        "We use Microsoft Azure resource estimator [68,85] to derive the distillation requirements for each application benchmark, i.e. magic-state demand, target fidelity, and execution time.",
+        "From these parameters, we determine the necessary distillation levels and code distances and then construct the dynamic pipeline. We report results on both superconducting and Majorana devices using parameters given by Ref. [7].",
+        "While program execution could be slowed down to ease the demand on distillation factories and thereby reduce qubit cost [7,16,78], we assume no slowdown in order to isolate the impact of our pipeline design. Table 3 reports the results.",
+        "To compute the distillation qubit cost, we determine the number of pipeline copies required to meet the application's magic-state demand, assuming pipelines run continuously throughout the application execution. Thus, both qubit and time savings from a single pipeline are already reflected in the reported qubit cost, as its shorter execution times reduce the number of required copies. We observe significant percentage reductions in both distillation and total qubits (including program data qubits). Focusing only on the distillation overhead, our method consistently reduces qubit usage, achieving 16%-70% reductions compared to the baselines. When considering the total qubit usage, our approach still provides up to 70% improvement for distillation-heavy applications, i.e. those with a large factory ratio. Some applications (e.g. factoring) use only a very small percentage of qubits for distillation; we cannot obtain significant percentage reductions in total qubit usage in such cases. However, even in these cases, the absolute reductions of 100 K-2 M qubits are offered by our method.",
+        "Case study of the Hubbard application. Here we investigate how our architecture enables full space-time trade-off opportunities in distillation pipelines with code distances (5,17) as used in the Hubbard model. Figure 8 shows the Pareto front generated by our method to distill one highfidelity magic state, with each point representing a feasible pipeline configuration. The red star indicates the minimum space-time volume across all pipeline configurations, which occurs at a buffer size of 10.",
+        "As expected, a smaller qubit budget results in longer execution times. With limited qubits, only one high-level factory and a minimal buffer of size 4 (darkest color) can be deployed, forcing heavy ancilla reuse and leading to long runtimes. As Table 3. Distillation qubit cost comparison with sequential [7] and parallel [78] baselines on real-world applications. The reported distillation qubit cost reflects both qubit and time reductions of a single pipeline, as its shorter execution time reduces the number of required copies. Code distances are selected to meet the required fidelity, and the factory ratio is the percentage of qubits used for distillation under our architecture. Results for both superconducting and Majorana platforms are shown, using parameters from Ref. [7]. Our method yields substantial qubit savings, especially for distillation-heavy applications. the budget increases, larger buffers (lighter colors) and additional factories can run in parallel, reducing execution time.",
+        "Eventually, the time cost plateaus at around 27 𝜇s, which equals the execution time of a single second-level factory, indicating that this factory has become the bottleneck. It marks the optimal execution time, matching the parallel baseline.",
+        "Compared to the sequential baseline, we reduce both qubits and execution time. Compared to the parallel baseline, which attains the minimal time usage, our method requires fewer qubits. Our architecture also exposes the full trade-off space, creating opportunities for further compiler-level optimizations in FTQC schemes. Moreover, the resource allocator explicitly considers buffer size and selects 10 as the optimal value, providing practical guidance for buffer size selection."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Related work",
+      "paragraphs": [
+        "Protocols for realizing non-Clifford gates. Universal fault-tolerant quantum computing depends on the efficient implementation of non-Clifford gates [31]. In Clifford+T (magic state) framework, fundamental protocols for T state distillation have been extensively studied [8, 12, 13, 15, 33-35, 37, 58, 60, 63, 66], with further improvements on raw input states via zero-level distillation [42,50,80] and injection [26,59,61]. Other methods aim to bypass distillation, including catalysis [28], cultivation [29,84], and transversal-CNOT-based protocols [87,88]. Beyond the Clifford+T framework, there are alternative routes to universality such as Clifford+Rz (arbitrary rotation) [2, 17,76] and code switching [6,11,39,71]. These approaches either impose stricter requirements on hardware or underlying error correction codes, or support only limited-fidelity non-Clifford operations, and thus do not eliminate the need for distillation.",
+        "Compilation of distillation factories. Considerable effort has been devoted to compiling these distillation protocols onto specific quantum error correction schemes, especially based on the surface code. One line of work focuses on the realization of a single factory, employing methods that range from manual optimization [24,25,62,63,72] to SAT-based automated approaches [83]. Another line of work addresses multiple factories, including factories placement [41,45], inter-factory routing [22] and buffering [43]. These works are largely complementary to ours, as our architecture is compatible with all lattice-surgery-based distillation factory implementations, while delegating physical layout and routing tasks to the compiler.",
+        "Operating system supports for FTQC. Our work resembles operating system support for resource management and task scheduling in a quantum computing environment. Quantum system works have explored multi-program scheduling [30] and dynamic resource allocation [54], but these approaches treat distillation factories as black-box components. In contrast, we target the distillation process itself and offer flexible control over distillation factories.",
+        "Quantum circuit optimizers. Methods for optimizing quantum circuits to reduce resource overhead have been widely explored via rewrite rules [40,56,89], unitary transformations [3,70], their combinations [90], and qubit reuse strategies [48,51,69]. While such methods can also be applied to distillation circuits, our work operates at a higher level of abstraction, focusing on the dynamic scheduling of multi-level distillation rather than circuit-level optimization.",
+        "We have presented a dynamic pipeline architecture for multilevel distillation that allows the pipeline structure to evolve over time. Through dynamic scheduling and resource allocation, our approach orchestrates the executions of factories across levels to improve resource utilization. Compared with state-of-the-art architectures, our approach achieves significant reductions in distillation overhead and unlocks further optimization opportunities by offering flexible space-time trade-offs. These advancements bring us closer to efficient and scalable fault-tolerant quantum computing systems."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "A Calculate expected delays due to failures",
+      "paragraphs": [
+        "In this section, we analytically estimate the expected delays caused by low-level factory failures. For simplicity, we assume that each factory outputs only one magic state at a time. However, this can be easily extended to the general case.",
+        "We first run the no-failure simulation according to Section 6 to obtain the series of numbers of magic states produced 𝑛 prod (𝑡) and consumed 𝑛 cons (𝑡) at each time 𝑡. We observe that this is a Markov process and model it with state vector P 𝑡 = 𝑝 𝑡 (0), 𝑝 𝑡 (1), . . . , 𝑝 𝑡 (𝑁 buf ), 𝑝 𝑡 (fail) ,",
+        "where 𝑝 𝑡 (𝑖) represents the probability that the buffer contains exactly 𝑖 magic states at time 𝑡, and 𝑝 𝑡 (fail) represents the probability that the system has encountered its first stall due to insufficient magic states by time 𝑡. State evolution is given by P 𝑡 = P 𝑡 -1 • T cons • T prod , (16) where T cons and T prod are the transition matrices for consumption and production, respectively.",
+        "When the high-level factory consumes 𝑛 cons (𝑡) magic states, the probability vector shifts by 𝑛 cons (𝑡) positions, as consumption is deterministic. If the buffer contains fewer than 𝑛 cons (𝑡) magic states, a stall occurs. Thus, T cons (𝑖, 𝑗) = 1, if 𝑗 = 𝑖 -𝑛 cons (𝑡), 0, otherwise.",
+        "The last element 𝑝 𝑡 (fail) accumulates the probability of a stall as",
+        "On the production side, the number of magic states generated by low-level factories follows a binomial distribution, updating the probability vector as T prod (𝑖, 𝑗) = 𝑛 prod (𝑡) 𝑗 -𝑖 𝑝 𝑗 -𝑖 suc (1 -𝑝 suc ) 𝑛 prod (𝑡 ) -( 𝑗 -𝑖 ) , (19) where 𝑝 suc is the success probability for producing a single magic state. In this analytical model, the probability of a stall 𝑃 stall (𝑡) at each time step 𝑡 is actually the cumulative probability that at least one stall has occurred up to and including time 𝑡. Therefore, the cumulative stall probability is 𝑃 stall (𝑡) = 𝑝 𝑡 (fail). The probability that the first stall occurs at time 𝑡 should be computed as 𝑝 stall (𝑡) = 𝑃 stall (𝑡) -𝑃 stall (𝑡 -1), (20) where 𝑃 stall (-1) is defined as 0.",
+        "To compute the expected failure delay, we weight the recovery time Δ𝑡 (𝑡) at each 𝑡 by the stall probability and get the expected delay",
+        "where 𝑇 is the total time of the distillation process. To get the Δ𝑡 (𝑡), we simply use the integer programming algorithm as described in Section 5.4. This estimated delay E[𝑇 delay ] is added to the total time of the distillation factory.",
+        "In this approach, we only account for the delay associated with the first occurrence of a stall that is caused by low-level factory failures. After recovery from this stall, the system could encounter additional stalls due to further low-level factory failures. However, the probability of such subsequent stalls is extremely low so it can be safely neglected for practical results."
+      ],
+      "subsections": []
+    }
+  ],
+  "body_paragraphs": [
+    "Quantum computing is a computational paradigm that leverages quantum mechanics to solve problems that are intractable on classical computers. Current noisy intermediate-scale quantum (NISQ) devices are susceptible to physical noise [73], resulting in high error rates that limit the size of the problems that these devices can solve. To achieve practical quantum advantage, we must tackle large problems that scale beyond classical computational limits [44]. This requires faulttolerant quantum computing (FTQC) where quantum error correction (QEC) is used to protect quantum information by redundantly encoding quantum information across multiple physical qubits. This results in logical qubits which have improved error rates compared to their physical qubits [67].",
+    "Universal quantum computation on logical qubits requires both Clifford and non-Clifford gates [31], but typical QEC codes natively support only Clifford gates [24]. To support non-Clifford gates, magic state injection is used. That is, a magic state is prepared using some procedure and injected into the logical qubit where the non-Clifford operations is desired. The quality of the injected states directly impacts the logical error rate, making the preparation of high-quality magic states an important component of a quantum computer. To prepare high-quality magic states, magic state distillation [9] is the standard method. It converts multiple lowfidelity input magic states into fewer, high-fidelity ones. For example, the Reed-Muller protocol [9] takes 15 input noisy magic states to produce one high-quality magic state, reducing error rates by a cubic factor. Since practical applications will require magic states in fidelities below 10 -10 , one round of distillation typically does not suffice [7]. Distillation is usually performed in a multi-level fashion, where each level includes a set of distillation circuits (factories), ultimately producing very high fidelity magic states [52]. This process, however, is costly: some applications devote up to 95% of their total qubits to distillation [7]. Optimizing this multilevel distillation pipeline is therefore the focus of our work.",
+    "Prior works on distillation pipelines adopt fixed architectures, where the pipeline structure is statically defined and does not adapt to runtime conditions. There are two types of fixed pipelines: sequential and parallel. In the sequential pipeline [7], distillation levels are executed in a strict sequence on the same set of qubits (Fig. 1(a)). The scheduling order and resource assignments are predetermined and unchanging. In the parallel pipeline [78], all levels run concurrently in dedicated qubit regions with one region feeding states to the next region (Fig. 1(b)). The number of factories at each level is fixed in advance to match production and consumption rates. At face value, the sequential architecture uses fewer qubits but takes more time, while the parallel architecture achieves lower execution time at the expense of more qubits. However, our work shows that both designs suffer from resource inefficiencies due to their rigid pipeline structures, leaving many qubits underutilized. Importantly, we also observe that these works assume a factory can begin only when previous levels of the pipeline are completed.",
+    "Our work proposes a novel dynamic magic state distillation architecture, shown in Figure 1. Our work rests on the observation that magic-state factories exhibit a burstthen-steady consumption pattern: it consumes a burst of magic states at the beginning and then consumes them gradually. This enables a supply-driven perspective to design Existing distillation pipeline architectures and our dynamic architecture. Each horizontal plane represents a snapshot of the running factories at a particular time step. Factories at higher levels use logical qubits with larger code distances, leading to larger patches. (a) Each distillation level executes in sequence. Many low-level factories can run in parallel, with only a few high-level factories can be packed within the available qubits. (b) All levels are allocated dedicated qubit regions and execute in parallel. (c) Partial-input launch allows launching high-level distillation before all input magic states are ready, reducing the number of active low-level factories and saving qubits. (d) When high-level factories stall due to insufficient magic-state input, some regions of the idling high-level factory can be reused to host more low-level factories, making subsequent distillation faster. (e) Our architecture not only reduces both qubit and time usage, but also exposes the full space-time trade-off space.",
+    "the pipeline, where magic states are only required to be supplied on time to meet the consumption pattern, rather than preparing all required magic states before execution.",
+    "Based on this observation, we design a dynamic distillation pipeline architecture that allows the pipeline structure to evolve dynamically based on the magic-state availability from currently completed distillation levels and available compute resources.",
+    "To enable dynamism, we use two strategies. First, partial input launch allows high-level factories to start execution as soon as some inputs are available, with the remaining inputs supplied gradually (Fig. 1(c)). Second, when a highlevel factory stalls due to insufficient inputs, we introduce ancilla qubit reuse during stalls to repurpose qubits to host additional low-level factories and accelerate the production of magic states (Fig. 1(d)).",
+    "We tackle the challenge of constructing an efficient dynamic pipeline with these two strategies. We break the problem of multi-level distillation into a series of independent subproblems, each involving only a two-level pipeline. To optimize two-level pipelines, we introduce (1) a dynamic scheduler, which addresses the temporal dimension by determining when factories should be launched, and (2) a resource allocator, which addresses the spatial dimension by selecting the appropriate types of low-level factories and allocating qubits to these factories and the buffer.",
+    "We implemented our architecture in simulation and compared its resource usage to state-of-the-art static designs. On large-scale real-world quantum applications, our architecture reduces total qubit requirements by up to 70% (Heisenberg model) and 30% (Ising model) compared to sequential [7] and parallel [78] baselines, respectively, with most cases showing at least a 25% reduction. On generated distillation benchmarks, it achieves up to 65% and 31% reductions in qubit-time volume (with average reductions of 37% and 26%) compared to the baselines. Our key contributions are:",
+    "• Our work is the first to propose the dynamic magic distillation pipelines, overcoming key limitations of existing works [7,78]. • Dynamic pipelines offer significant resource improvements over static pipelines. They can be implemented with additional software control and do not need any fundamental changes to quantum error correction or qubit design. This makes them an attractive technique for future FTQC system designs. • Our work exposes new trade-offs between distillation space (qubits) and time (Fig. 1(e)). While existing architectures each yields only a single distillation pipeline configuration (a fixed point on the spacetime diagram), our method produces a spectrum of configurations that form the Pareto front. This allows quantum architects to select the configurations best suited to their hardware capabilities and application requirements.",
+    "2.1 Fault tolerant quantum computing Surface code. The surface code is a leading QEC scheme due to its practical hardware requirements [24,25] and has been prototyped experimentally [1]. A logical qubit is encoded in a 𝑑 × 𝑑 patch of physical qubits, where the code distance 𝑑 determines error suppression: larger 𝑑 offers stronger protection but requires more qubits and longer runtime.",
+    "Error correction relies on repeated stabilizer (parity) measurements using ancilla qubits. A round of stabilizer measurement has hardware-determined constant duration",
+    "where 𝑇 2q and 𝑇 meas are the durations of two-qubit gates and measurement, respectively. One logical cycle includes 𝑑 consecutive stabilizer measurements, so it takes 𝑑 •𝑇 stab time.",
+    "The physical-to-logical error suppression per cycle can be approximated by",
+    "where 𝑝 is the physical error rate and the constants are numerically determined [7,24]. We assume the surface code as our underlying code, following existing studies on distillation pipelines and resource estimation [7,27,62,63], though our ideas are widely applicable across QEC codes. Our work focuses on logical qubits rather than physical qubits.",
+    "Logical operations. The standard method for implementing Clifford logical operations (e.g., CNOT and H) in the surface code is lattice surgery [47]. Quantum circuits are compiled into sequences of multi-Pauli measurements [62,79], which perform Clifford operations by merging and splitting the involved logical qubit patches. These patches can also be moved by deforming and relocating to the target position, requiring only one logical cycle regardless of the movement distance [62]. For non-Clifford operations (e.g., 𝑇 ), lattice surgery is combined with magic state injection, which consumes qubits that have been pre-prepared in the special state",
+    ", known as the magic state [9,47].",
+    "Since direct preparation of magic states is noisy, magic state distillation is employed to convert many noisy magic states into fewer, higher-fidelity ones [9]. The 15-to-1 protocol based on Reed-Muller code is a widely used scheme, which consumes 15 input and produces a single output. Figure 2 shows a factory implementing this protocol. When realized on the surface code, the output magic state error rate of a factory can be estimated [7] by",
+    "Multi-level distillation. Practical-scale quantum computers are expected to apply multi-level distillation [52] to achieve fidelities beyond what is attainable from only cubic suppression, as shown in Equation (3). For example, resource estimates [7] show that quantum chemistry requires magicstate fidelities below 10 -14 , while superconducting devices typically generate raw magic states with error rates on the order of 10 -4 [7], necessitating two or three levels of distillation. Table 1 illustrates an example of a three-level distillation pipeline, where each level employs a 15-to-1 factory.",
+    "However, although each round of distillation reduces the magic-state error rate cubically, this improvement is finally limited by the logical error rate 𝑝 𝐿 , which is not suppressed by distillation (Eq. ( 3)). Therefore, the code distance 𝑑 must be increased across levels to reduce 𝑝 𝐿 accordingly (Eq. (2)) and to keep 𝜖 3 in and 𝑝 𝐿 within comparable regimes.",
+    "In the sequential architecture [7], all physical qubits are allocated to the first level of distillation at the beginning. Then, these qubits are reused for the second level and so on. Although factory size increases with each level, the number of factories decreases. As a result, higher-level factories typically either fail to fully utilize all available qubits (Fig. 3(a)) or occupy more qubits than lower-level factories. Both situations lead to a substantial number of qubits unused, reducing the efficiency of magic-state production.",
+    "In the parallel architecture [78], all qubits are allocated to all factories which operate in parallel. To balance production and consumption speed across levels, one must carefully tune the number of factories at each level. However, due to the discrete execution time of factories, perfect matching is nearly impossible. Excess magic-state production at a lower level factory leads to high buffer overhead, while insufficient production stalls higher-level factories and wastes their qubits (Fig. 3(b)). These limitations reveal a key insight: fixing either the spatial or temporal structure of the pipeline hinders overall optimization opportunities.",
+    "Litinski [62] proposed a quantum circuit simplification technique that pushes all Clifford gates to the end of a circuit using gate commutation techniques, reducing the circuit to a sequence of non-Clifford rotations. When applied to magic state distillation, every distillation protocol can be simplified to a sequence of rotations, each consuming one magic state [63]. This technique reveals a key structural property of distillation circuits: each factory consumes magic states in a burst-then-steady pattern, requiring multiple states initially followed by periodic single-state consumption. For example, Figure 2 illustrates the simplified 15-to-1 distillation protocol, which consists of 11 non-Clifford rotations. Four magic states are consumed for initialization, and 11 consecutive rotations are then steadily performed, each of which consumes one magic state. This pattern changes the pipeline design paradigm from a prepare-then-execute model to a supply-ondemand model. Instead of pre-preparing all required magic states, the pipeline can supply magic states on demand as factories consume them.",
+    "Based on the observation from the burst-then-steady consumption pattern, we propose a fully dynamic pipeline architecture. Our approach dynamically adjusts the pipeline structure based on available qubits and magic-state demand, allowing factories at different levels to execute at arbitrary times. We overcome the limitations of existing designs by carefully controlling the factory scheduling (Fig. 3(c)). Resource waste from unused qubits and idle factories can be reduced by deploying additional factories using these residual and vacant qubits. Buffer overhead can also be reduced by dynamically supplying magic states on demand, rather than preloading them. Since the fully dynamic pipeline can adjust the factories in flexible ways, the existing sequential and parallel pipelines can be viewed as special cases of our more general framework. This leads us to our core question: how do we construct an efficient dynamic pipeline? The challenge is to determine when each factory should execute and how many qubits should be allocated to each factory.",
+    "Factory model. We assume each factory has the following properties:",
+    "(1) Input pattern: the number of required input magic states and the timesteps at which they are consumed in the distillation circuit. (2) Output: the number of output magic states and their fidelity as a function of input state fidelity. (3) Resource cost: execution time and qubit usage. (4) Success probability as a function of input state fidelity.",
+    "This design allows us to ensure generality across distillation protocols and implementations, hiding low-level details such as lattice surgery operations. Techniques like physical layout optimization are beyond the scope of this work, but can be applied in a complementary fashion.",
+    "Problem input. We are given a sequence of distillation factories for each level, each of which has the model above. Following prior works on resource estimation [7,36], we only consider a single type of factory at each level. Thus, the input can be represented as a sequence of code distances, which determines other factory parameters. Table 1 shows an example of a (3, 9, 15) pipeline with three rounds of distillation using 15-to-1 factories with code distances 3, 9 and 15 at each level. In practice, application requirements (e.g. desired accuracy, magic-state count) are used to determine this input. We note that buffer size is not assumed to be part of the input, as our architecture design selects the optimal buffer size automatically (see Sec. 5.4).",
+    "Optimization objectives and output. We construct the dynamic pipeline by scheduling factories and allocating qubit resources to factories. We aim to jointly optimise both space and time and produce a Pareto front [49], where each point represents a valid dynamic pipeline configuration. This subsumes work that focuses on either space (sequential pipelines) or time (parallel pipelines) minimization [7,78].",
+    "Constraints. The distillation pipeline resembles a multilevel supply chain, with the fundamental constraint being that magic states must be produced before consumption by the next level. Since perfect production-consumption synchronization introduces rigidity and failure vulnerability [43], we employ buffers to temporarily store magic states between levels, which is a common practice in distillation architectures [43,78]. Through a combination of scheduling and buffer provisioning, we must ensure that buffer levels never become negative (demand outstrips production), maintaining feasible operation throughout the pipeline.",
+    "We begin by decomposing the multi-level factory scheduling problem into a sequence of subproblems, since solving it directly is challenging. This problem resembles the NP-hard project scheduling problem under resource constraints [19], and the multi-level nature of the pipeline adds additional complexity. However, for multi-level pipelines, the magic states produced by the first ℓ levels can only be consumed by level-(ℓ+1) factories. This locality allows us to perform scheduling independently between adjacent levels and compose the schedules.",
+    "We start by constructing and optimizing the dynamic pipeline schedule for the first two levels. We obtain a Pareto front of pipeline configurations with their qubit and time usage, represented as qubit-time pairs {(𝑄 𝑖 ,𝑇 𝑖 )}. To incorporate the third level, we treat the optimized first two levels as a single low-level factory and the third level as the high-level factory. For example, if both of the first two levels use 15-to-1 protocols, we view them as a single 225-to-1 factory while making decisions for the third level. Since multiple two-level schedules exist with different qubit-time trade-offs, we can choose any combination of low-level factories to supply the magic states for the third-level factory.",
+    "In summary, the factory scheduling problem reduces to a recursive sequence of two-level subproblems, which can be solved from a supply-driven perspective, with low-level factories as producers and high-level factories as consumers:",
+    "• Input: A set of low-level factories with qubit-time trade-offs {(𝑄 𝑖 ,𝑇 𝑖 )} and one high-level factory. • Objective: Select and schedule any combination of low-level factories to supply magic states for the highlevel factory, minimising both qubit and time usage.",
+    "𝑖 ,𝑇 ′ 𝑖 )}, which corresponds to different schedules for the combined pipeline.",
+    "To solve the two-level subproblem, we describe our strategies that enable dynamism in the pipeline, followed by the techniques for scheduling and qubit resource allocation.",
+    "Key strategy 1: partial-input launch. To supply the initial burst demand, we first deploy as many low-level factories as possible to rapidly fill the buffer before launching the high-level factory. After its deployment and launch, the remaining qubits are used to run additional low-level factories in parallel to maintain a steady supply. Unlike traditional pipelines, this strategy allows the high-level factory to start before all inputs are prepared.",
+    "Can we avoid factory stalls solely through partial-input launch? A high-level factory stalls when the buffer becomes empty, which occurs when the production falls short of the consumption. Although adjusting the launch time can reduce stall risk, complete elimination is rarely achievable. Since distillation protocols use post-selection to filter erroneous magic states, distillation failures are unavoidable [63]. Although enlarging the buffer can mitigate the impact of such failures, it incurs additional qubit overhead. Therefore, we require mechanisms to mitigate the impact of stalls.",
+    "Key strategy 2: ancilla reuse during stalls. We can leverage idle qubits during stalls to run additional low-level factories to accelerate distillation. In a typical implementation of the 15-to-1 distillation protocol (Fig. 4(a)), only 5 logical qubits store data, while the remaining 10 serve as temporary ancilla qubits. These qubits are reset and reused in each non-Clifford rotation (Fig. 4(b)), and thus can be safely reused during stalls without disturbing the protocol.",
+    "To accommodate more low-level factories, we temporarily move the data qubits aside when a stall occurs (Fig. 4(c)). These moves can be performed in parallel, and in lattice surgery each move costs one stabilizer measurement round, independent of distance [62]. Moving data qubits introduces minimal delay: most data qubits are moved in a single step, with a second step needed only if some paths overlap, and a third step is rarely necessary. Once space is freed, we can deploy additional low-level factories in the vacated region to accelerate the magic-state production (Fig. 4(d)).",
+    "Three-phase execution. With these strategies, the overall execution of the two-level distillation pipeline proceeds in three phases. (1) Distillation begins with all qubits dedicated to running low-level factories until the buffer accumulates enough magic states. (2) The high-level factory is then launched, with the remaining qubits allocated to low-level factories running in parallel to provide a steady supply. (3) When the high-level factory stalls due to insufficient input magic states, the system enters the third phase, reusing its ancilla qubits to run additional low-level factories. Once enough magic states are buffered, the high-level factory resumes, returning the system to the second phase.",
+    "There are two additional techniques required to complete our design. Temporally, we design a factory scheduler that determines when to start factories and switch between execution phases. Spatially, we implement a resource allocator that selects the optimal combination of low-level factories for each phase and determines the best buffer size.",
+    "We present the design of a scheduler that keeps querying the buffer's magic-state count during execution and determines the launch and resumption time of the high-level factory.",
+    "The goal is to align the magic-state production with the consumption pattern, since the discrepancy between them leads to either excessive buffer requirements (production exceeds consumption), or frequent stalls (production falls short of consumption). Specifically, we calculate buffer thresholds 𝑁 th and 𝑁 ′ th for launching and resuming the high-level factory, respectively. Our scheduler triggers the corresponding action when the buffer count reaches these thresholds.",
+    "Two parameters that impact these decisions are the steadystate consumption rate of the high-level factory and the maximum production rate of the low-level factories. The consumption rate is set by the distillation protocol. It equals the inverse of the time interval 𝜏 between consecutive magicstate consumptions, i.e. 𝑅 cons = 1/𝜏. Suppose the set of lowlevel factories is denoted by ℱ, the total production rate is then 𝑅 prod = 𝑓 ∈ℱ 𝑀 𝑓 /𝑇 𝑓 , where 𝑀 𝑓 is the number of magic states produced by factory 𝑓 and 𝑇 𝑓 is the time taken to produce them. If 𝑅 prod ≥ 𝑅 cons , launching immediately after preparing the first burst inputs suffices. If 𝑅 prod < 𝑅 cons , additional inputs must be pre-buffered to avoid stalls.",
+    "In the latter case, our strategy is to prepare slightly more magic states than the initial burst demand before launching the high-level factory, but not too many, as shown in Figure 5. We pre-buffer just enough magic states to compensate for the production shortfall during execution (Fig. 5(a)). Preparing more only increases buffer size without benefit (Fig. 5(b)), while preparing fewer leads to stalls (Fig. 5(c)). Although we can rely on ancilla reuse to produce magic states during these stalls, its production rate is lower than normal execution, since data qubits for high-level factory cannot be reused, leading to fewer qubits available for low-level factories.",
+    "The required number of pre-buffered magic states is",
+    "where 𝑁 is the total number of magic states required by the high-level factory and 𝑁 burst is the initial burst demand.",
+    "The remaining 𝑁 -𝑁 burst states are the steady-state demand.",
+    "Considering buffer capacity, the actual launch threshold is 𝑁 th = min {𝑁 slack , 𝑁 buf }, where 𝑁 buf denotes the buffer size. The resumption threshold is computed similarly, but the number of remaining magic-state demand depends on how many rotations are still pending in the high-level factory. Let 𝑛 rot denote this number, then the required number of pre-buffered magic states is",
+    "Considering the buffer size, the resumption threshold is 𝑁 ′ th = min 𝑁 ′ slack , 𝑁 buf . Unlike the high-level factory launch threshold 𝑁 th which could be computed statically, the resumption threshold 𝑁 ′ th depends on the number of remaining rotations 𝑛 rot and is computed dynamically at run time.",
+    "In this section, we discuss resource allocation in the twolevel dynamic pipeline. Our primary goal is to determine an appropriate combination of low-level factories to deploy for each execution phase and the buffer size.",
+    "In both the dedicated low-level factory phase (before the high-level factory launches) and the ancilla-reuse phase (after it stalls), the objective is to minimize the time to reach the buffer threshold (either the launch threshold 𝑁 th or resumption threshold 𝑁 ′ th ), subject to a fixed qubit budget. This leads to a constrained bin-packing problem, which we formulate as an integer linear program. Let 𝑁 threshold denote the threshold and let 𝑄 max denote the available qubit budget for only low-level factories. The problem can then be formulated as min 𝑇 subject to",
+    "𝑛 𝑖 , 𝑘 𝑖 ∈ Z ≥0 , 𝑇 ∈ Z ≥0 (10) where 𝑄 𝑖 , 𝑀 𝑖 ,𝑇 𝑖 are qubit usage, number of magic states produced, and time taken by the 𝑖-th factory, respectively. The variables 𝑛 𝑖 and 𝑘 𝑖 represent the 𝑖-th factory is instantiated 𝑛 𝑖 copies to run in parallel, each of which executes 𝑘 𝑖 times within time 𝑇 , as constrained by Equation (9). Equation ( 7) ensures total qubit usage does not exceed the qubit budget, and Equation ( 8) ensures the target threshold is met. When both low-and high-level factories are executing in parallel, there is no buffer threshold, as execution continues until the system stalls or completes. The objective is instead to maximize the production rate under a fixed qubit budget 𝑄 max . Similarly, we formulate the optimization problem as max 𝑅 prod subject to",
+    "where Equation ( 11) constraints the qubit budget, and Equation ( 12) calculates the production rate of magic states for the set of low-level factories. These optimizations are fast and scalable. The first optimization can be solved using a standard ILP solver, with approximately 150 variables and 80 constraints for threelevel pipelines, yielding a solution in 0.2 seconds. The second problem degenerates into a standard bin-packing problem, which can be solved efficiently via dynamic programming.",
+    "Optimize the buffer size. Buffer size is another critical design parameter that directly impacts performance. While buffering has been introduced into distillation pipelines in prior work [43,78], the choice of buffer size has not been considered. We observe that buffering overhead is substantial, necessitating buffer-size optimization. For example, a typical 15-to-1 factory shown in Figure 4(a) occupies 15 patches, and storing a single magic state occupies 1 patch. Thus, buffering only 8 magic states consumes more than half the space of the entire factory. On the other hand, a smaller buffer leads to frequent stalls, impacting the overall time efficiency.",
+    "To trade off buffer overhead and time efficiency, we exhaustively search all candidate buffer sizes and evaluate performance via simulation. The search space is small enough for enumeration, as buffer size must be at least the initial burst demand 𝑁 burst of the high-level factory and at most its total demand 𝑁 . For the 15-to-1 protocol, this range is 4-15.",
+    "We integrate the factory scheduler and the resource allocator into a unified dynamic pipeline architecture. The set of available low-level factories is computed recursively, incorporating one higher-level factory at each step. The total qubit budget 𝑄 and the buffer size 𝑁 buf are tunable parameters used to explore space-time trade-offs.",
+    "Before execution, the scheduler statically determines the set of low-level factories to be deployed in the initial phase prior to launching the high-level factory, as well as those to run in parallel alongside the high-level factory after its launch. The launch threshold 𝑁 th for initiating the high-level factory is also determined at this stage. The scheduler then instructs the quantum device to begin the distillation process with the selected low-level factories. During execution, the scheduler monitors the buffer magic-state count. Once it reaches the threshold 𝑁 th , it triggers the launch of the highlevel factory, transitioning the system into the second phase where low-and high-level factories execute in parallel. Each time the high-level factory stalls, the scheduler dynamically determines both the set of low-level factories to deploy while reusing ancilla qubits, and the resumption threshold 𝑁 ′ th required to resume high-level distillation. The system ends when the high-level factory completes.",
+    "Outlook for hardware deployment. Large-scale distillation pipelines target future quantum computers, as current hardware lacks the scale to support practical quantum applications or distillation [7]. We therefore discuss the prospective deployment method of our dynamic pipeline architecture on future systems. Our proposed factory scheduler and resource allocator can be implemented on classical hardware, acting as a control unit that issues commands to the quantum computer and reacts to runtime conditions. This forms a classical-quantum hybrid system, where the classical controller may be implemented using a CPU [5,92], FPGA [46,75,82,91], or SoC [81]. Recent experiments already demonstrate the feasibility of classical control of quantum devices and indicate that low-latency communication between classical and quantum components is achievable [14,18,21].",
+    "Simulation. We implemented a logical-cycle-accurate distillation pipeline simulator in Python, using gurobi version 12.0.3 as our ILP solver [32]. The simulation proceeds in discrete time steps, with the stabilizer measurement cycle 𝑇 stab as the time unit (see Sec. 2), so that we can model the behavior of factories with different code distances.",
+    "Since magic-state factories can probabilistically fail, we require a technique to estimate their scheduling impact. The low failure probability prevents us from directly simulating the failures; even under a pessimistic physical error rate 𝜖 = 10 -3 and the smallest code distance 3, the failure rate of a 15to-1 factory remains below 0.2% [7]. Instead, we analytically estimate this delay and add it to the total execution time to ensure accuracy. These failures are modeled using a Markov chain, details are available in Appendix A.",
+    "Physical parameters. We mainly use superconducting qubit parameters [4,7,53] with a two-qubit gate time 𝑇 2q = 50 𝜇s and a measurement time 𝑇 meas = 100 𝜇s. A single round of stabilizer measurement therefore takes 𝑇 stab = 400 𝜇s, which is the time unit for our simulation (Eq. ( 1)). This conversion allows us to translate simulation time into real-time units for interpretation. We set both the error rate of input raw magic states and physical gates to be 𝜖 = 10 -4 , which is a slightly optimistic estimation based on experimental implementations [4,7,53]. This setting affects the distillation levels and code distance choice to achieve the target fidelity.",
+    "Basic factory type. Following the baselines, we use the 15-to-1 distillation protocol. We use its compact lattice surgery implementation introduced in Ref. [62]. Each factory occupies 15 logical qubits, of which 5 are data qubits. It requires an initial burst demand of 4 magic states and a steady demand of 11. Each non-Clifford rotation takes one logical step, so the total execution time without delay is 11 logical steps.",
+    "Distillation benchmarks. We enumerate combinations of code distances from 3 to 47 to construct benchmarks for two-and three-level pipelines, which cover a wide range of application distillation scenarios. Scalable applications on superconducting platforms [4,20,57] typically require two-level distillation, and other physical platforms, e.g. Majorana [55], may require three-level distillation [7].",
+    "To validate the practicality of our approach, we also evaluate on five large-scale applications, which capture the core areas of quantum computing [73,74]. These include quantum simulation [10,23], represented by the Ising, Heisenberg, and Hubbard models [38,64,65]. We also include a quantum chemistry application [86] and factoring [27,77]. All programs are taken from the Azure resource estimator [68,85].",
+    "Baselines. We compare our method with the sequential [7] and parallel [78] baselines. Since the original works involve broader architectural concerns such as code distance selection and layout design, we reimplement the core distillation pipeline models to enable fair comparison. For each architecture, we compute the number of physical qubits 𝑄 and the time 𝑇 required to distill a single high-fidelity magic state.",
+    "For sequential architecture [7], the distillation levels run in sequence while reusing the same qubits. Their work increases the number of low-level factories to 16 to tolerate failures and ensure > 99% success. Using 𝑛 ℓ to demonstrate the number of factory copies of level ℓ, we set 𝑛 ℓ = 16 𝐿-ℓ . The total qubit cost is the peak demand across all levels 𝑄 seq = max 𝐿 ℓ=1 {𝑛 ℓ • 𝑄 ℓ }, and the total time cost is the sum of execution times 𝑇 seq = 𝐿 ℓ=1 𝑇 ℓ , where 𝑄 ℓ and 𝑇 ℓ are the physical qubit cost and runtime for a level-ℓ factory, respectively. The routing time is ignored, as assumed by all approaches.",
+    "For parallel architecture [78], all levels run concurrently. We fix the number of the highest-level factory 𝑛 𝐿 = 1 and, following their method, recursively compute the number of factory copies 𝑛 ℓ at each lower level by matching production and consumption rates as 𝑛 ℓ -1 𝑀 ℓ -1 𝑃 ℓ -1 /𝑇 ℓ -1 = 𝑛 ℓ 𝑁 ℓ /𝑇 ℓ for all ℓ = 2, . . . , 𝐿, where 𝑃 ℓ , 𝑁 ℓ , 𝑀 ℓ , and 𝑇 ℓ denote the success probability, magic-state demand, output state count, and runtime of a level-ℓ factory, respectively. The total qubit cost includes factory and buffer regions 𝑄 par = ℓ 𝑛 ℓ (𝑄 ℓ + 𝐵 ℓ ), where 𝐵 ℓ is the physical qubit cost for buffer space at level ℓ. We follow their manually constructed buffer sizes and set 4 logical qubits for the first level's buffer and 8 logical qubits for other levels' buffers. The total time cost is the runtime for one execution of the highest-level factory 𝑇 par = 𝑇 𝐿 . This estimate relies on the optimistic assumption that the 𝐿-level pipeline operates continuously without stalls. However, our analysis shows that stalls are inevitable in practice, making this estimate slightly overoptimistic.",
+    "Metrics. Each baseline yields a specific (𝑄,𝑇 ) pair, while our approach produces a Pareto frontier of all feasible pipeline schedules. To compare with baselines, we use the qubit-time or space-time volume (𝑄 • 𝑇 ) as the main metric.",
+    "This metric has a clear physical interpretation. Suppose a program requires 𝑀 prog magic states and should complete within time 𝑇 prog , assuming no delay from magic state supply. A distillation pipeline with cost (𝑄,𝑇 ) can produce ⌊𝑇 prog /𝑇 ⌋ magic states within this time by continuous execution. To meet the demand, at least 𝑀 prog /⌊𝑇 prog /𝑇 ⌋ copies of pipelines must be deployed, resulting in a total qubit count",
+    "which is approximately proportional to (𝑄 • 𝑇 ). Therefore, this metric fairly indicates the resource efficiency of a distillation pipeline.",
+    "Two-level distillation pipeline. We first enumerate all code-distance pairs from 3 to 21 for two-level distillation pipelines and compare the results of our dynamic pipeline with the baselines. Among the enumerated pairs, the best output error rate achieved is 2 × 10 -23 .",
+    "Figure 6 shows the qubit-time volume reduction for each pair of code distances. The results demonstrate our method reduces qubit-time volume across diverse code-distance combinations, achieving average improvements of 30% and 15% over the sequential and parallel baselines, respectively. When code distances differ significantly (e.g., (3,21)), the high-level factory dominates both qubit and time cost, so improvements over the sequential baseline are limited. When code distances are closer (e.g., (5, 7)), the dynamic pipeline achieves substantial gains over the sequential baseline by avoiding unused qubits, while improvements over the parallel baseline are smaller due to reduced opportunities for ancilla reuse.  Only 3 out of 90 benchmarks show a negative improvment, at worst up to -4%, which we attribute to the baselines' overly optimistic evaluation assumptions. The sequential baseline ignores its residual failure probability, while the parallel baseline assumes perfect synchronization without any production-consumption mismatches. Our dynamic pipeline architecture subsumes both baselines as special cases, so in principle it should not underperform either of them.",
+    "Furthermore, code-distance combinations that yield such negative results are rarely used in practice. We find that adjacent levels in these cases use distances that are either too close or too far apart. However, a distillation level contributes to overall fidelity improvement only when the logical error rate (determined by the code distance) is reduced at the same pace as the cubic suppression of the magic-state error rate (see Sec. 2). Consequently, only configurations with moderate code-distance growth across levels are practically effective and meaningful for evaluation.",
+    "Three-level distillation pipeline. To assess our architecture with more stringent fidelity requirements, we also consider three-level pipelines. For charting results, we enumerate error-rate thresholds and compute the minimum required distillation qubit-time volumes. Specifically, for each threshold, we search over all feasible code-distance sequences that achieve it and report the minimum qubit-time volume among the corresponding pipelines. This approach also filters out impractical code-distance combinations, ensuring fair evaluation.",
+    "Figure 7 presents the results for error-rate thresholds ranging from 10 -10 to 10 -50 . It shows that our dynamic pipeline consistently achieves lower qubit-time volume across all thresholds. The results are plotted on a logarithmic scale; in general, the stricter the error-rate threshold, the more pronounced the advantage of our method. This trend highlights the scalability of our approach in meeting the stringent fidelity requirements of larger-scale applications. Error rate threshold For each threshold on the x-axis, we enumerate all feasible two-and three-level distillation pipelines that achieve it and report the minimum volume among them. Our method consistently reduces the required volume compared to both baselines [7,78], with the advantage becoming more pronounced under stricter error-rate requirements.",
+    "Table 2 summarizes the reduction statistics across all evaluated error-rate thresholds. Overall, our dynamic architecture achieves average reductions of 26%-37% in qubit-time volume. For the sequential baseline, only two data points exhibit the worst-case reduction of 1%, while all other cases show improvements of at least 18%. For the parallel baseline, our method achieves at least 22% reduction.",
+    "We use Microsoft Azure resource estimator [68,85] to derive the distillation requirements for each application benchmark, i.e. magic-state demand, target fidelity, and execution time.",
+    "From these parameters, we determine the necessary distillation levels and code distances and then construct the dynamic pipeline. We report results on both superconducting and Majorana devices using parameters given by Ref. [7].",
+    "While program execution could be slowed down to ease the demand on distillation factories and thereby reduce qubit cost [7,16,78], we assume no slowdown in order to isolate the impact of our pipeline design. Table 3 reports the results.",
+    "To compute the distillation qubit cost, we determine the number of pipeline copies required to meet the application's magic-state demand, assuming pipelines run continuously throughout the application execution. Thus, both qubit and time savings from a single pipeline are already reflected in the reported qubit cost, as its shorter execution times reduce the number of required copies. We observe significant percentage reductions in both distillation and total qubits (including program data qubits). Focusing only on the distillation overhead, our method consistently reduces qubit usage, achieving 16%-70% reductions compared to the baselines. When considering the total qubit usage, our approach still provides up to 70% improvement for distillation-heavy applications, i.e. those with a large factory ratio. Some applications (e.g. factoring) use only a very small percentage of qubits for distillation; we cannot obtain significant percentage reductions in total qubit usage in such cases. However, even in these cases, the absolute reductions of 100 K-2 M qubits are offered by our method.",
+    "Case study of the Hubbard application. Here we investigate how our architecture enables full space-time trade-off opportunities in distillation pipelines with code distances (5,17) as used in the Hubbard model. Figure 8 shows the Pareto front generated by our method to distill one highfidelity magic state, with each point representing a feasible pipeline configuration. The red star indicates the minimum space-time volume across all pipeline configurations, which occurs at a buffer size of 10.",
+    "As expected, a smaller qubit budget results in longer execution times. With limited qubits, only one high-level factory and a minimal buffer of size 4 (darkest color) can be deployed, forcing heavy ancilla reuse and leading to long runtimes. As Table 3. Distillation qubit cost comparison with sequential [7] and parallel [78] baselines on real-world applications. The reported distillation qubit cost reflects both qubit and time reductions of a single pipeline, as its shorter execution time reduces the number of required copies. Code distances are selected to meet the required fidelity, and the factory ratio is the percentage of qubits used for distillation under our architecture. Results for both superconducting and Majorana platforms are shown, using parameters from Ref. [7]. Our method yields substantial qubit savings, especially for distillation-heavy applications. the budget increases, larger buffers (lighter colors) and additional factories can run in parallel, reducing execution time.",
+    "Eventually, the time cost plateaus at around 27 𝜇s, which equals the execution time of a single second-level factory, indicating that this factory has become the bottleneck. It marks the optimal execution time, matching the parallel baseline.",
+    "Compared to the sequential baseline, we reduce both qubits and execution time. Compared to the parallel baseline, which attains the minimal time usage, our method requires fewer qubits. Our architecture also exposes the full trade-off space, creating opportunities for further compiler-level optimizations in FTQC schemes. Moreover, the resource allocator explicitly considers buffer size and selects 10 as the optimal value, providing practical guidance for buffer size selection.",
+    "Protocols for realizing non-Clifford gates. Universal fault-tolerant quantum computing depends on the efficient implementation of non-Clifford gates [31]. In Clifford+T (magic state) framework, fundamental protocols for T state distillation have been extensively studied [8, 12, 13, 15, 33-35, 37, 58, 60, 63, 66], with further improvements on raw input states via zero-level distillation [42,50,80] and injection [26,59,61]. Other methods aim to bypass distillation, including catalysis [28], cultivation [29,84], and transversal-CNOT-based protocols [87,88]. Beyond the Clifford+T framework, there are alternative routes to universality such as Clifford+Rz (arbitrary rotation) [2, 17,76] and code switching [6,11,39,71]. These approaches either impose stricter requirements on hardware or underlying error correction codes, or support only limited-fidelity non-Clifford operations, and thus do not eliminate the need for distillation.",
+    "Compilation of distillation factories. Considerable effort has been devoted to compiling these distillation protocols onto specific quantum error correction schemes, especially based on the surface code. One line of work focuses on the realization of a single factory, employing methods that range from manual optimization [24,25,62,63,72] to SAT-based automated approaches [83]. Another line of work addresses multiple factories, including factories placement [41,45], inter-factory routing [22] and buffering [43]. These works are largely complementary to ours, as our architecture is compatible with all lattice-surgery-based distillation factory implementations, while delegating physical layout and routing tasks to the compiler.",
+    "Operating system supports for FTQC. Our work resembles operating system support for resource management and task scheduling in a quantum computing environment. Quantum system works have explored multi-program scheduling [30] and dynamic resource allocation [54], but these approaches treat distillation factories as black-box components. In contrast, we target the distillation process itself and offer flexible control over distillation factories.",
+    "Quantum circuit optimizers. Methods for optimizing quantum circuits to reduce resource overhead have been widely explored via rewrite rules [40,56,89], unitary transformations [3,70], their combinations [90], and qubit reuse strategies [48,51,69]. While such methods can also be applied to distillation circuits, our work operates at a higher level of abstraction, focusing on the dynamic scheduling of multi-level distillation rather than circuit-level optimization.",
+    "We have presented a dynamic pipeline architecture for multilevel distillation that allows the pipeline structure to evolve over time. Through dynamic scheduling and resource allocation, our approach orchestrates the executions of factories across levels to improve resource utilization. Compared with state-of-the-art architectures, our approach achieves significant reductions in distillation overhead and unlocks further optimization opportunities by offering flexible space-time trade-offs. These advancements bring us closer to efficient and scalable fault-tolerant quantum computing systems.",
+    "In this section, we analytically estimate the expected delays caused by low-level factory failures. For simplicity, we assume that each factory outputs only one magic state at a time. However, this can be easily extended to the general case.",
+    "We first run the no-failure simulation according to Section 6 to obtain the series of numbers of magic states produced 𝑛 prod (𝑡) and consumed 𝑛 cons (𝑡) at each time 𝑡. We observe that this is a Markov process and model it with state vector P 𝑡 = 𝑝 𝑡 (0), 𝑝 𝑡 (1), . . . , 𝑝 𝑡 (𝑁 buf ), 𝑝 𝑡 (fail) ,",
+    "where 𝑝 𝑡 (𝑖) represents the probability that the buffer contains exactly 𝑖 magic states at time 𝑡, and 𝑝 𝑡 (fail) represents the probability that the system has encountered its first stall due to insufficient magic states by time 𝑡. State evolution is given by P 𝑡 = P 𝑡 -1 • T cons • T prod , (16) where T cons and T prod are the transition matrices for consumption and production, respectively.",
+    "When the high-level factory consumes 𝑛 cons (𝑡) magic states, the probability vector shifts by 𝑛 cons (𝑡) positions, as consumption is deterministic. If the buffer contains fewer than 𝑛 cons (𝑡) magic states, a stall occurs. Thus, T cons (𝑖, 𝑗) = 1, if 𝑗 = 𝑖 -𝑛 cons (𝑡), 0, otherwise.",
+    "The last element 𝑝 𝑡 (fail) accumulates the probability of a stall as",
+    "On the production side, the number of magic states generated by low-level factories follows a binomial distribution, updating the probability vector as T prod (𝑖, 𝑗) = 𝑛 prod (𝑡) 𝑗 -𝑖 𝑝 𝑗 -𝑖 suc (1 -𝑝 suc ) 𝑛 prod (𝑡 ) -( 𝑗 -𝑖 ) , (19) where 𝑝 suc is the success probability for producing a single magic state. In this analytical model, the probability of a stall 𝑃 stall (𝑡) at each time step 𝑡 is actually the cumulative probability that at least one stall has occurred up to and including time 𝑡. Therefore, the cumulative stall probability is 𝑃 stall (𝑡) = 𝑝 𝑡 (fail). The probability that the first stall occurs at time 𝑡 should be computed as 𝑝 stall (𝑡) = 𝑃 stall (𝑡) -𝑃 stall (𝑡 -1), (20) where 𝑃 stall (-1) is defined as 0.",
+    "To compute the expected failure delay, we weight the recovery time Δ𝑡 (𝑡) at each 𝑡 by the stall probability and get the expected delay",
+    "where 𝑇 is the total time of the distillation process. To get the Δ𝑡 (𝑡), we simply use the integer programming algorithm as described in Section 5.4. This estimated delay E[𝑇 delay ] is added to the total time of the distillation factory.",
+    "In this approach, we only account for the delay associated with the first occurrence of a stall that is caused by low-level factory failures. After recovery from this stall, the system could encounter additional stalls due to further low-level factory failures. However, the probability of such subsequent stalls is extremely low so it can be safely neglected for practical results."
+  ],
+  "references": [
+    {
+      "id": 1,
+      "text": "RajeevAcharya\n\t\t\n\t\t\n\t\t\tIgorAleiner\n\t\t\n\t\t\n\t\t\tRichardAllen\n\t\t\n\t\t\n\t\t\tMarkusTrond I Andersen\n\t\t\n\t\t\n\t\t\tFrankAnsmann\n\t\t\n\t\t\n\t\t\tKunalArute\n\t\t\n\t\t\n\t\t\tAbrahamArya\n\t\t\n\t\t\n\t\t\tJuanAsfaw\n\t\t\n\t\t\n\t\t\tRyanAtalaya\n\t\t\n\t\t\n\t\t\tBabbush\n\t\t\n\t\n\t\n\t\tJoao Basso"
+    },
+    {
+      "id": 2,
+      "text": "A Meet-in-the-Middle Algorithm for Fast Synthesis of Depth-Optimal Quantum Circuits\n\t\t\n\t\t\tMatthewAmy\n\t\t\n\t\t\n\t\t\tDmitriMaslov\n\t\t\n\t\t\n\t\t\tMicheleMosca\n\t\t\n\t\t\n\t\t\tMartinRoetteler\n\t\t\n\t\t10.1109/tcad.2013.2244643\n\t\t\n\t\n\t\n\t\tIEEE Transactions on Computer-Aided Design of Integrated Circuits and Systems\n\t\tIEEE Trans. Comput.-Aided Des. Integr. Circuits Syst.\n\t\t0278-0070\n\t\t1937-4151\n\t\t\n\t\t\t32\n\t\t\t6\n\t\t\t\n\t\t\t2013. 2013\n\t\t\tInstitute of Electrical and Electronics Engineers (IEEE)"
+    },
+    {
+      "id": 3,
+      "text": "Quantum supremacy using a programmable superconducting processor\n\t\t\n\t\t\tFrankArute\n\t\t\n\t\t\n\t\t\tKunalArya\n\t\t\n\t\t\n\t\t\tRyanBabbush\n\t\t\n\t\t\n\t\t\tDaveBacon\n\t\t\n\t\t\n\t\t\tJosephCBardin\n\t\t\n\t\t\n\t\t\tRamiBarends\n\t\t\n\t\t\n\t\t\tRupakBiswas\n\t\t\n\t\t\n\t\t\tSergioBoixo\n\t\t\n\t\t\n\t\t\tFernandoG S LBrandao\n\t\t\n\t\t\n\t\t\tDavidABuell\n\t\t\n\t\t\n\t\t\tBrianBurkett\n\t\t\n\t\t\n\t\t\tYuChen\n\t\t\n\t\t\n\t\t\tZijunChen\n\t\t\n\t\t\n\t\t\tBenChiaro\n\t\t\n\t\t\n\t\t\tRobertoCollins\n\t\t\n\t\t\n\t\t\tWilliamCourtney\n\t\t\n\t\t\n\t\t\tAndrewDunsworth\n\t\t\n\t\t\n\t\t\tEdwardFarhi\n\t\t\n\t\t\n\t\t\tBrooksFoxen\n\t\t\n\t\t\n\t\t\tAustinFowler\n\t\t\n\t\t\n\t\t\tCraigGidney\n\t\t\n\t\t\n\t\t\tMarissaGiustina\n\t\t\n\t\t\n\t\t\tRobGraff\n\t\t\n\t\t\n\t\t\tKeithGuerin\n\t\t\n\t\t\n\t\t\tSteveHabegger\n\t\t\n\t\t\n\t\t\tMatthewPHarrigan\n\t\t\n\t\t\n\t\t\tMichaelJHartmann\n\t\t\n\t\t\n\t\t\tAlanHo\n\t\t\n\t\t\n\t\t\tMarkusHoffmann\n\t\t\n\t\t\n\t\t\tTrentHuang\n\t\t\n\t\t\n\t\t\tTravisSHumble\n\t\t\n\t\t\n\t\t\tSergeiVIsakov\n\t\t\n\t\t\n\t\t\tEvanJeffrey\n\t\t\n\t\t\n\t\t\tZhangJiang\n\t\t\n\t\t\n\t\t\tDvirKafri\n\t\t\n\t\t\n\t\t\tKostyantynKechedzhi\n\t\t\n\t\t\n\t\t\tJulianKelly\n\t\t\n\t\t\n\t\t\tPaulVKlimov\n\t\t\n\t\t\n\t\t\tSergeyKnysh\n\t\t\n\t\t\n\t\t\tAlexanderKorotkov\n\t\t\n\t\t\n\t\t\tFedorKostritsa\n\t\t\n\t\t\n\t\t\tDavidLandhuis\n\t\t\n\t\t\n\t\t\tMikeLindmark\n\t\t\n\t\t\n\t\t\tErikLucero\n\t\t\n\t\t\n\t\t\tDmitryLyakh\n\t\t\n\t\t\n\t\t\tSalvatoreMandrà\n\t\t\n\t\t\n\t\t\tJarrodRMcclean\n\t\t\n\t\t\n\t\t\tMatthewMcewen\n\t\t\n\t\t\n\t\t\tAnthonyMegrant\n\t\t\n\t\t\n\t\t\tXiaoMi\n\t\t\n\t\t\n\t\t\tKristelMichielsen\n\t\t\n\t\t\n\t\t\tMasoudMohseni\n\t\t\n\t\t\n\t\t\tJoshMutus\n\t\t\n\t\t\n\t\t\tOferNaaman\n\t\t\n\t\t\n\t\t\tMatthewNeeley\n\t\t\n\t\t\n\t\t\tCharlesNeill\n\t\t\n\t\t\n\t\t\tMurphyYuezhenNiu\n\t\t\n\t\t\n\t\t\tEricOstby\n\t\t\n\t\t\n\t\t\tAndrePetukhov\n\t\t\n\t\t\n\t\t\tJohnCPlatt\n\t\t\n\t\t\n\t\t\tChrisQuintana\n\t\t\n\t\t\n\t\t\tEleanorGRieffel\n\t\t\n\t\t\n\t\t\tPedramRoushan\n\t\t\n\t\t\n\t\t\tNicholasCRubin\n\t\t\n\t\t\n\t\t\tDanielSank\n\t\t\n\t\t\n\t\t\tKevinJSatzinger\n\t\t\n\t\t\n\t\t\tVadimSmelyanskiy\n\t\t\n\t\t\n\t\t\tKevinJSung\n\t\t\n\t\t\n\t\t\tMatthewDTrevithick\n\t\t\n\t\t\n\t\t\tAmitVainsencher\n\t\t\n\t\t\n\t\t\tBenjaminVillalonga\n\t\t\n\t\t\n\t\t\tTheodoreWhite\n\t\t\n\t\t\n\t\t\tZJamieYao\n\t\t\n\t\t\n\t\t\tPingYeh\n\t\t\n\t\t\n\t\t\tAdamZalcman\n\t\t\n\t\t\n\t\t\tHartmutNeven\n\t\t\n\t\t\n\t\t\tJohnMMartinis\n\t\t\n\t\t10.1038/s41586-019-1666-5\n\t\t\n\t\n\t\n\t\tNature\n\t\tNature\n\t\t\n\t\t\tChrisQuintana\n\t\t\n\t\t\n\t\t\tEleanorGRieffel\n\t\t\n\t\t\n\t\t\tPedramRoushan\n\t\t\n\t\t\n\t\t\tNicholasCRubin\n\t\t\n\t\t\n\t\t\tDanielSank\n\t\t\n\t\t\n\t\t\tKevinJSatzinger\n\t\t\n\t\t\n\t\t\tVadimSmelyanskiy\n\t\t\n\t\t\n\t\t\tKevinJSung\n\t\t\n\t\t\n\t\t\tMatthewDTrevithick\n\t\t\n\t\t\n\t\t\tAmitVainsencher\n\t\t\n\t\t0028-0836\n\t\t1476-4687\n\t\t\n\t\t\t574\n\t\t\t7779\n\t\t\t\n\t\t\t2019. 01 Oct 2019\n\t\t\tSpringer Science and Business Media LLC\n\t\t\tBenjamin Villalonga, Theodore White"
+    },
+    {
+      "id": 4,
+      "text": "Software tools for quantum control: improving quantum computer performance through noise and error suppression\n\t\t\n\t\t\tHarrisonBall\n\t\t\t0000-0002-6095-7336\n\t\t\n\t\t\n\t\t\tMichaelJBiercuk\n\t\t\n\t\t\n\t\t\tAndreR RCarvalho\n\t\t\n\t\t\n\t\t\tJiayinChen\n\t\t\n\t\t\n\t\t\tMichaelHush\n\t\t\t0000-0002-6464-9234\n\t\t\n\t\t\n\t\t\tLeonardoADe Castro\n\t\t\n\t\t\n\t\t\tLiLi\n\t\t\n\t\t\n\t\t\tPerJLiebermann\n\t\t\n\t\t\n\t\t\tHarryJSlatyer\n\t\t\n\t\t\n\t\t\tClaireEdmunds\n\t\t\n\t\t\n\t\t\tVirginiaFrey\n\t\t\n\t\t\n\t\t\tCorneliusHempel\n\t\t\n\t\t\n\t\t\tAlistairMilne\n\t\t\n\t\t10.1088/2058-9565/abdca6\n\t\t\n\t\n\t\n\t\tQuantum Science and Technology\n\t\tQuantum Sci. Technol.\n\t\t2058-9565\n\t\t\n\t\t\t6\n\t\t\t4\n\t\t\t044011\n\t\t\t2021. 2021\n\t\t\tIOP Publishing"
+    },
+    {
+      "id": 5,
+      "text": "Cost of universality: A comparative study of the overhead of state distillation and code switching with color codes\n\t\t\n\t\t\tAleksanderMichael E Beverland\n\t\t\n\t\t\n\t\t\tKrystaMKubica\n\t\t\n\t\t\n\t\t\tSvore\n\t\t\n\t\t10.1103/PRXQuantum.2.020341\n\t\t\n\t\n\t\n\t\tPRX Quantum\n\t\t\n\t\t\t2\n\t\t\t20341\n\t\t\t2021. 2021"
+    },
+    {
+      "id": 6,
+      "text": "Assessing requirements to scale to practical quantum advantage\n\t\t\n\t\t\tPrakashMichael E Beverland\n\t\t\n\t\t\n\t\t\tMatthiasMurali\n\t\t\n\t\t\n\t\t\tKrystaMTroyer\n\t\t\n\t\t\n\t\t\tTorstenSvore\n\t\t\n\t\t\n\t\t\tVadymHoefler\n\t\t\n\t\t\n\t\t\tGuangKliuchnikov\n\t\t\n\t\t\n\t\t\tMathiasHao Low\n\t\t\n\t\t\n\t\t\tAarthiSoeken\n\t\t\n\t\t\n\t\t\tAlexanderSundaram\n\t\t\n\t\t\n\t\t\tVaschillo\n\t\t\n\t\t10.48550/arXiv.2211.07629\n\t\tarXiv:2211.07629\n\t\t\n\t\t\n\t\t\t2022. 2022\n\t\t\n\t\n\tarXiv preprint"
+    },
+    {
+      "id": 7,
+      "text": "Magic-state distillation with low overhead\n\t\t\n\t\t\tSergeyBravyi\n\t\t\n\t\t\n\t\t\tJeongwanHaah\n\t\t\n\t\t10.1103/physreva.86.052329\n\t\t\n\t\n\t\n\t\tPhysical Review A\n\t\tPhys. Rev. A\n\t\t1050-2947\n\t\t1094-1622\n\t\t\n\t\t\t86\n\t\t\t5\n\t\t\t52329\n\t\t\t2012. 2012\n\t\t\tAmerican Physical Society (APS)"
+    },
+    {
+      "id": 8,
+      "text": "Universal quantum computation with ideal Clifford gates and noisy ancillas\n\t\t\n\t\t\tSergeyBravyi\n\t\t\n\t\t\n\t\t\tAlexeiKitaev\n\t\t\n\t\t10.1103/physreva.71.022316\n\t\t\n\t\n\t\n\t\tPhysical Review A\n\t\tPhys. Rev. A\n\t\t1050-2947\n\t\t1094-1622\n\t\t\n\t\t\t71\n\t\t\t2\n\t\t\t22316\n\t\t\t2005. 2005\n\t\t\tAmerican Physical Society (APS)"
+    },
+    {
+      "id": 9,
+      "text": "Quantum Simulators\n\t\t\n\t\t\tIuliaBuluta\n\t\t\n\t\t\n\t\t\tFrancoNori\n\t\t\n\t\t10.1126/science.1177838\n\t\t\n\t\n\t\n\t\tScience\n\t\tScience\n\t\t0036-8075\n\t\t1095-9203\n\t\t\n\t\t\t326\n\t\t\t5949\n\t\t\t\n\t\t\t2009. 2009\n\t\t\tAmerican Association for the Advancement of Science (AAAS)"
+    },
+    {
+      "id": 10,
+      "text": "Fault-Tolerant Code-Switching Protocols for Near-Term Quantum Processors\n\t\t\n\t\t\tFriederikeButt\n\t\t\t0009-0007-8954-1274\n\t\t\n\t\t\n\t\t\tSaschaHeußen\n\t\t\t0000-0002-7581-2148\n\t\t\n\t\t\n\t\t\tManuelRispler\n\t\t\n\t\t\n\t\t\tMarkusMüller\n\t\t\n\t\t10.1103/prxquantum.5.020345\n\t\t\n\t\n\t\n\t\tPRX Quantum\n\t\tPRX Quantum\n\t\t2691-3399\n\t\t\n\t\t\t5\n\t\t\t2\n\t\t\t20345\n\t\t\t2024. 2024\n\t\t\tAmerican Physical Society (APS)"
+    },
+    {
+      "id": 11,
+      "text": "Enhanced fault-tolerant quantum computing in d-level systems\n\t\t\n\t\t\tTEarl\n\t\t\n\t\t\n\t\t\tCampbell\n\t\t\n\t\t10.1103/PhysRevLett.113.230501\n\t\t\n\t\n\t\n\t\tPhysical review letters\n\t\t\n\t\t\t113\n\t\t\t230501\n\t\t\t2014. 2014"
+    },
+    {
+      "id": 12,
+      "text": "Magicstate distillation in all prime dimensions using quantum reed-muller codes\n\t\t\n\t\t\tHussainEarl T Campbell\n\t\t\n\t\t\n\t\t\tDanEAnwar\n\t\t\n\t\t\n\t\t\tBrowne\n\t\t\n\t\t10.1103/PhysRevX.2.041021\n\t\t\n\t\n\t\n\t\tPhysical Review X\n\t\t\n\t\t\t2\n\t\t\t41021\n\t\t\t2012. 2012"
+    },
+    {
+      "id": 13,
+      "text": "Combining quantum processors with real-time classical communication\n\t\t\n\t\t\tAlmudena CarreraVazquez\n\t\t\n\t\t\n\t\t\tCarolineTornow\n\t\t\n\t\t\n\t\t\tDiegoRistè\n\t\t\n\t\t\n\t\t\tStefanWoerner\n\t\t\n\t\t\n\t\t\tMaikaTakita\n\t\t\n\t\t\n\t\t\tDanielJEgger\n\t\t\n\t\t10.1038/s41586-024-08178-2\n\t\t\n\t\n\t\n\t\tNature\n\t\t\n\t\t\t\n\t\t\t2024. 2024"
+    },
+    {
+      "id": 14,
+      "text": "Building a Fault-Tolerant Quantum Computer Using Concatenated Cat Codes\n\t\t\n\t\t\tChristopherChamberland\n\t\t\t0000-0003-3239-5783\n\t\t\n\t\t\n\t\t\tKyungjooNoh\n\t\t\n\t\t\n\t\t\tPatricioArrangoiz-Arriola\n\t\t\n\t\t\n\t\t\tEarlTCampbell\n\t\t\n\t\t\n\t\t\tConnorTHann\n\t\t\t0000-0003-0665-7161\n\t\t\n\t\t\n\t\t\tJosephIverson\n\t\t\n\t\t\n\t\t\tHaraldPutterman\n\t\t\n\t\t\n\t\t\tThomasCBohdanowicz\n\t\t\n\t\t\n\t\t\tStevenTFlammia\n\t\t\n\t\t\n\t\t\tAndrewKeller\n\t\t\n\t\t\n\t\t\tGilRefael\n\t\t\n\t\t\n\t\t\tJohnPreskill\n\t\t\n\t\t\n\t\t\tLiangJiang\n\t\t\n\t\t\n\t\t\tAmirHSafavi-Naeini\n\t\t\n\t\t\n\t\t\tOskarPainter\n\t\t\n\t\t\n\t\t\tFernandoG S LBrandão\n\t\t\n\t\t10.1103/prxquantum.3.010329\n\t\t\n\t\n\t\n\t\tPRX Quantum\n\t\tPRX Quantum\n\t\t2691-3399\n\t\t\n\t\t\t3\n\t\t\t1\n\t\t\t10329\n\t\t\t2022. 2022\n\t\t\tAmerican Physical Society (APS)"
+    },
+    {
+      "id": 15,
+      "text": "AvimitaChatterjee\n\t\t\n\t\t\n\t\t\tArchismanGhosh\n\t\t\n\t\t\n\t\t\tSwaroopGhosh\n\t\t\n\t\t10.48550/arXiv.2502.11253\n\t\tarXiv:2502.11253\n\t\t\n\t\tThe Q-Spellbook: Crafting Surface Code Layouts and Magic State Protocols for Large-Scale Quantum Computing\n\t\t\n\t\t\t2025. 2025\n\t\t\n\t\n\tarXiv preprint"
+    },
+    {
+      "id": 16,
+      "text": "Fault tolerant non-clifford state preparation for arbitrary rotations\n\t\t\n\t\t\tHyeongrakChoi\n\t\t\n\t\t\n\t\t\tFredericTChong\n\t\t\n\t\t\n\t\t\tDirkEnglund\n\t\t\n\t\t\n\t\t\tYongshanDing\n\t\t\n\t\t10.48550/arXiv.2303.17380\n\t\tarXiv:2303.17380\n\t\t\n\t\t\n\t\t\t2023. 2023\n\t\t\n\t\n\tarXiv preprint"
+    },
+    {
+      "id": 17,
+      "text": "Lowlatency control system for feedback experiments with optical tweezer arrays\n\t\t\n\t\t\tTimurAmir H Dadpour\n\t\t\n\t\t\n\t\t\tFouadKhayrullin\n\t\t\n\t\t\n\t\t\tRemyElAfiouni\n\t\t\n\t\t\n\t\t\tAmerESabeh\n\t\t\n\t\t\n\t\t\tIzzatElMouawad\n\t\t\n\t\t\n\t\t\tAlexandreHajj\n\t\t\n\t\t\n\t\t\tCooper\n\t\t\n\t\t10.48550/arXiv.2504.06528\n\t\tarXiv:2504.06528\n\t\t\n\t\t\n\t\t\t2025. 2025\n\t\t\n\t\n\tarXiv preprint"
+    },
+    {
+      "id": 18,
+      "text": "Project Scheduling\n\t\t\n\t\t\tLErik\n\t\t\n\t\t\n\t\t\tWillySDemeulemeester\n\t\t\n\t\t\n\t\t\tHerroelen\n\t\t\n\t\t10.1007/b101924\n\t\t\n\t\t\n\t\t\t2002\n\t\t\tKluwer Academic Publishers"
+    },
+    {
+      "id": 19,
+      "text": "Superconducting circuits for quantum information: an outlook\n\t\t\n\t\t\tHMichel\n\t\t\n\t\t\n\t\t\tRobertJDevoret\n\t\t\n\t\t\n\t\t\tSchoelkopf\n\t\t\n\t\t10.1126/science.1231930\n\t\t\n\t\n\t\n\t\tScience\n\t\t\n\t\t\t339\n\t\t\t\n\t\t\t2013. 2013"
+    },
+    {
+      "id": 20,
+      "text": "Experimental advances with the QICK (Quantum Instrumentation Control Kit) for superconducting quantum hardware\n\t\t\n\t\t\tChunyangDing\n\t\t\t0000-0001-7202-144X\n\t\t\n\t\t\n\t\t\tMartinDi Federico\n\t\t\t0009-0001-9873-2597\n\t\t\n\t\t\n\t\t\tMichaelHatridge\n\t\t\n\t\t\n\t\t\tAndrewHouck\n\t\t\n\t\t\n\t\t\tSebastienLeger\n\t\t\n\t\t\n\t\t\tJeronimoMartinez\n\t\t\t0000-0001-5878-0618\n\t\t\n\t\t\n\t\t\tConnieMiao\n\t\t\t0000-0002-4966-9405\n\t\t\n\t\t\n\t\t\tLeandroStefanazzi\n\t\t\n\t\t\n\t\t\tChrisStoughton\n\t\t\n\t\t\n\t\t\tSaraSussman\n\t\t\t0000-0002-4129-627X\n\t\t\n\t\t\n\t\t\tKenTreptow\n\t\t\n\t\t\n\t\t\tShoUemura\n\t\t\t0000-0003-3458-4625\n\t\t\n\t\t\n\t\t\tNealWilcer\n\t\t\n\t\t\n\t\t\tHelinZhang\n\t\t\n\t\t\n\t\t\tChaoZhou\n\t\t\n\t\t\n\t\t\tGustavoCancelo\n\t\t\t0000-0001-6926-4010\n\t\t\n\t\t10.1103/physrevresearch.6.013305\n\t\t\n\t\n\t\n\t\tPhysical Review Research\n\t\tPhys. Rev. Research\n\t\t2643-1564\n\t\t\n\t\t\t6\n\t\t\t1\n\t\t\t13305\n\t\t\t2024. 2024\n\t\t\tAmerican Physical Society (APS)"
+    },
+    {
+      "id": 21,
+      "text": "Magic-State Functional Units: Mapping and Scheduling Multi-Level Distillation Circuits for Fault-Tolerant Quantum Architectures\n\t\t\n\t\t\tYongshanDing\n\t\t\n\t\t\n\t\t\tAdamHolmes\n\t\t\n\t\t\n\t\t\tAliJavadi-Abhari\n\t\t\n\t\t\n\t\t\tDianaFranklin\n\t\t\n\t\t\n\t\t\tMargaretMartonosi\n\t\t\n\t\t\n\t\t\tFredericChong\n\t\t\n\t\t10.1109/micro.2018.00072\n\t\t\n\t\n\t\n\t\t2018 51st Annual IEEE/ACM International Symposium on Microarchitecture (MICRO)\n\t\t\n\t\t\tIEEE\n\t\t\t2018"
+    },
+    {
+      "id": 22,
+      "text": "Simulating physics with computers\n\t\t\n\t\t\tRichard P Feynman\n\t\t\n\t\t10.1007/BF02650179\n\t\t\n\t\n\t\n\t\tInternational Journal of Theoretical Physics\n\t\t\n\t\t\t21\n\t\t\t6\n\t\t\t\n\t\t\t1982. June 1982"
+    },
+    {
+      "id": 23,
+      "text": "Surface code implementation of block code state distillation\n\t\t\n\t\t\tSimonJAustin G Fowler\n\t\t\n\t\t\n\t\t\tCodyDevitt\n\t\t\n\t\t\n\t\t\tJones\n\t\t\n\t\t10.1038/srep01939\n\t\t\n\t\n\t\n\t\tScientific reports\n\t\t\n\t\t\t3\n\t\t\t1939\n\t\t\t2013. 2013"
+    },
+    {
+      "id": 24,
+      "text": "Low overhead quantum computation using lattice surgery\n\t\t\n\t\t\tGAustin\n\t\t\n\t\t\n\t\t\tCraigFowler\n\t\t\n\t\t\n\t\t\tGidney\n\t\t\n\t\t10.48550/arXiv.1808.06709\n\t\tarXiv:1808.06709\n\t\t\n\t\t\n\t\t\t2018. 2018\n\t\t\n\t\n\tarXiv preprint"
+    },
+    {
+      "id": 25,
+      "text": "CraigGidney\n\t\t\n\t\t10.48550/arXiv.2302.12292\n\t\tarXiv:2302.12292\n\t\t\n\t\tCleaner magic states with hook injection\n\t\t\n\t\t\t2023. 2023\n\t\t\n\t\n\tarXiv preprint"
+    },
+    {
+      "id": 26,
+      "text": "How to factor 2048 bit RSA integers in 8 hours using 20 million noisy qubits\n\t\t\n\t\t\tCraigGidney\n\t\t\n\t\t\n\t\t\tMartinEkerå\n\t\t\n\t\t10.22331/q-2021-04-15-433\n\t\t\n\t\n\t\n\t\tQuantum\n\t\tQuantum\n\t\t2521-327X\n\t\t\n\t\t\t5\n\t\t\t433\n\t\t\t2021. 2021\n\t\t\tVerein zur Forderung des Open Access Publizierens in den Quantenwissenschaften"
+    },
+    {
+      "id": 27,
+      "text": "Efficient magic state factories with a catalyzed<mml:math xmlns:mml=\"http://www.w3.org/1998/Math/MathML\"><mml:mrow class=\"MJX-TeXAtom-ORD\"><mml:mo stretchy=\"false\">|</mml:mo></mml:mrow><mml:mi>C</mml:mi><mml:mi>C</mml:mi><mml:mi>Z</mml:mi><mml:mo fence=\"false\" stretchy=\"false\">⟩</mml:mo></mml:math>to<mml:math xmlns:mml=\"http://www.w3.org/1998/Math/MathML\"><mml:mn>2</mml:mn><mml:mrow class=\"MJX-TeXAtom-ORD\"><mml:mo stretchy=\"false\">|</mml:mo></mml:mrow><mml:mi>T</mml:mi><mml:mo fence=\"false\" stretchy=\"false\">⟩</mml:mo></mml:math>transformation\n\t\t\n\t\t\tCraigGidney\n\t\t\n\t\t\n\t\t\tAustinGFowler\n\t\t\n\t\t10.22331/q-2019-04-30-135\n\t\t\n\t\n\t\n\t\tQuantum\n\t\tQuantum\n\t\t2521-327X\n\t\t\n\t\t\t3\n\t\t\t135\n\t\t\t2019. 2019\n\t\t\tVerein zur Forderung des Open Access Publizierens in den Quantenwissenschaften"
+    },
+    {
+      "id": 28,
+      "text": "CraigGidney\n\t\t\n\t\t\n\t\t\tNoahShutty\n\t\t\n\t\t\n\t\t\tCodyJones\n\t\t\n\t\t10.48550/arXiv.2409.17595\n\t\tarXiv:2409.17595\n\t\t\n\t\tMagic state cultivation: growing T states as cheap as CNOT gates\n\t\t\n\t\t\t2024. 2024\n\t\t\n\t\n\tarXiv preprint"
+    },
+    {
+      "id": 29,
+      "text": "EmmanouilGiortamis\n\t\t\n\t\t\n\t\t\tFranciscoRomão\n\t\t\n\t\t\n\t\t\tNathanielTornow\n\t\t\n\t\t\n\t\t\tDmitryLugovoy\n\t\t\n\t\t\n\t\t\tPramodBhatotia\n\t\t\n\t\t10.48550/arXiv.2408.04312\n\t\tarXiv:2408.04312\n\t\t\n\t\tOrchestrating quantum cloud environments with qonductor\n\t\t\n\t\t\t2024. 2024\n\t\t\n\t\n\tarXiv preprint"
+    },
+    {
+      "id": 30,
+      "text": "The Heisenberg representation of quantum computers\n\t\t\n\t\t\tDanielGottesman\n\t\t\n\t\t10.48550/arXiv.quant-ph/9807006\n\t\tquant-ph/9807006\n\t\t\n\t\t\n\t\t\t1998. 1998\n\t\t\n\t\n\tarXiv preprint"
+    },
+    {
+      "id": 31,
+      "text": "Gurobi announces Gurobi Optimizer 3.0\n\t\t10.1287/orms.2010.03.09\n\t\t\n\t\n\t\n\t\tGurobi Optimizer Reference Manual\n\t\t\n\t\t\tInstitute for Operations Research and the Management Sciences (INFORMS)\n\t\t\t2024"
+    },
+    {
+      "id": 32,
+      "text": "Codes and Protocols for Distilling<mml:math xmlns:mml=\"http://www.w3.org/1998/Math/MathML\"><mml:mi>T</mml:mi></mml:math>, controlled-<mml:math xmlns:mml=\"http://www.w3.org/1998/Math/MathML\"><mml:mi>S</mml:mi></mml:math>, and Toffoli Gates\n\t\t\n\t\t\tJeongwanHaah\n\t\t\n\t\t\n\t\t\tMatthewBHastings\n\t\t\n\t\t10.22331/q-2018-06-07-71\n\t\t\n\t\n\t\n\t\tQuantum\n\t\tQuantum\n\t\t2521-327X\n\t\t\n\t\t\t2\n\t\t\t71\n\t\t\t2018. 2018\n\t\t\tVerein zur Forderung des Open Access Publizierens in den Quantenwissenschaften"
+    },
+    {
+      "id": 33,
+      "text": "Magic state distillation at intermediate size\n\t\t\n\t\t\tJeongwanHaah\n\t\t\n\t\t\n\t\t\tBMatthew\n\t\t\n\t\t\n\t\t\tDavidHastings\n\t\t\n\t\t\n\t\t\tDavePoulin\n\t\t\n\t\t\n\t\t\tWecker\n\t\t\n\t\t10.48550/arXiv.1709.02789\n\t\tarXiv:1709.02789\n\t\t\n\t\t\n\t\t\t2017. 2017\n\t\t\n\t\n\tarXiv preprint"
+    },
+    {
+      "id": 34,
+      "text": "Magic state distillation with low space overhead and optimal asymptotic input count\n\t\t\n\t\t\tJeongwanHaah\n\t\t\n\t\t\n\t\t\tMatthewBHastings\n\t\t\n\t\t\n\t\t\tDavePoulin\n\t\t\n\t\t\n\t\t\tDWecker\n\t\t\n\t\t10.22331/q-2017-10-03-31\n\t\t\n\t\n\t\n\t\tQuantum\n\t\tQuantum\n\t\t2521-327X\n\t\t\n\t\t\t1\n\t\t\t31\n\t\t\t2017. 2017\n\t\t\tVerein zur Forderung des Open Access Publizierens in den Quantenwissenschaften"
+    },
+    {
+      "id": 35,
+      "text": "MatthewPHarrigan\n\t\t\n\t\t\n\t\t\tTanujKhattar\n\t\t\n\t\t\n\t\t\tCharlesYuan\n\t\t\n\t\t\n\t\t\tAnurudhPeduri\n\t\t\n\t\t\n\t\t\tNoureldinYosri\n\t\t\n\t\t\n\t\t\tFionnDMalone\n\t\t\n\t\t\n\t\t\tRyanBabbush\n\t\t\n\t\t\n\t\t\tNicholasCRubin\n\t\t\n\t\t10.48550/arXiv.2409.04643\n\t\tarXiv:2409.04643\n\t\t\n\t\tExpressing and Analyzing Quantum Algorithms with Qualtran\n\t\t\n\t\t\t2024\n\t\t\n\t\n\tquant-ph"
+    },
+    {
+      "id": 36,
+      "text": "Distillation with sublogarithmic overhead\n\t\t\n\t\t\tBMatthew\n\t\t\n\t\t\n\t\t\tJeongwanHastings\n\t\t\n\t\t\n\t\t\tHaah\n\t\t\n\t\t10.1103/PhysRevLett.120.050504\n\t\t\n\t\n\t\n\t\tPhysical review letters\n\t\t\n\t\t\t120\n\t\t\t50504\n\t\t\t2018. 2018"
+    },
+    {
+      "id": 37,
+      "text": "Finding Exponential Product Formulas of Higher Orders\n\t\t\n\t\t\tNaomichiHatano\n\t\t\n\t\t\n\t\t\tMasuoSuzuki\n\t\t\n\t\t10.1007/11526216_2\n\t\t\n\t\n\t\n\t\tLecture Notes in Physics\n\t\t\n\t\t\tSpringer Berlin Heidelberg\n\t\t\t2005"
+    },
+    {
+      "id": 38,
+      "text": "Efficient fault-tolerant code switching via one-way transversal CNOT gates\n\t\t\n\t\t\tSaschaHeußen\n\t\t\n\t\t\n\t\t\tJanineHilder\n\t\t\n\t\t10.48550/arXiv.2409.13465\n\t\tarXiv:2409.13465\n\t\t\n\t\t\n\t\t\t2024. 2024\n\t\t\n\t\n\tarXiv preprint"
+    },
+    {
+      "id": 39,
+      "text": "A verified optimizer for Quantum circuits\n\t\t\n\t\t\tKeshaHietala\n\t\t\t0000-0002-2724-0974\n\t\t\n\t\t\n\t\t\tRobertRand\n\t\t\t0000-0001-6842-5505\n\t\t\n\t\t\n\t\t\tShih-HanHung\n\t\t\t0000-0003-3410-7466\n\t\t\n\t\t\n\t\t\tXiaodiWu\n\t\t\n\t\t\n\t\t\tMichaelHicks\n\t\t\t0000-0002-2759-9223\n\t\t\n\t\t10.1145/3434318\n\t\t\n\t\n\t\n\t\tProceedings of the ACM on Programming Languages\n\t\tProc. ACM Program. Lang.\n\t\t2475-1421\n\t\t\n\t\t\t5\n\t\t\tPOPL\n\t\t\t\n\t\t\t2021. 2021\n\t\t\tAssociation for Computing Machinery (ACM)\n\t\t\n\t\n\tPOPL"
+    },
+    {
+      "id": 40,
+      "text": "Locality-aware Pauli-based computation for local magic state preparation\n\t\t\n\t\t\tYutakaHirano\n\t\t\n\t\t\n\t\t\tKeisukeFujii\n\t\t\n\t\t10.48550/arXiv.2504.12091\n\t\tarXiv:2504.12091\n\t\t\n\t\t\n\t\t\t2025. 2025\n\t\t\n\t\n\tarXiv preprint"
+    },
+    {
+      "id": 41,
+      "text": "Leveraging Zero-Level Distillation to Generate High-Fidelity Magic States\n\t\t\n\t\t\tYutakaHirano\n\t\t\n\t\t\n\t\t\tTomohiroItogawa\n\t\t\n\t\t\n\t\t\tKeisukeFujii\n\t\t\n\t\t10.1109/qce60285.2024.00104\n\t\t\n\t\n\t\n\t\t2024 IEEE International Conference on Quantum Computing and Engineering (QCE)\n\t\t\n\t\t\tIEEE\n\t\t\t2024\n\t\t\t1"
+    },
+    {
+      "id": 42,
+      "text": "Magicpool: Dealing with magic state distillation failures on large-scale faulttolerant quantum computer\n\t\t\n\t\t\tYutakaHirano\n\t\t\n\t\t\n\t\t\tYasunariSuzuki\n\t\t\n\t\t\n\t\t\tKeisukeFujii\n\t\t\n\t\t10.48550/arXiv.2407.07394\n\t\tarXiv:2407.07394\n\t\t\n\t\t\n\t\t\t2024. 2024\n\t\t\n\t\n\tarXiv preprint"
+    },
+    {
+      "id": 43,
+      "text": "Disentangling Hype from Practicality: On Realistically Achieving Quantum Advantage\n\t\t\n\t\t\tTorstenHoefler\n\t\t\n\t\t\n\t\t\tThomasHäner\n\t\t\n\t\t\n\t\t\tMatthiasTroyer\n\t\t\n\t\t10.1145/3571725\n\t\t\n\t\n\t\n\t\tCommunications of the ACM\n\t\tCommun. ACM\n\t\t0001-0782\n\t\t1557-7317\n\t\t\n\t\t\t66\n\t\t\t5\n\t\t\t\n\t\t\t2023. 2023\n\t\t\tAssociation for Computing Machinery (ACM)"
+    },
+    {
+      "id": 44,
+      "text": "Resource optimized quantum architectures for surface code implementations of magic-state distillation\n\t\t\n\t\t\tAdamHolmes\n\t\t\n\t\t\n\t\t\tYongshanDing\n\t\t\n\t\t\n\t\t\tAliJavadi-Abhari\n\t\t\n\t\t\n\t\t\tDianaFranklin\n\t\t\n\t\t\n\t\t\tMargaretMartonosi\n\t\t\n\t\t\n\t\t\tFredericTChong\n\t\t\n\t\t10.1016/j.micpro.2019.02.007\n\t\t\n\t\n\t\n\t\tMicroprocessors and Microsystems\n\t\tMicroprocessors and Microsystems\n\t\t0141-9331\n\t\t\n\t\t\t67\n\t\t\t\n\t\t\t2019. 2019\n\t\t\tElsevier BV"
+    },
+    {
+      "id": 45,
+      "text": "Cryogenic Control Architecture for Large-Scale Quantum Computing\n\t\t\n\t\t\tJMHornibrook\n\t\t\n\t\t\n\t\t\tJIColless\n\t\t\n\t\t\n\t\t\tIDConway Lamb\n\t\t\n\t\t\n\t\t\tSJPauka\n\t\t\n\t\t\n\t\t\tHLu\n\t\t\n\t\t\n\t\t\tACGossard\n\t\t\n\t\t\n\t\t\tJDWatson\n\t\t\n\t\t\n\t\t\tGCGardner\n\t\t\n\t\t\n\t\t\tSFallahi\n\t\t\n\t\t\n\t\t\tMJManfra\n\t\t\n\t\t\n\t\t\tDJReilly\n\t\t\n\t\t10.1103/physrevapplied.3.024010\n\t\t\n\t\n\t\n\t\tPhysical Review Applied\n\t\tPhys. Rev. Applied\n\t\t2331-7019\n\t\t\n\t\t\t3\n\t\t\t2\n\t\t\t24010\n\t\t\t2015. 2015\n\t\t\tAmerican Physical Society (APS)"
+    },
+    {
+      "id": 46,
+      "text": "Surface code quantum computing by lattice surgery\n\t\t\n\t\t\tDominicHorsman\n\t\t\n\t\t\n\t\t\tAustinGFowler\n\t\t\n\t\t\n\t\t\tSimonDevitt\n\t\t\n\t\t\n\t\t\tRodneyVanMeter\n\t\t\n\t\t10.1088/1367-2630/14/12/123011\n\t\t\n\t\n\t\n\t\tNew Journal of Physics\n\t\tNew J. Phys.\n\t\t1367-2630\n\t\t\n\t\t\t14\n\t\t\t12\n\t\t\t123011\n\t\t\t2012. 2012\n\t\t\tIOP Publishing"
+    },
+    {
+      "id": 47,
+      "text": "CaQR: A Compiler-Assisted Approach for Qubit Reuse through Dynamic Circuit\n\t\t\n\t\t\tFeiHua\n\t\t\n\t\t\n\t\t\tYuweiJin\n\t\t\n\t\t\n\t\t\tYanhaoChen\n\t\t\n\t\t\n\t\t\tSuhasVittal\n\t\t\n\t\t\n\t\t\tKevinKrsulich\n\t\t\n\t\t\n\t\t\tLevSBishop\n\t\t\n\t\t\n\t\t\tJohnLapeyre\n\t\t\n\t\t\n\t\t\tAliJavadi-Abhari\n\t\t\n\t\t\n\t\t\tEddyZZhang\n\t\t\n\t\t10.1145/3582016.3582030\n\t\t\n\t\n\t\n\t\tProceedings of the 28th ACM International Conference on Architectural Support for Programming Languages and Operating Systems, Volume 3\n\t\tthe 28th ACM International Conference on Architectural Support for Programming Languages and Operating Systems, Volume 3\n\t\t\n\t\t\tACM\n\t\t\t2023\n\t\t\t3"
+    },
+    {
+      "id": 48,
+      "text": "Multi-criteria decision analysis: methods and software\n\t\t\n\t\t\tAlessioIshizaka\n\t\t\n\t\t\n\t\t\tPhilippeNemery\n\t\t\n\t\t10.1007/978-1-4757-3157-6_2\n\t\t\n\t\t\n\t\t\t2013\n\t\t\tJohn Wiley & Sons"
+    },
+    {
+      "id": 49,
+      "text": "Even more efficient magic state distillation by zero-level distillation\n\t\t\n\t\t\tTomohiroItogawa\n\t\t\n\t\t\n\t\t\tYugoTakada\n\t\t\n\t\t\n\t\t\tYutakaHirano\n\t\t\n\t\t\n\t\t\tKeisukeFujii\n\t\t\n\t\t10.48550/arXiv.2403.03991\n\t\tarXiv:2403.03991\n\t\t\n\t\t\n\t\t\t2024. 2024\n\t\t\n\t\n\tarXiv preprint"
+    },
+    {
+      "id": 50,
+      "text": "Qubit Recycling Revisited\n\t\t\n\t\t\tHanruJiang\n\t\t\t0000-0002-5965-1209\n\t\t\n\t\t10.1145/3656428\n\t\t\n\t\n\t\n\t\tProceedings of the ACM on Programming Languages\n\t\tProc. ACM Program. Lang.\n\t\t2475-1421\n\t\t\n\t\t\t8\n\t\t\tPLDI\n\t\t\t\n\t\t\t2024. 2024\n\t\t\tAssociation for Computing Machinery (ACM)\n\t\t\n\t\n\tPLDI"
+    },
+    {
+      "id": 51,
+      "text": "Multilevel distillation of magic states for quantum computing\n\t\t\n\t\t\tCodyJones\n\t\t\n\t\t10.1103/physreva.87.042305\n\t\t\n\t\n\t\n\t\tPhysical Review A\n\t\tPhys. Rev. A\n\t\t1050-2947\n\t\t1094-1622\n\t\t\n\t\t\t87\n\t\t\t4\n\t\t\t42305\n\t\t\t2013. 2013\n\t\t\tAmerican Physical Society (APS)"
+    },
+    {
+      "id": 52,
+      "text": "Demonstration of quantum volume 64 on a superconducting quantum computing system\n\t\t\n\t\t\tPetarJurcevic\n\t\t\t0000-0003-1234-6386\n\t\t\n\t\t\n\t\t\tAliJavadi-Abhari\n\t\t\n\t\t\n\t\t\tLevSBishop\n\t\t\n\t\t\n\t\t\tIsaacLauer\n\t\t\n\t\t\n\t\t\tDanielaFBogorin\n\t\t\n\t\t\n\t\t\tMarkusBrink\n\t\t\n\t\t\n\t\t\tLaurenCapelluto\n\t\t\n\t\t\n\t\t\tOktayGünlük\n\t\t\n\t\t\n\t\t\tToshinariItoko\n\t\t\n\t\t\n\t\t\tNaokiKanazawa\n\t\t\n\t\t\n\t\t\tAbhinavKandala\n\t\t\n\t\t\n\t\t\tGeorgeAKeefe\n\t\t\n\t\t\n\t\t\tKevinKrsulich\n\t\t\n\t\t\n\t\t\tWilliamLanders\n\t\t\n\t\t\n\t\t\tEricPLewandowski\n\t\t\n\t\t\n\t\t\tDouglasTMcclure\n\t\t\n\t\t\n\t\t\tGiacomoNannicini\n\t\t\n\t\t\n\t\t\tAdinathNarasgond\n\t\t\n\t\t\n\t\t\tHasanMNayfeh\n\t\t\n\t\t\n\t\t\tEmilyPritchett\n\t\t\n\t\t\n\t\t\tMaryBethRothwell\n\t\t\n\t\t\n\t\t\tSrikanthSrinivasan\n\t\t\n\t\t\n\t\t\tNeerejaSundaresan\n\t\t\n\t\t\n\t\t\tCindyWang\n\t\t\n\t\t\n\t\t\tKenXWei\n\t\t\n\t\t\n\t\t\tChristopherJWood\n\t\t\t0000-0001-7606-7349\n\t\t\n\t\t\n\t\t\tJeng-BangYau\n\t\t\n\t\t\n\t\t\tEricJZhang\n\t\t\t0000-0003-4278-3763\n\t\t\n\t\t\n\t\t\tOliverEDial\n\t\t\n\t\t\n\t\t\tJerryMChow\n\t\t\n\t\t\n\t\t\tJayMGambetta\n\t\t\t0000-0002-4620-0978\n\t\t\n\t\t10.1088/2058-9565/abe519\n\t\t\n\t\n\t\n\t\tQuantum Science and Technology\n\t\tQuantum Sci. Technol.\n\t\t2058-9565\n\t\t\n\t\t\t6\n\t\t\t2\n\t\t\t025020\n\t\t\t2021. 2021\n\t\t\tIOP Publishing"
+    },
+    {
+      "id": 53,
+      "text": "SPARO: Surface-code Paulibased Architectural Resource Optimization for Fault-tolerant Quantum Computing\n\t\t\n\t\t\tShuwenKan\n\t\t\n\t\t\n\t\t\tZefanDu\n\t\t\n\t\t\n\t\t\tChenxuLiu\n\t\t\n\t\t\n\t\t\tMengWang\n\t\t\n\t\t\n\t\t\tYufeiDing\n\t\t\n\t\t\n\t\t\tAngLi\n\t\t\n\t\t\n\t\t\tYingMao\n\t\t\n\t\t\n\t\t\tSamuelStein\n\t\t\n\t\t10.48550/arXiv.2504.21854\n\t\tarXiv:2504.21854\n\t\t\n\t\t\n\t\t\t2025. 2025\n\t\t\n\t\n\tarXiv preprint"
+    },
+    {
+      "id": 54,
+      "text": "Scalable designs for quasiparticle-poisoning-protected topological quantum computation with Majorana zero modes\n\t\t\n\t\t\tTorstenKarzig\n\t\t\n\t\t\n\t\t\tChristinaKnapp\n\t\t\n\t\t\n\t\t\tRomanMLutchyn\n\t\t\n\t\t\n\t\t\tParsaBonderson\n\t\t\n\t\t\n\t\t\tMatthewBHastings\n\t\t\n\t\t\n\t\t\tChetanNayak\n\t\t\n\t\t\n\t\t\tJasonAlicea\n\t\t\n\t\t\n\t\t\tKarstenFlensberg\n\t\t\n\t\t\n\t\t\tStephanPlugge\n\t\t\n\t\t\n\t\t\tYuvalOreg\n\t\t\n\t\t\n\t\t\tCharlesMMarcus\n\t\t\n\t\t\n\t\t\tMichaelHFreedman\n\t\t\n\t\t10.1103/physrevb.95.235305\n\t\t\n\t\n\t\n\t\tPhysical Review B\n\t\tPhys. Rev. B\n\t\t2469-9950\n\t\t2469-9969\n\t\t\n\t\t\t95\n\t\t\t23\n\t\t\t\n\t\t\t2017. Jun 2017\n\t\t\tAmerican Physical Society (APS)"
+    },
+    {
+      "id": 55,
+      "text": "AleksKissinger\n\t\t\n\t\t\n\t\t\tJohnVan De Wetering\n\t\t\n\t\t10.48550/arXiv.1904.04735\n\t\tarXiv:1904.04735\n\t\t\n\t\tPyZX: Large scale automated diagrammatic reasoning\n\t\t\n\t\t\t2019. 2019\n\t\t\n\t\n\tarXiv preprint"
+    },
+    {
+      "id": 56,
+      "text": "Superconducting Qubits: Current State of Play\n\t\t\n\t\t\tMortenKjaergaard\n\t\t\n\t\t\n\t\t\tMollieESchwartz\n\t\t\n\t\t\n\t\t\tJochenBraumüller\n\t\t\n\t\t\n\t\t\tPhilipKrantz\n\t\t\n\t\t\n\t\t\tNull-JWang\n\t\t\n\t\t\n\t\t\tSimonGustavsson\n\t\t\n\t\t\n\t\t\tWilliamDOliver\n\t\t\n\t\t10.1146/annurev-conmatphys-031119-050605\n\t\t\n\t\n\t\n\t\tAnnual Review of Condensed Matter Physics\n\t\tAnnu. Rev. Condens. Matter Phys.\n\t\t1947-5454\n\t\t1947-5462\n\t\t\n\t\t\t11\n\t\t\t1\n\t\t\t\n\t\t\t2020. 2020\n\t\t\tAnnual Reviews"
+    },
+    {
+      "id": 57,
+      "text": "Fault-tolerant postselected quantum computation: Schemes\n\t\t\n\t\t\tEmanuelKnill\n\t\t\n\t\t10.48550/arXiv.quant-ph/0402171\n\t\tquant-ph/0402171\n\t\t\n\t\t\n\t\t\t2004. 2004\n\t\t\n\t\n\tarXiv preprint"
+    },
+    {
+      "id": 58,
+      "text": "Magic state injection on the rotated surface code\n\t\t\n\t\t\tLinglingLao\n\t\t\n\t\t\n\t\t\tBenCriger\n\t\t\n\t\t10.1145/3528416.3530237\n\t\t\n\t\n\t\n\t\tProceedings of the 19th ACM International Conference on Computing Frontiers\n\t\tthe 19th ACM International Conference on Computing Frontiers\n\t\t\n\t\t\tACM\n\t\t\t2022"
+    },
+    {
+      "id": 59,
+      "text": "Low-Overhead Magic State Distillation with Color Codes\n\t\t\n\t\t\tSeok-HyungLee\n\t\t\t0000-0002-1207-2752\n\t\t\n\t\t\n\t\t\tFelixThomsen\n\t\t\n\t\t\n\t\t\tNicholasFazio\n\t\t\t0009-0008-0007-1016\n\t\t\n\t\t\n\t\t\tBenjaminJBrown\n\t\t\t0000-0002-8060-8109\n\t\t\n\t\t\n\t\t\tStephenDBartlett\n\t\t\t0000-0003-4387-670X\n\t\t\n\t\t10.1103/ch5r-cnfq\n\t\t\n\t\n\t\n\t\tPRX Quantum\n\t\tPRX Quantum\n\t\t2691-3399\n\t\t\n\t\t\t6\n\t\t\t3\n\t\t\t30317\n\t\t\t2025. 2025\n\t\t\tAmerican Physical Society (APS)"
+    },
+    {
+      "id": 60,
+      "text": "A magic state’s fidelity can be superior to the operations that created it\n\t\t\n\t\t\tYingLi\n\t\t\n\t\t10.1088/1367-2630/17/2/023037\n\t\t\n\t\n\t\n\t\tNew Journal of Physics\n\t\tNew J. Phys.\n\t\t1367-2630\n\t\t\n\t\t\t17\n\t\t\t2\n\t\t\t023037\n\t\t\t2015. 2015\n\t\t\tIOP Publishing"
+    },
+    {
+      "id": 61,
+      "text": "A Game of Surface Codes: Large-Scale Quantum Computing with Lattice Surgery\n\t\t\n\t\t\tDanielLitinski\n\t\t\n\t\t10.22331/q-2019-03-05-128\n\t\t\n\t\n\t\n\t\tQuantum\n\t\tQuantum\n\t\t2521-327X\n\t\t\n\t\t\t3\n\t\t\t128\n\t\t\t2019. 2019\n\t\t\tVerein zur Forderung des Open Access Publizierens in den Quantenwissenschaften"
+    },
+    {
+      "id": 62,
+      "text": "Magic State Distillation: Not as Costly as You Think\n\t\t\n\t\t\tDanielLitinski\n\t\t\n\t\t10.22331/q-2019-12-02-205\n\t\t\n\t\n\t\n\t\tQuantum\n\t\tQuantum\n\t\t2521-327X\n\t\t\n\t\t\t3\n\t\t\t205\n\t\t\t2019. 2019\n\t\t\tVerein zur Forderung des Open Access Publizierens in den Quantenwissenschaften"
+    },
+    {
+      "id": 63,
+      "text": "Universal Quantum Simulators\n\t\t\n\t\t\tSethLloyd\n\t\t\n\t\t10.1126/science.273.5278.1073\n\t\t\n\t\n\t\n\t\tScience\n\t\tScience\n\t\t0036-8075\n\t\t1095-9203\n\t\t\n\t\t\t273\n\t\t\t5278\n\t\t\t\n\t\t\t1996. 1996\n\t\t\tAmerican Association for the Advancement of Science (AAAS)"
+    },
+    {
+      "id": 64,
+      "text": "Optimal Hamiltonian simulation by quantum signal processing\n\t\t\n\t\t\tGuangHao\n\t\t\n\t\t\n\t\t\tLow\n\t\t\n\t\t\n\t\t\tIsaacLChuang\n\t\t\n\t\t10.1103/PhysRevLett.118.010501\n\t\t\n\t\n\t\n\t\tPhysical review letters\n\t\t\n\t\t\t118\n\t\t\t10501\n\t\t\t2017. 2017"
+    },
+    {
+      "id": 65,
+      "text": "Magic-state distillation with the four-qubit code\n\t\t\n\t\t\tBryanAdam M Meier\n\t\t\n\t\t\n\t\t\tEmanuelEastin\n\t\t\n\t\t\n\t\t\tKnill\n\t\t\n\t\t10.48550/arXiv.1204.4221\n\t\tarXiv:1204.4221\n\t\t\n\t\t\n\t\t\t2012. 2012\n\t\t\n\t\n\tarXiv preprint"
+    },
+    {
+      "id": 66,
+      "text": "NDavid Mermin\n\t\t\n\t\t10.1017/CBO9780511813870\n\t\t\n\t\tQuantum Computer Science: An Introduction\n\t\t\n\t\t\tCambridge University Press\n\t\t\t2007"
+    },
+    {
+      "id": 67,
+      "text": "Teaching Quantum Computing Using Microsoft Quantum Development Kit and Azure Quantum\n\t\t\n\t\t\tMariiaMykhailova\n\t\t\n\t\t10.1109/qce57702.2023.20320\n\t\t\n\t\n\t\n\t\t2023 IEEE International Conference on Quantum Computing and Engineering (QCE)\n\t\t\n\t\t\tIEEE\n\t\t\t2023"
+    },
+    {
+      "id": 68,
+      "text": "Wire recycling for quantum circuit optimization\n\t\t\n\t\t\tAlexandruPaler\n\t\t\n\t\t\n\t\t\tRobertWille\n\t\t\n\t\t\n\t\t\tSimonJDevitt\n\t\t\n\t\t10.1103/physreva.94.042337\n\t\t\n\t\n\t\n\t\tPhysical Review A\n\t\tPhys. Rev. A\n\t\t2469-9926\n\t\t2469-9934\n\t\t\n\t\t\t94\n\t\t\t4\n\t\t\t42337\n\t\t\t2016. 2016\n\t\t\tAmerican Physical Society (APS)"
+    },
+    {
+      "id": 69,
+      "text": "QUEST: systematically approximating Quantum circuits for higher output fidelity\n\t\t\n\t\t\tTirthakPatel\n\t\t\n\t\t\n\t\t\tEdYounis\n\t\t\n\t\t\n\t\t\tCostinIancu\n\t\t\n\t\t\n\t\t\tWibeDe Jong\n\t\t\n\t\t\n\t\t\tDeveshTiwari\n\t\t\n\t\t10.1145/3503222.3507739\n\t\t\n\t\n\t\n\t\tProceedings of the 27th ACM International Conference on Architectural Support for Programming Languages and Operating Systems\n\t\tASPLOS '22\n\t\tthe 27th ACM International Conference on Architectural Support for Programming Languages and Operating SystemsLausanne, Switzerland; New York, NY, USA\n\t\t\n\t\t\tACM\n\t\t\t2022"
+    },
+    {
+      "id": 70,
+      "text": "Experimental fault-tolerant code switching\n\t\t\n\t\t\tIvanPogorelov\n\t\t\t0009-0001-5103-9410\n\t\t\n\t\t\n\t\t\tFriederikeButt\n\t\t\t0009-0007-8954-1274\n\t\t\n\t\t\n\t\t\tLukasPostler\n\t\t\n\t\t\n\t\t\tChristianDMarciniak\n\t\t\t0000-0001-8401-3981\n\t\t\n\t\t\n\t\t\tPhilippSchindler\n\t\t\t0000-0002-9461-9650\n\t\t\n\t\t\n\t\t\tMarkusMüller\n\t\t\t0000-0002-2813-3097\n\t\t\n\t\t\n\t\t\tThomasMonz\n\t\t\t0000-0001-7410-4804\n\t\t\n\t\t10.1038/s41567-024-02727-2\n\t\t\n\t\n\t\n\t\tNature Physics\n\t\tNat. Phys.\n\t\t1745-2473\n\t\t1745-2481\n\t\t\n\t\t\t21\n\t\t\t2\n\t\t\t\n\t\t\t2025. 2025\n\t\t\tSpringer Science and Business Media LLC"
+    },
+    {
+      "id": 71,
+      "text": "New magic state distillation factories optimized by temporally encoded lattice surgery\n\t\t\n\t\t\tPrithvirajPrabhu\n\t\t\n\t\t\n\t\t\tChristopherChamberland\n\t\t\n\t\t10.48550/arXiv.2210.15814\n\t\tarXiv:2210.15814\n\t\t\n\t\t\n\t\t\t2022. 2022\n\t\t\n\t\n\tarXiv preprint"
+    },
+    {
+      "id": 72,
+      "text": "Quantum Computing in the NISQ era and beyond\n\t\t\n\t\t\tJohnPreskill\n\t\t\n\t\t10.22331/q-2018-08-06-79\n\t\t\n\t\n\t\n\t\tQuantum\n\t\tQuantum\n\t\t2521-327X\n\t\t\n\t\t\t2\n\t\t\t79\n\t\t\t2018. Aug. 2018\n\t\t\tVerein zur Forderung des Open Access Publizierens in den Quantenwissenschaften"
+    },
+    {
+      "id": 73,
+      "text": "Quantum computing 40 years later\n\t\t\n\t\t\tJohnPreskill\n\t\t\n\t\t10.48550/arXiv.2106.10522\n\t\t\n\t\n\t\n\t\tFeynman Lectures on Computation\n\t\t\n\t\t\tCRC Press\n\t\t\t2023"
+    },
+    {
+      "id": 74,
+      "text": "An FPGA-based hardware platform for the control of spin-based quantum systems\n\t\t\n\t\t\tWenzheXi Qin\n\t\t\n\t\t\n\t\t\tLinZhang\n\t\t\n\t\t\n\t\t\tYuxiWang\n\t\t\n\t\t\n\t\t\tYuZhao\n\t\t\n\t\t\n\t\t\tXingTong\n\t\t\n\t\t\n\t\t\tJiangfengRong\n\t\t\n\t\t\n\t\t\tDu\n\t\t\n\t\t10.1109/TIM\n\t\t\n\t\n\t\n\t\tIEEE Transactions on Instrumentation and Measurement\n\t\t\n\t\t\t69\n\t\t\t\n\t\t\t2019. 2019. 2019.2910921"
+    },
+    {
+      "id": 75,
+      "text": "RESCQ: Realtime Scheduling for Continuous Angle Quantum Error Correction Architectures\n\t\t\n\t\t\tSayamSethi\n\t\t\t0009-0005-3056-5285\n\t\t\n\t\t\n\t\t\tJonathanMarkBaker\n\t\t\t0000-0002-0775-8274\n\t\t\n\t\t10.1145/3676641.3716018\n\t\t\n\t\n\t\n\t\tProceedings of the 30th ACM International Conference on Architectural Support for Programming Languages and Operating Systems, Volume 2\n\t\tASPLOS '25). Association for Computing Machinery\n\t\tthe 30th ACM International Conference on Architectural Support for Programming Languages and Operating Systems, Volume 2Rotterdam, Netherlands; New York, NY, USA\n\t\t\n\t\t\tACM\n\t\t\t2025\n\t\t\t2"
+    },
+    {
+      "id": 76,
+      "text": "Polynomial-time algorithms for prime factorization and discrete logarithms on a quantum computer\n\t\t\n\t\t\tWPeter\n\t\t\n\t\t\n\t\t\tShor\n\t\t\n\t\t10.1137/S0036144598347011\n\t\t\n\t\n\t\n\t\tSIAM review\n\t\t\n\t\t\t41\n\t\t\t\n\t\t\t1999. 1999"
+    },
+    {
+      "id": 77,
+      "text": "Optimizing multi-level magic state factories for fault-tolerant quantum architectures\n\t\t\n\t\t\tAllysonSilva\n\t\t\n\t\t\n\t\t\tArturScherer\n\t\t\n\t\t\n\t\t\tZakWebb\n\t\t\n\t\t\n\t\t\tAbdullahKhalid\n\t\t\n\t\t\n\t\t\tBohdanKulchytskyy\n\t\t\n\t\t\n\t\t\tMiaKramer\n\t\t\n\t\t\n\t\t\tKevinNguyen\n\t\t\n\t\t\n\t\t\tXiangzhouKong\n\t\t\n\t\t\n\t\t\tGebremedhinADagnew\n\t\t\n\t\t\n\t\t\tYumengWang\n\t\t\n\t\t\n\t\t\tAnhHuy\n\t\t\n\t\t\n\t\t\tEinarNguyen\n\t\t\n\t\t\n\t\t\tKatiemarieGabbassov\n\t\t\n\t\t\n\t\t\tPooyaOlfert\n\t\t\n\t\t\n\t\t\tRonagh\n\t\t\n\t\t10.48550/arXiv.2411.04270\n\t\tarXiv:2411.04270\n\t\t\n\t\t\n\t\t\t2024. 2024\n\t\t\n\t\n\tarXiv preprint"
+    },
+    {
+      "id": 78,
+      "text": "AllysonSilva\n\t\t\n\t\t\n\t\t\tXiangyiZhang\n\t\t\n\t\t\n\t\t\tZakWebb\n\t\t\n\t\t\n\t\t\tMiaKramer\n\t\t\n\t\t\n\t\t\tChanWooYang\n\t\t\n\t\t\n\t\t\tXiaoLiu\n\t\t\n\t\t\n\t\t\tJessicaLemieux\n\t\t\n\t\t\n\t\t\tKa-WaiChen\n\t\t\n\t\t\n\t\t\tArturScherer\n\t\t\n\t\t\n\t\t\tPooyaRonagh\n\t\t\n\t\t10.48550/arXiv.2405.17688\n\t\tarXiv:2405.17688\n\t\t\n\t\tMulti-qubit lattice surgery scheduling\n\t\t\n\t\t\t2024. 2024\n\t\t\n\t\n\tarXiv preprint"
+    },
+    {
+      "id": 79,
+      "text": "High-fidelity magic-state preparation with a biased-noise architecture\n\t\t\n\t\t\tShraddhaSingh\n\t\t\t0000-0002-4921-1410\n\t\t\n\t\t\n\t\t\tAndrewSDarmawan\n\t\t\n\t\t\n\t\t\tBenjaminJBrown\n\t\t\t0000-0002-8060-8109\n\t\t\n\t\t\n\t\t\tShrutiPuri\n\t\t\t0000-0002-5194-0591\n\t\t\n\t\t10.1103/physreva.105.052410\n\t\t\n\t\n\t\n\t\tPhysical Review A\n\t\tPhys. Rev. A\n\t\t2469-9926\n\t\t2469-9934\n\t\t\n\t\t\t105\n\t\t\t5\n\t\t\t52410\n\t\t\t2022. 2022\n\t\t\tAmerican Physical Society (APS)"
+    },
+    {
+      "id": 80,
+      "text": "Versatile and Concurrent FPGA-Based Architecture for Practical Quantum Communication Systems\n\t\t\n\t\t\tAndreaStanco\n\t\t\t0000-0001-8442-9055\n\t\t\n\t\t\n\t\t\tFrancescoB LSantagiustina\n\t\t\t0000-0002-3057-7551\n\t\t\n\t\t\n\t\t\tLucaCalderaro\n\t\t\t0000-0002-1758-6760\n\t\t\n\t\t\n\t\t\tMarcoAvesani\n\t\t\t0000-0001-5122-992X\n\t\t\n\t\t\n\t\t\tTommasoBertapelle\n\t\t\t0000-0001-5453-1075\n\t\t\n\t\t\n\t\t\tDanieleDequal\n\t\t\t0000-0002-2206-5038\n\t\t\n\t\t\n\t\t\tGiuseppeVallone\n\t\t\t0000-0003-4965-5801\n\t\t\n\t\t\n\t\t\tPaoloVilloresi\n\t\t\t0000-0002-7977-015X\n\t\t\n\t\t10.1109/tqe.2022.3143997\n\t\t\n\t\n\t\n\t\tIEEE Transactions on Quantum Engineering\n\t\tIEEE Trans. Quantum Eng.\n\t\t2689-1808\n\t\t\n\t\t\t3\n\t\t\t\n\t\t\t2022. 2022\n\t\t\tInstitute of Electrical and Electronics Engineers (IEEE)"
+    },
+    {
+      "id": 81,
+      "text": "The QICK (Quantum Instrumentation Control Kit): Readout and control for qubits and detectors\n\t\t\n\t\t\tLeandroStefanazzi\n\t\t\n\t\t\n\t\t\tKennethTreptow\n\t\t\n\t\t\n\t\t\tNealWilcer\n\t\t\n\t\t\n\t\t\tChrisStoughton\n\t\t\t0000-0002-3479-5388\n\t\t\n\t\t\n\t\t\tCollinBradford\n\t\t\t0000-0002-6020-3550\n\t\t\n\t\t\n\t\t\tShoUemura\n\t\t\t0000-0003-3458-4625\n\t\t\n\t\t\n\t\t\tSilviaZorzetti\n\t\t\n\t\t\n\t\t\tSalvatoreMontella\n\t\t\n\t\t\n\t\t\tGustavoCancelo\n\t\t\t0000-0001-6926-4010\n\t\t\n\t\t\n\t\t\tSaraSussman\n\t\t\t0000-0002-4129-627X\n\t\t\n\t\t\n\t\t\tAndrewHouck\n\t\t\n\t\t\n\t\t\tShefaliSaxena\n\t\t\t0000-0001-7604-3988\n\t\t\n\t\t\n\t\t\tHoracioArnaldi\n\t\t\t0000-0002-2370-4014\n\t\t\n\t\t\n\t\t\tAnkurAgrawal\n\t\t\t0000-0003-2304-3436\n\t\t\n\t\t\n\t\t\tHelinZhang\n\t\t\n\t\t\n\t\t\tChunyangDing\n\t\t\n\t\t\n\t\t\tDavidISchuster\n\t\t\n\t\t10.1063/5.0076249\n\t\t\n\t\n\t\n\t\tReview of Scientific Instruments\n\t\t0034-6748\n\t\t1089-7623\n\t\t\n\t\t\t93\n\t\t\t4\n\t\t\t4\n\t\t\t2022. 2022\n\t\t\tAIP Publishing"
+    },
+    {
+      "id": 82,
+      "text": "A SAT Scalpel for Lattice Surgery: Representation and Synthesis of Subroutines for Surface-Code Fault-Tolerant Quantum Computing\n\t\t\n\t\t\tMurphyYuezhenDaniel Bochen Tan\n\t\t\n\t\t\n\t\t\tCraigNiu\n\t\t\n\t\t\n\t\t\tGidney\n\t\t\n\t\t10.1109/ISCA59077.2024.00032\n\t\t\n\t\n\t\n\t\t2024 ACM/IEEE 51st Annual International Symposium on Computer Architecture (ISCA)\n\t\t\n\t\t\tIEEE\n\t\t\t2024"
+    },
+    {
+      "id": 83,
+      "text": "YotamVaknin\n\t\t\n\t\t\n\t\t\tShohamJacoby\n\t\t\n\t\t\n\t\t\tArneGrimsmo\n\t\t\n\t\t\n\t\t\tAlexRetzker\n\t\t\n\t\t10.48550/arXiv.2502.01743\n\t\tarXiv:2502.01743\n\t\t\n\t\tMagic State Cultivation on the Surface Code\n\t\t\n\t\t\t2025. 2025\n\t\t\n\t\n\tarXiv preprint"
+    },
+    {
+      "id": 84,
+      "text": "Using Azure Quantum Resource Estimator for Assessing Performance of Fault Tolerant Quantum Computation\n\t\t\n\t\t\tMariiaWim Van Dam\n\t\t\n\t\t\n\t\t\tMathiasMykhailova\n\t\t\n\t\t\n\t\t\tSoeken\n\t\t\n\t\t10.1145/3624062.3624211\n\t\t\n\t\n\t\n\t\tProceedings of the SC '23 Workshops of The International Conference on High Performance Computing, Network, Storage, and Analysis (SC-W '23)\n\t\tthe SC '23 Workshops of The International Conference on High Performance Computing, Network, Storage, and Analysis (SC-W '23)New York, NY, USA\n\t\t\n\t\t\tAssociation for Computing Machinery\n\t\t\t2023"
+    },
+    {
+      "id": 85,
+      "text": "Quantum computing enhanced computational catalysis\n\t\t\n\t\t\tGuangVera Von Burg\n\t\t\n\t\t\n\t\t\tThomasHao Low\n\t\t\n\t\t\n\t\t\tDamianSHäner\n\t\t\n\t\t\n\t\t\tMarkusSteiger\n\t\t\n\t\t\n\t\t\tMartinReiher\n\t\t\n\t\t\n\t\t\tMatthiasRoetteler\n\t\t\n\t\t\n\t\t\tTroyer\n\t\t\n\t\t10.1103/PhysRevResearch\n\t\t\n\t\n\t\n\t\tPhysical Review Research\n\t\t\n\t\t\t3\n\t\t\t3\n\t\t\t33055\n\t\t\t2021. 2021"
+    },
+    {
+      "id": 86,
+      "text": "KwokHo\n\t\t\n\t\t\n\t\t\tWan\n\t\t\n\t\t10.48550/arXiv.2410.17992\n\t\tarXiv:2410.17992\n\t\t\n\t\tConstant-time magic state distillation\n\t\t\n\t\t\t2024. 2024\n\t\t\n\t\n\tarXiv preprint"
+    },
+    {
+      "id": 87,
+      "text": "KwokHo\n\t\t\n\t\t\n\t\t\tWan\n\t\t\n\t\t\n\t\t\tMarkWebber\n\t\t\n\t\t\n\t\t\tAustinGFowler\n\t\t\n\t\t\n\t\t\tWinfriedKHensinger\n\t\t\n\t\t10.48550/arXiv.2407.20976\n\t\tarXiv:2407.20976\n\t\t\n\t\tAn iterative transversal CNOT decoder\n\t\t\n\t\t\t2024. 2024\n\t\t\n\t\n\tarXiv preprint"
+    },
+    {
+      "id": 88,
+      "text": "Synthesizing Quantum-Circuit Optimizers\n\t\t\n\t\t\tAmandaXu\n\t\t\t0009-0008-2279-5816\n\t\t\n\t\t\n\t\t\tAbtinMolavi\n\t\t\t0009-0006-1841-9565\n\t\t\n\t\t\n\t\t\tLaurenPick\n\t\t\t0000-0003-1605-5383\n\t\t\n\t\t\n\t\t\tSwamitTannu\n\t\t\t0000-0003-4479-7413\n\t\t\n\t\t\n\t\t\tAwsAlbarghouthi\n\t\t\t0000-0003-4577-175X\n\t\t\n\t\t10.1145/3591254\n\t\t\n\t\n\t\n\t\tProceedings of the ACM on Programming Languages\n\t\tProc. ACM Program. Lang.\n\t\t2475-1421\n\t\t\n\t\t\t7\n\t\t\tPLDI\n\t\t\t\n\t\t\t2023. 2023\n\t\t\tAssociation for Computing Machinery (ACM)\n\t\t\n\t\n\tPLDI"
+    },
+    {
+      "id": 89,
+      "text": "Optimizing Quantum Circuits, Fast and Slow\n\t\t\n\t\t\tAmandaXu\n\t\t\t0009-0008-2279-5816\n\t\t\n\t\t\n\t\t\tAbtinMolavi\n\t\t\t0009-0006-1841-9565\n\t\t\n\t\t\n\t\t\tSwamitTannu\n\t\t\t0000-0003-4479-7413\n\t\t\n\t\t\n\t\t\tAwsAlbarghouthi\n\t\t\t0000-0003-4577-175X\n\t\t\n\t\t10.1145/3669940.3707240\n\t\t\n\t\n\t\n\t\tProceedings of the 30th ACM International Conference on Architectural Support for Programming Languages and Operating Systems, Volume 1\n\t\tthe 30th ACM International Conference on Architectural Support for Programming Languages and Operating Systems, Volume 1\n\t\t\n\t\t\tACM\n\t\t\t2025\n\t\t\t1"
+    },
+    {
+      "id": 90,
+      "text": "QubiC: An Open-Source FPGA-Based Control and Measurement System for Superconducting Quantum Information Processors\n\t\t\n\t\t\tYilunXu\n\t\t\t0000-0001-9284-809X\n\t\t\n\t\t\n\t\t\tGangHuang\n\t\t\t0000-0002-3249-9315\n\t\t\n\t\t\n\t\t\tJanBalewski\n\t\t\n\t\t\n\t\t\tRaviNaik\n\t\t\n\t\t\n\t\t\tAlexisMorvan\n\t\t\n\t\t\n\t\t\tBradleyMitchell\n\t\t\n\t\t\n\t\t\tKasraNowrouzi\n\t\t\n\t\t\n\t\t\tDavidISantiago\n\t\t\n\t\t\n\t\t\tIrfanSiddiqi\n\t\t\n\t\t10.1109/tqe.2021.3116540\n\t\t\n\t\n\t\n\t\tIEEE Transactions on Quantum Engineering\n\t\tIEEE Trans. Quantum Eng.\n\t\t2689-1808\n\t\t\n\t\t\t2\n\t\t\t\n\t\t\t2021. 2021\n\t\t\tInstitute of Electrical and Electronics Engineers (IEEE)"
+    },
+    {
+      "id": 91,
+      "text": "Training of quantum circuits on a hybrid quantum computer\n\t\t\n\t\t\tDZhu\n\t\t\t0000-0003-0019-256X\n\t\t\n\t\t\n\t\t\tNMLinke\n\t\t\t0000-0001-5655-9258\n\t\t\n\t\t\n\t\t\tMBenedetti\n\t\t\t0000-0003-0231-1729\n\t\t\n\t\t\n\t\t\tKALandsman\n\t\t\n\t\t\n\t\t\tNHNguyen\n\t\t\t0000-0002-0462-9258\n\t\t\n\t\t\n\t\t\tCHAlderete\n\t\t\n\t\t\n\t\t\tAPerdomo-Ortiz\n\t\t\n\t\t\n\t\t\tNKorda\n\t\t\n\t\t\n\t\t\tAGarfoot\n\t\t\n\t\t\n\t\t\tCBrecque\n\t\t\n\t\t\n\t\t\tLEgan\n\t\t\n\t\t\n\t\t\tOPerdomo\n\t\t\n\t\t\n\t\t\tCMonroe\n\t\t\t0000-0003-0551-3713\n\t\t\n\t\t10.1126/sciadv.aaw9918\n\t\t\n\t\n\t\n\t\tScience Advances\n\t\tSci. Adv.\n\t\t2375-2548\n\t\t\n\t\t\t5\n\t\t\t10\n\t\t\t9918\n\t\t\t2019. 2019\n\t\t\tAmerican Association for the Advancement of Science (AAAS)"
+    }
+  ],
+  "formulas": [
+    {
+      "id": "FORMULA_1",
+      "raw": "𝑇 stab = 6𝑇 2q + 𝑇 meas ,(1)"
+    },
+    {
+      "id": "FORMULA_2",
+      "raw": "𝑝 𝐿 ≈ 0.03 𝑝 0.01 𝑑+1 2 , (2"
+    },
+    {
+      "id": "FORMULA_3",
+      "raw": ")"
+    },
+    {
+      "id": "FORMULA_4",
+      "raw": "|𝑚⟩ = 1 √ 2 |0⟩ + 𝑒 𝑖𝜋 /4 |1⟩"
+    },
+    {
+      "id": "FORMULA_5",
+      "raw": "𝜖 out = 35 𝜖 3 in + 7.1 𝑝 𝐿 ,(3)"
+    },
+    {
+      "id": "FORMULA_6",
+      "raw": "𝜖"
+    },
+    {
+      "id": "FORMULA_7",
+      "raw": "𝑝 succ = 1 -15 𝜖 in -356 𝑝 𝐿 .(4)"
+    },
+    {
+      "id": "FORMULA_8",
+      "raw": "• Output: A new Pareto front {(𝑄 ′"
+    },
+    {
+      "id": "FORMULA_9",
+      "raw": "𝑁 slack = max 𝑁 burst , 𝑁 - 𝑁 -𝑁 burst 𝑅 cons 𝑅 prod ,(5)"
+    },
+    {
+      "id": "FORMULA_10",
+      "raw": "𝑁 ′ slack = max 1, 𝑛 𝑟𝑜𝑡 - 𝑛 𝑟𝑜𝑡 𝑅 cons 𝑅 prod .(6)"
+    },
+    {
+      "id": "FORMULA_11",
+      "raw": "|ℱ | ∑︁ 𝑖=1 𝑛 𝑖 • 𝑄 𝑖 ≤ 𝑄 max (7) |ℱ | ∑︁ 𝑖=1 𝑛 𝑖 • 𝑘 𝑖 • 𝑀 𝑖 ≥ 𝑁 threshold (8"
+    },
+    {
+      "id": "FORMULA_12",
+      "raw": ")"
+    },
+    {
+      "id": "FORMULA_13",
+      "raw": "𝑘 𝑖 • 𝑇 𝑖 ≤ 𝑇 ∀𝑖 ∈ {1, • • • , |ℱ|}(9)"
+    },
+    {
+      "id": "FORMULA_14",
+      "raw": "|ℱ | ∑︁ 𝑖=1 𝑛 𝑖 • 𝑄 𝑖 ≤ 𝑄 max (11"
+    },
+    {
+      "id": "FORMULA_15",
+      "raw": ")"
+    },
+    {
+      "id": "FORMULA_16",
+      "raw": "𝑅 prod = |ℱ | ∑︁ 𝑖=1 𝑛 𝑖 • 𝑀 𝑖 𝑇 𝑖(12)"
+    },
+    {
+      "id": "FORMULA_17",
+      "raw": "𝑛 𝑖 ∈ Z ≥0 , ∀𝑖 ∈ {1, . . . , |ℱ|}(13)"
+    },
+    {
+      "id": "FORMULA_18",
+      "raw": "𝑄 total = 𝑄 • 𝑀 prog ⌊𝑇 prog /𝑇 ⌋ ≈ (𝑄 • 𝑇 ) • 𝑀 prog 𝑇 prog ,(14)"
+    },
+    {
+      "id": "FORMULA_19",
+      "raw": "𝑝 𝑡 (fail) = 𝑝 𝑡 -1 (fail) + 𝑛 cons (𝑡 ) -1 ∑︁ 𝑖=0 𝑝 𝑡 -1 (𝑖).(18)"
+    },
+    {
+      "id": "FORMULA_20",
+      "raw": "E[𝑇 delay ] = 𝑇 ∑︁ 𝑡 =0 𝑝 stall (𝑡) • Δ𝑡 (𝑡), (21"
+    },
+    {
+      "id": "FORMULA_21",
+      "raw": ")"
+    }
+  ]
+}

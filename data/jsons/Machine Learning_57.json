@@ -1,0 +1,503 @@
+{
+  "title": "LEARNING REPRESENTATIONS THROUGH CONTRASTIVE NEURAL MODEL CHECKING",
+  "authors": [
+    {
+      "firstname": "Vladimir",
+      "surname": "Krsmanovic",
+      "email": "vladimir.krsmanovic@cispa.de"
+    },
+    {
+      "firstname": "Matthias",
+      "surname": "Cosler",
+      "email": "matthias.cosler@cispa.de"
+    },
+    {
+      "firstname": "Mohamed",
+      "surname": "Ghanem",
+      "email": "mohamed.ghanem@cispa.de"
+    },
+    {
+      "firstname": "Bernd",
+      "surname": "Finkbeiner",
+      "email": "finkbeiner@cispa.de"
+    }
+  ],
+  "abstract": "Model checking is a key technique for verifying safety-critical systems against formal specifications, where recent applications of deep learning have shown promise. However, while ubiquitous for vision and language domains, representation learning remains underexplored in formal verification. We introduce Contrastive Neural Model Checking (CNML), a novel method that leverages the model checking task as a guiding signal for learning aligned representations. CNML jointly embeds logical specifications and systems into a shared latent space through a self-supervised contrastive objective. On industry-inspired retrieval tasks, CNML considerably outperforms both algorithmic and neural baselines in cross-modal and intra-modal settings. We further show that the learned representations effectively transfer to downstream tasks and generalize to more complex formulas. These findings demonstrate that model checking can serve as an objective for learning representations for formal languages.",
+  "sections": [
+    {
+      "title": "INTRODUCTION",
+      "paragraphs": [
+        "Design errors or flaws, particularly in hardware or safety-critical systems, can result in large financial and reputational damage (Baier & Katoen, 2008). To combat this, formal verification methods are deeply integrated into most modern Electronic Design Automation (EDA) tools and are used by many major software and hardware design companies. One of the main verification paradigms for proving system properties is model checking. It has been used to verify drivers, communication protocols, real-time systems, and many other applications (Clarke et al., 2018), and its impact has been recognized in academia and industry (Clarke et al., 2009).",
+        "However, despite the research and advancements in the field (Clarke & Wang, 2014), limitations such as the state space explosion problem (Clarke et al., 2011) complicate usage of model checking for many real-world scenarios. Concurrently, deep learning has achieved remarkable results in related fields of Boolean Satisfiability (SAT) (Selsam & Bjørner, 2019;Selsam et al., 2019) and theorem proving (Han et al., 2021;Bansal et al., 2019;Paliwal et al., 2020). This has motivated early applications of deep learning to model checking (Giacobbe et al., 2024;Zhu et al., 2019;Xu & Lieberherr, 2022) as well as to other verification tasks (Wu et al., 2024;Luo et al., 2022).",
+        "Most of the existing work on deep learning for verification has focused on learning formal tasks, with far less focus being spent on the need for aligned representations. Verification procedures such as model-checking typically involve two distinct formal languages for describing the system and the specification (Baier & Katoen, 2008). While feature engineering methods have shown success when working with a single formal language (Kretínský et al., 2025;Lu et al., 2025), aligning representations over two modalities brings additional challenges to an already difficult domain.",
+        "In this paper, we present a novel method for learning aligned representations of formal semantics by using the model checking task as a contrastive learning objective for a bi-encoder model. We present a self-supervised learning approach, which combined with a scalable technique for generating 2 RELATED WORK Deep Learning has proven itself useful in working with formal logics (Li et al., 2024), with success in both automated (Bansal et al., 2019;Paliwal et al., 2020) and interactive theorem proving (Mikula et al., 2024;Han et al., 2021), Boolean Satisfiability (SAT) (Selsam & Bjørner, 2019;Selsam et al., 2019;Ghanem et al., 2024) and Satisfiability Modulo Theories (SMT) (Balunovic et al., 2018). Mikula et al. (2024) in particular effectively use contrastive learning for premise selection in theorem proving. Our work differs from this general direction by focusing on temporal logics, which are particularly important in verification, and by working on developing aligned representations of different semantics -something not explored in the wider field of machine learning for logics.",
+        "In particular, machine learning has been applied in the domain of Linear-Time Temporal Logic (LTL). Most of the existing work has focused on traces (Camacho & McIlraith, 2019;Neider & Gavran, 2018;Walke et al., 2021;Luo et al., 2022). A transformer-based approach in Hahn et al. (2021) shows both the ability of neural generation of propositional assignments and, importantly, the ability of transformers to generalize to LTL. Recent work by Kretínský et al. (2025) uses hand-crafted features of LTL derived game-arenas to guide an algorithm for synthesis. In contrast to these works, we focus on learning representations of LTL formulas, rather than on particular tasks related to traces or assignments.",
+        "Due to the wide usage of AIGER in industry, there has been a large variety of work on developing methods for learning the representation of circuits, ranging from GNNs to LLMs (Shi et al., 2024;Zheng et al., 2025;Zhu et al., 2022). Recent works by Wu et al. (2025) and Fang et al. (2025) are based on learning representations of circuits in alignment with properties of hardware description language and hardware circuit code to enable specific tasks in the hardware domain. However, there has been limited work in learning representations aligned to formal specifications, with the closest being by Lu et al. (2025) which uses graph kernel methods to extract features from circuits and select the optimal verification algorithm for the instance.",
+        "Machine learning research combining circuits and specifications has primarily concentrated on neural circuit synthesis and neural model checking. Schmitt et al. (2021) propose a neural approach for reactive synthesis (Church, 1963) using hierarchical transformers, while Cosler et al. (2023) demonstrate that transformers can perform circuit repair against a formal specification. Most recently, Giacobbe et al. (2024) obtain sound neural model checking by learning ranking functions, but their method is targeted at solving individual problem instances. Other approaches recast model checking in different paradigms: Xu & Lieberherr (2022) frame it as a run-time problem solved with Monte Carlo Tree Search, while Madusanka et al. (2023) treat it as a natural-language-style task. Prior work on circuits and specifications has concentrated on learning direct tasks. Our work is primarily concerned with using neural model checking as a proxy to learn aligned representations of both circuits and specifications."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "BACKGROUND",
+      "paragraphs": [
+        "Linear-Time Temporal Logic (LTL). Linear-Time Temporal logic (LTL) (Pnueli, 1977) is widely adopted in both academic and industrial settings (Baier & Katoen, 2008). It serves as the foundation for hardware specification languages like Property Specification Language (PSL) (IEEE-Commission, 2005) and System-Verilog Assertions (SVA) (IEEE-Commission, 2024) used in industry.",
+        "LTL combines propositional boolean logic operators such as ¬, ∧, ∨, → with temporal operators such as -next, Uuntil, -always. Temporal operators enable reasoning about sequences of events. As an example, the following simple formula describes that as long as i 0 is true, whenever i 1 does not hold, in the next step o1 should be true.",
+        "As LTL does not have a standard normal form, we work with the assume-guarantee format as our de-facto normal form. This format syntactically separates assumptions from guarantees, both composed of conjunctions of LTL sub-formulas. Guarantees describe behaviors that we want to verify in our system and assumptions describe the situations in which guarantee properties have to hold. The format is generally given in the form of spec := (assumption 1 ∧ . . . ∧ assumption n ) → (guarantee 1 ∧ . . . ∧ guarantee m )",
+        "We provide a complete definition of LTL syntax and semantics in Appendix A.",
+        "And-Inverter Graphs. In this paper, we represent sequential circuits as And-Inverter Graphs. And-Inverter Graphs, and particularly the ASCII-encoded AIGER (Brummayer et al., 2007), allow for a succinct representation of hardware circuits in text form and are widely used in both academia and industry. Circuits are built by connecting input variables to output variables through connections of logical gates (AND-Gate and NOT-Gate) and memory cells (latches). For a simple example of an AND-Inverter Graph and its AIGER representation, see Figure 1. We fully define the AIGER format in Appendix B. Model Checking. Formally, model checking is an automated way of determining whether a model of a system S satisfies a given formal specification φ of some desired behavior (Clarke et al., 2018). The desired behavior is formalized into a specification through some logic such as LTL, CTL, PSL, etc. Systems are commonly modeled using circuits or transition systems. A system satisfies some property if and only if the specification holds for the output of the circuit for all possible input traces. We denote it as S |= φ (system S satisfies the property φ).",
+        "Model checking algorithms, in general, have three possible outcomes (Baier & Katoen, 2008). The first possible outcome is a result that our specification holds on our model, meaning that the model satisfies the specification. The second possible outcome is that the model violates the specification, in which case the algorithm generates a witness for the behavior of the circuit which violates the specification. The third outcome is that the model checking algorithms run out of time and/or memory, which happens when the state space of a problem is too large to be handled algorithmically.",
+        "Contrastive Learning. The main idea of contrastive learning is that models should also learn from negative samples, not just the positive ones. Contrastive learning enables the development of more robust (Xue et al., 2022) and discriminative representations (Le-Khac et al., 2020). The technique's great success in Computer Vision (Chen et al., 2020;Radford et al., 2021;Khosla et al., 2020) motivated its spread into Natural Language Processing, where it has achieved several strong results (Wu et al., 2020;Ho & Vasconcelos, 2020;Chen et al., 2020). It has demonstrated capabilities in zero-shot learning (Rethmeier & Augenstein, 2023), robustness to noisy datasets (Jia et al., 2021), efficacy in transfer learning (Radford et al., 2021), good performance on semantic textual similarity tasks (Gao et al., 2021), and generalization to unseen inputs (Pappas & Henderson, 2019) -as well as initial use in the logic domain (Mikula et al., 2024;Han et al., 2021)."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "DATASET",
+      "paragraphs": [
+        "A key driver of the success of modern deep learning, and transformer-based models in particular, is the sheer scale of training data (Kaplan et al., 2020). As large datasets of circuit designs are the intellectual property of hardware design firms, they are typically kept confidential. Unlike in Natural Language Processing or Computer Vision, where data could be scraped from the internet, there are no large circuit-specification datasets available.",
+        "As a consequence, we have to synthetically generate a large, high-quality dataset of satisfying pairs. However, synthetic data generation is challenging due to the high complexity of the verification problem, structure of formal language syntax and semantics, and the need for variety in circuit and specification samples.",
+        "Due to the complexity of the underlying semantics, using purely probabilistic approaches for formula generation leads to the generation of syntactically valid formulas that, however, often do not specify interesting behaviors.  2023), which use the assumptions and guarantees as separate inputs to their hierarchical transformers, we generate specifications by merging all assumptions and guarantees into a single LTL formula.",
+        "Generation of corresponding circuits is another significant obstacle, as stochastic methods are unlikely to generate satisfying circuits without a very high number of attempts. Therefore, we have to generate circuits that inherently satisfy the specification formulas. We use reactive synthesis (Church, 1963) to automatically generate satisfying circuits based on each specification. We utilize existing approaches and the Strix LTL synthesis tool (Meyer et al., 2018) to create a diverse dataset of satisfying circuits.",
+        "To prevent overfitting on syntactic patterns, we perform several augmentations to the data format.",
+        "We shuffle the order of assumption LTL formulas for each specification formula, and we enforce a uniform number of input and output wires for all circuits, even if they are not explicitly used. Enforcing a fixed number of input and output wires for every circuit eliminates a \"wire-counting\" trick that the model could exploit. By standardizing every circuit to the same number of wires, we remove that correlation.",
+        "We call the resulting dataset with 295, 665 samples cnml-base."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "LEARNING REPRESENTATIONS",
+      "paragraphs": [
+        "The complexity of verification problems (Stockmeyer, 1974;Sistla & Clarke, 1985) presents a significant barrier not only to synthetic data generation, but also to learning. As the underlying symbolic tasks are highly complex, machine learning models tend to prioritize superficial syntactic patterns rather than dealing with the fundamental goal of building semantic understanding.",
+        "Furthermore, many verification tasks such as model checking, are inherently bimodal -one formal language talks about the specification (what we want the system to do) while the second one talks about the system model (what the system actually does). While both languages come with their own syntax and semantics, they fundamentally describe the same object. This further complicates training as the learned representations have to encode not just the properties of their own modality, but also the relation to its counterpart."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "MODEL ARCHITECTURE",
+      "paragraphs": [
+        "While supervised learning could be used to learn the semantics of verification based on labels derived from model checking circuit-specification pairs, this is computationally inefficient as it requires all samples to have explicit labels. Additionally, supervised learning is limited to just one learning signal i.e. the label for a single circuit-specification pair. However, circuits are not characterized solely by the specifications they satisfy, but also by the specifications they do not satisfy. This observation naturally leads us to contrastive learning, where the learning objective is not defined just by how an input relates to its positive samples, in our case circuits and the specifications that they satisfy, but also by its relationship with the negative samples -the specifications that they violate. Following this idea and inspired by the work of Radford et al. (2021), we adopt a self-supervised contrastive approach for learning aligned representations of circuits and formal specifications.",
+        "While Radford et al. (2021) use contrastive learning to align image and text representations, our approach adapts this framework to align representations of circuits and specifications. Our model is trained to project circuit embeddings closer to the embeddings of specifications they satisfy, and farther away from those they do not satisfy. Practically, we view the different semantics and syntaxes of circuits and specifications as different modalities, and learn a joint embedding space for circuit-specification pairs.",
+        "Our model uses two distinct text encoders, E φ and E c . Despite the encoders learning over a joint space, E c and E φ do not share any parameters. While models in related work (Schmitt et al., 2021;Cosler et al., 2023;Radford et al., 2021) are trained from scratch, we initialize both encoders as CodeBERT models (Feng et al., 2020). As shown by Schmitt et al. (2023) for the closely related task of reactive synthesis, pre-trained Transformer models can have a simpler architecture, and achieve similar results.",
+        "A single input sample, consisting of a specification and a circuit, is fed into the encoders separately: E c only sees the AIGER circuit c, and E φ sees only the LTL specification φ. The forward pass through E c and E φ produces the respective input's sequence embeddings. We take the output of the pooling of their encodings as the intermediate representation of the whole sequence. Both summary vectors are then multiplied by a learned projection matrix (one for E c and another for E φ ), which is used to upscale the embedding dimension to 1024.",
+        "The use of two independent encoders forces each one to focus on its own modality. This separation prevents overfitting to syntactic patterns that may arise from specific circuit-specification pairings.",
+        "Additionally, the self-supervised approach enables the implicit construction of negative samples without requiring explicit model-checking of all possible circuit-specification pairs, which would otherwise be computationally infeasible. This allows for generation of a larger corpora, which is easier to augment and does not require manual generation of negative samples."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "TRAINING",
+      "paragraphs": [
+        "At the start of each epoch, we construct the mini-batches using a greedy algorithm. The mini-batches are optimized to ensure that they do not contain any duplicate circuits or any duplicate specifications. Furthermore, the algorithm cross-checks off-diagonal samples with the rest of the dataset to minimize the rate of false negatives which we find to be roughly 4%.",
+        "Based on N circuit-specification pairs (c 1 , φ 1 ), . . . , (c N , φ N ) that are directly known to be positive (c i satisfies φ i ), we compute the embeddings of circuits and specifications as described previously, creating embeddings",
+        "We then create all pairwise combinations of circuit embeddings and specification embeddings (u ci , v φj ), 0 < i, j ≤ N through a N × N matrix.",
+        "Following that, we calculate the cosine similarity for all pairings by computing a dot product between all the L2 normalized circuit embeddings and the specification embeddings. On the diagonal of the resulting matrix lie the N embeddings of circuit-specification pairs (c 1 , φ 1 ), . . . , (c N , φ N ) that are directly known to be positive. The remaining N 2 -N pairs (c i , φ j ), where i ̸ = j and 0 < i, j ≤ N , are implicitly coded negative.",
+        "The full training objective consists of two components: the contrastive component L CE , and the regularization component L RR , with λ being the weighting factor.",
+        "The contrastive loss is calculated using a symmetric cross-entropy loss function computed over rows and columns of the matrix of similarity scores, following the method from van den Oord et al. ( 2018).",
+        "We further augment the contrastive loss with a weighted representation similarity regularization loss, as introduced in Shi et al. (2023). We find that it provides stability during the training, prevents overfitting, and importantly, allows the use of a higher learning rate, without risking the catastrophic forgetting common in BERT models (Sun et al., 2019;McCloskey & Cohen, 1989). The forward pass and loss computation are visualized in Figure 2. We report the hyperparameters and the detailed training setup in Appendix C."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "MODEL EVALUATIONS",
+      "paragraphs": [
+        "We train two models: CNML-base trained on the cnml-base dataset for demonstrating the performance of our method on various tasks, and CNML-simple trained on the cnml-split dataset of simple formulas, designed to showcase the model's ability to generalize (described in detail in Section 6.4). We evaluate the learned embeddings by inspecting the latent space and distribution of cosine similarity scores between various circuit-specification pairs, and by assessing performance on two retrieval tasks based on real-world problems from Computer-Aided Design (CAD), as well as downstream fine-tuning for the model checking task."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "EMBEDDING SPACE ANALYSIS",
+      "paragraphs": [
+        "We inspect the learned embedding space by observing the distributions of the cosine similarity that our model produces on the test split of cnml-base. For a dataset-level insight, Figure 3a plots the distributions of cosine similarity values that the model attributes to positive (circuit satisfies the specification) and negative (circuit violates the specification) pairs. Both distributions are normalized to the probability density function, with the red distribution showing negative, and the green positive circuit-specification pairs. For a batch level insight, Figure 3b shows a normalized heatmap of the similarity matrix for a singular batch from the test dataset.",
+        "Both visualizations in Figure 3 show that the model is able to separate satisfying from violating pairs of circuits and specification. Figure 3a shows that the model effectively separates the two distributions, with a small remaining overlap. On the heatmap plot, we see that the model produces the highest cosine similarity values on the diagonal -the satisfying pairs of circuits and specifications. We evaluate our model on two retrieval tasks. The first task is cross-modal retrieval: given an LTL specification, we seek to retrieve a matching design from a collection of candidate circuits. By retrieving an existing design, it is possible to avoid the computational expense of automatic synthesis or the effort of manual design. Archiving and reusing existing circuits is a common occurrence in industry and is supported by many commercial tools (Fang et al., 2025). The second evaluation task is an intra-modal retrieval task, in which we look for potential optimization replacements for a given circuit. Even when automated tools or engineers design a circuit that satisfies the formal specification, the result may still lack desirable properties such as minimal gate count, wire placement, or manufacturability.",
+        "We generate two test retrieval datasets through mining the test split of cnml-base. The first dataset consists of 99 test batches, each of size N = 100, where exactly one circuit is a matching candidate while all others do not satisfy the main specification. In the same way, we construct the second dataset with 20 test batches of size N = 1000.",
+        "We compare the CNML models against several baseline methods. Bag-of-Keywords and Weisfeiler-Lehman Graph Kernels (Shervashidze et al., 2011) were recently used for feature extraction of circuits in Lu et al. (2025). For a text-edit based similarity metric, we use the Inverted Levenshtein distance. For machine-learning baselines we compare against the CodeBert model without any CNML pre-training, and against a bi-encoder model following the Sentence-BERT architecture (Reimers & Gurevych, 2019), to which we refer as Siamese-CNML.",
+        "We measure Mean Reciprocal Rank (MRR), Mean Rank (MR) and the Recall@1% (R@1%) and Recall@10% ( R@10%) values which measure the recall metric for the top 1% and 10% of the batch, respectively. We report the results for cross-modal retrieval in Table 1, and for intra-modal in Table 2.",
+        "Results in both tables show that the CNML-base model significantly outperforms all baseline methods across both scenario sizes. The advantage of CNML-base expands on the larger problem sizes, with an approximately 75% Mean Rank improvement versus the algorithmic baselines. Overall, these results indicate that CNML representations can capture relevant semantics more effectively than other machine learning or algorithmic approaches, and that CNML embeddings can be ported into other tasks. We further evaluate CNML as a pre-training objective for downstream fine-tuning. We train models to perform binary classification on circuit-specification pairs to determine whether the circuit satisfies the specification -the model checking task. The architecture follows the Sentence-Bert architecture (Reimers & Gurevych, 2019), with the bi-encoders being followed by a linear probe.  The results in Table 3 demonstrate that CNML pretraining provides substantial benefits for downstream performance over the baseline model, where we initialize the models with CodeBERT weights and no CNML pretraining. The performance gain over the baseline CodeBert models shows that the contrastive pre-training objective successfully learns transferable representations that capture the semantic relationship between specifications and circuits."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "GENERALIZATION",
+      "paragraphs": [
+        "We set-up an experiment to test the generalization capabilities of our approach. We evaluate the generalization capability of CNML models by training on simple formulas and testing on more complex specifications. To construct a suitable training dataset of circuit-specification pairs, we employ formula splitting. This technique allows us to soundly transform the cnml-base dataset into one with simpler LTL formulas while preserving the soundness of circuit-specifications pairs.",
+        "Formula splitting systematically weakens specification guarantees to create new formulas. Consider an LTL specification φ defined as:",
+        "where φ A and φ G are sets of assumption and guarantee formulas, respectively. For any circuit C satisfying C |= φ and any guarantee φ ′ ∈ φ G , the following holds:",
+        "We use this observation and apply formula splitting to specifications in cnml-base while preserving the original circuit. By doing this, we generate the cnml-split dataset and transform the original formulas into ones that contain exactly one guarantee. We train the CNML-simple model on this dataset, exposing the model only to single-guarantee formulas during training, while evaluating on multi-guarantee formulas by using cnml-base in the same experiments as with CNML-base.",
+        "We evaluate the CNML-simple model on retrieval and fine-tuning tasks. Tables 1 and2 present the performance of CNML-simple on retrieval problems based on specifications more complex than the ones seen during training. The model outperforms all baseline methods on both retrieval tasks, although performance decreases compared to CNML-base due to the distribution shift and the mini-batch noise. Additionally, as shown by fine-tuning results on the model checking task (Section 6.3) reported in Table 3, the learned representations transfer to downstream tasks even when they involve complex formulas.",
+        "These results demonstrate that CNML models can generalize from simple training formulas to complex multi-guarantee specifications. Since CNML-simple is exposed to only single-guarantee formulas during training, its successful performance on multi-guarantee test formulas indicates the ability of CNML models to generalize."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "CONCLUSION",
+      "paragraphs": [
+        "In this paper, we introduced CNML, a neural model checking framework that learns joint embeddings of LTL specifications and AIGER circuits. The contrastive self-supervised training approach allows for training using only the positive circuit-specification pairs, and can effectively use such samples to learn aligned representations of both semantics. We also presented a method for data generation and augmentation at scale, which we used to create a large dataset of 295, 665 samples. We expect this dataset to be of significant help to future work in machine learning for formal logics and verificationa domain where data is usually scarce and computation is prohibitively expensive.",
+        "Evaluation on industry-inspired retrieval tasks shows that CNML notably outperforms the baselines in terms of Recall@1% and Recall@10% for both cross-modal and intra-modal tasks. We further demonstrate that the learned representations can be used for fine-tuning on downstream tasks. We show that the method is able to generalize from training on simple formulas, to performing tasks on formulas in more complex formats. Our results validate the effectiveness of self-supervised contrastive pre-training in learning semantics for used in verification.",
+        "We believe that the model training paradigm and data generation facilitate learning of aligned representation, which is a promising research direction for future work combining formal methods and deep learning in problems such as verification, synthesis and retrieval.",
+        "A LINEAR TEMPORAL LOGIC Formally, LTL syntax is defined as:",
+        "We evaluate LTL semantics over a set of traces: T R := (2 AP ) ω . For a trace π ∈ T R, we denote π[0] as the starting element of a trace π, and for a k ∈ N, let π[k] be the k-th element of the trace π. With π[k, ∞] we denote the infinite suffix of π starting at k. We write π |= φ for the trace π that satisfies the formula φ.",
+        "For a trace π ∈ T R, p ∈ AP , and formulas φ:",
+        "with the default β 1 = 0.9, β 2 = 0.999 values. The weighing parameter for the representation regularization is set to λ = 0.25. We initialize the learnable temperature parameter to τ = 0.07 same as in Radford et al. (2021).",
+        "The learnable projection matrices are set to project to 1024 dimensions and are initialized in the same way as in Radford et al. (2021). We find that while going from 768 to 1024 helps the model, there are diminishing returns in increasing dimension higher then that and therefore we keep it at 1024.",
+        "We diverge from Radford et al. (2021) by keeping the logit scaling factor fixed. We use a relatively low value for the learning rate, of 2e -4 , due to the nature of BERT models and the catastrophic forgetting problem appearing at higher values (Sun et al., 2019). We use a linear warm-up and decay scheduler policy with a warm-up period of 12000 steps and a linear decay policy to 0."
+      ],
+      "subsections": []
+    }
+  ],
+  "body_paragraphs": [
+    "Design errors or flaws, particularly in hardware or safety-critical systems, can result in large financial and reputational damage (Baier & Katoen, 2008). To combat this, formal verification methods are deeply integrated into most modern Electronic Design Automation (EDA) tools and are used by many major software and hardware design companies. One of the main verification paradigms for proving system properties is model checking. It has been used to verify drivers, communication protocols, real-time systems, and many other applications (Clarke et al., 2018), and its impact has been recognized in academia and industry (Clarke et al., 2009).",
+    "However, despite the research and advancements in the field (Clarke & Wang, 2014), limitations such as the state space explosion problem (Clarke et al., 2011) complicate usage of model checking for many real-world scenarios. Concurrently, deep learning has achieved remarkable results in related fields of Boolean Satisfiability (SAT) (Selsam & Bjørner, 2019;Selsam et al., 2019) and theorem proving (Han et al., 2021;Bansal et al., 2019;Paliwal et al., 2020). This has motivated early applications of deep learning to model checking (Giacobbe et al., 2024;Zhu et al., 2019;Xu & Lieberherr, 2022) as well as to other verification tasks (Wu et al., 2024;Luo et al., 2022).",
+    "Most of the existing work on deep learning for verification has focused on learning formal tasks, with far less focus being spent on the need for aligned representations. Verification procedures such as model-checking typically involve two distinct formal languages for describing the system and the specification (Baier & Katoen, 2008). While feature engineering methods have shown success when working with a single formal language (Kretínský et al., 2025;Lu et al., 2025), aligning representations over two modalities brings additional challenges to an already difficult domain.",
+    "In this paper, we present a novel method for learning aligned representations of formal semantics by using the model checking task as a contrastive learning objective for a bi-encoder model. We present a self-supervised learning approach, which combined with a scalable technique for generating 2 RELATED WORK Deep Learning has proven itself useful in working with formal logics (Li et al., 2024), with success in both automated (Bansal et al., 2019;Paliwal et al., 2020) and interactive theorem proving (Mikula et al., 2024;Han et al., 2021), Boolean Satisfiability (SAT) (Selsam & Bjørner, 2019;Selsam et al., 2019;Ghanem et al., 2024) and Satisfiability Modulo Theories (SMT) (Balunovic et al., 2018). Mikula et al. (2024) in particular effectively use contrastive learning for premise selection in theorem proving. Our work differs from this general direction by focusing on temporal logics, which are particularly important in verification, and by working on developing aligned representations of different semantics -something not explored in the wider field of machine learning for logics.",
+    "In particular, machine learning has been applied in the domain of Linear-Time Temporal Logic (LTL). Most of the existing work has focused on traces (Camacho & McIlraith, 2019;Neider & Gavran, 2018;Walke et al., 2021;Luo et al., 2022). A transformer-based approach in Hahn et al. (2021) shows both the ability of neural generation of propositional assignments and, importantly, the ability of transformers to generalize to LTL. Recent work by Kretínský et al. (2025) uses hand-crafted features of LTL derived game-arenas to guide an algorithm for synthesis. In contrast to these works, we focus on learning representations of LTL formulas, rather than on particular tasks related to traces or assignments.",
+    "Due to the wide usage of AIGER in industry, there has been a large variety of work on developing methods for learning the representation of circuits, ranging from GNNs to LLMs (Shi et al., 2024;Zheng et al., 2025;Zhu et al., 2022). Recent works by Wu et al. (2025) and Fang et al. (2025) are based on learning representations of circuits in alignment with properties of hardware description language and hardware circuit code to enable specific tasks in the hardware domain. However, there has been limited work in learning representations aligned to formal specifications, with the closest being by Lu et al. (2025) which uses graph kernel methods to extract features from circuits and select the optimal verification algorithm for the instance.",
+    "Machine learning research combining circuits and specifications has primarily concentrated on neural circuit synthesis and neural model checking. Schmitt et al. (2021) propose a neural approach for reactive synthesis (Church, 1963) using hierarchical transformers, while Cosler et al. (2023) demonstrate that transformers can perform circuit repair against a formal specification. Most recently, Giacobbe et al. (2024) obtain sound neural model checking by learning ranking functions, but their method is targeted at solving individual problem instances. Other approaches recast model checking in different paradigms: Xu & Lieberherr (2022) frame it as a run-time problem solved with Monte Carlo Tree Search, while Madusanka et al. (2023) treat it as a natural-language-style task. Prior work on circuits and specifications has concentrated on learning direct tasks. Our work is primarily concerned with using neural model checking as a proxy to learn aligned representations of both circuits and specifications.",
+    "Linear-Time Temporal Logic (LTL). Linear-Time Temporal logic (LTL) (Pnueli, 1977) is widely adopted in both academic and industrial settings (Baier & Katoen, 2008). It serves as the foundation for hardware specification languages like Property Specification Language (PSL) (IEEE-Commission, 2005) and System-Verilog Assertions (SVA) (IEEE-Commission, 2024) used in industry.",
+    "LTL combines propositional boolean logic operators such as ¬, ∧, ∨, → with temporal operators such as -next, Uuntil, -always. Temporal operators enable reasoning about sequences of events. As an example, the following simple formula describes that as long as i 0 is true, whenever i 1 does not hold, in the next step o1 should be true.",
+    "As LTL does not have a standard normal form, we work with the assume-guarantee format as our de-facto normal form. This format syntactically separates assumptions from guarantees, both composed of conjunctions of LTL sub-formulas. Guarantees describe behaviors that we want to verify in our system and assumptions describe the situations in which guarantee properties have to hold. The format is generally given in the form of spec := (assumption 1 ∧ . . . ∧ assumption n ) → (guarantee 1 ∧ . . . ∧ guarantee m )",
+    "We provide a complete definition of LTL syntax and semantics in Appendix A.",
+    "And-Inverter Graphs. In this paper, we represent sequential circuits as And-Inverter Graphs. And-Inverter Graphs, and particularly the ASCII-encoded AIGER (Brummayer et al., 2007), allow for a succinct representation of hardware circuits in text form and are widely used in both academia and industry. Circuits are built by connecting input variables to output variables through connections of logical gates (AND-Gate and NOT-Gate) and memory cells (latches). For a simple example of an AND-Inverter Graph and its AIGER representation, see Figure 1. We fully define the AIGER format in Appendix B. Model Checking. Formally, model checking is an automated way of determining whether a model of a system S satisfies a given formal specification φ of some desired behavior (Clarke et al., 2018). The desired behavior is formalized into a specification through some logic such as LTL, CTL, PSL, etc. Systems are commonly modeled using circuits or transition systems. A system satisfies some property if and only if the specification holds for the output of the circuit for all possible input traces. We denote it as S |= φ (system S satisfies the property φ).",
+    "Model checking algorithms, in general, have three possible outcomes (Baier & Katoen, 2008). The first possible outcome is a result that our specification holds on our model, meaning that the model satisfies the specification. The second possible outcome is that the model violates the specification, in which case the algorithm generates a witness for the behavior of the circuit which violates the specification. The third outcome is that the model checking algorithms run out of time and/or memory, which happens when the state space of a problem is too large to be handled algorithmically.",
+    "Contrastive Learning. The main idea of contrastive learning is that models should also learn from negative samples, not just the positive ones. Contrastive learning enables the development of more robust (Xue et al., 2022) and discriminative representations (Le-Khac et al., 2020). The technique's great success in Computer Vision (Chen et al., 2020;Radford et al., 2021;Khosla et al., 2020) motivated its spread into Natural Language Processing, where it has achieved several strong results (Wu et al., 2020;Ho & Vasconcelos, 2020;Chen et al., 2020). It has demonstrated capabilities in zero-shot learning (Rethmeier & Augenstein, 2023), robustness to noisy datasets (Jia et al., 2021), efficacy in transfer learning (Radford et al., 2021), good performance on semantic textual similarity tasks (Gao et al., 2021), and generalization to unseen inputs (Pappas & Henderson, 2019) -as well as initial use in the logic domain (Mikula et al., 2024;Han et al., 2021).",
+    "A key driver of the success of modern deep learning, and transformer-based models in particular, is the sheer scale of training data (Kaplan et al., 2020). As large datasets of circuit designs are the intellectual property of hardware design firms, they are typically kept confidential. Unlike in Natural Language Processing or Computer Vision, where data could be scraped from the internet, there are no large circuit-specification datasets available.",
+    "As a consequence, we have to synthetically generate a large, high-quality dataset of satisfying pairs. However, synthetic data generation is challenging due to the high complexity of the verification problem, structure of formal language syntax and semantics, and the need for variety in circuit and specification samples.",
+    "Due to the complexity of the underlying semantics, using purely probabilistic approaches for formula generation leads to the generation of syntactically valid formulas that, however, often do not specify interesting behaviors.  2023), which use the assumptions and guarantees as separate inputs to their hierarchical transformers, we generate specifications by merging all assumptions and guarantees into a single LTL formula.",
+    "Generation of corresponding circuits is another significant obstacle, as stochastic methods are unlikely to generate satisfying circuits without a very high number of attempts. Therefore, we have to generate circuits that inherently satisfy the specification formulas. We use reactive synthesis (Church, 1963) to automatically generate satisfying circuits based on each specification. We utilize existing approaches and the Strix LTL synthesis tool (Meyer et al., 2018) to create a diverse dataset of satisfying circuits.",
+    "To prevent overfitting on syntactic patterns, we perform several augmentations to the data format.",
+    "We shuffle the order of assumption LTL formulas for each specification formula, and we enforce a uniform number of input and output wires for all circuits, even if they are not explicitly used. Enforcing a fixed number of input and output wires for every circuit eliminates a \"wire-counting\" trick that the model could exploit. By standardizing every circuit to the same number of wires, we remove that correlation.",
+    "We call the resulting dataset with 295, 665 samples cnml-base.",
+    "The complexity of verification problems (Stockmeyer, 1974;Sistla & Clarke, 1985) presents a significant barrier not only to synthetic data generation, but also to learning. As the underlying symbolic tasks are highly complex, machine learning models tend to prioritize superficial syntactic patterns rather than dealing with the fundamental goal of building semantic understanding.",
+    "Furthermore, many verification tasks such as model checking, are inherently bimodal -one formal language talks about the specification (what we want the system to do) while the second one talks about the system model (what the system actually does). While both languages come with their own syntax and semantics, they fundamentally describe the same object. This further complicates training as the learned representations have to encode not just the properties of their own modality, but also the relation to its counterpart.",
+    "While supervised learning could be used to learn the semantics of verification based on labels derived from model checking circuit-specification pairs, this is computationally inefficient as it requires all samples to have explicit labels. Additionally, supervised learning is limited to just one learning signal i.e. the label for a single circuit-specification pair. However, circuits are not characterized solely by the specifications they satisfy, but also by the specifications they do not satisfy. This observation naturally leads us to contrastive learning, where the learning objective is not defined just by how an input relates to its positive samples, in our case circuits and the specifications that they satisfy, but also by its relationship with the negative samples -the specifications that they violate. Following this idea and inspired by the work of Radford et al. (2021), we adopt a self-supervised contrastive approach for learning aligned representations of circuits and formal specifications.",
+    "While Radford et al. (2021) use contrastive learning to align image and text representations, our approach adapts this framework to align representations of circuits and specifications. Our model is trained to project circuit embeddings closer to the embeddings of specifications they satisfy, and farther away from those they do not satisfy. Practically, we view the different semantics and syntaxes of circuits and specifications as different modalities, and learn a joint embedding space for circuit-specification pairs.",
+    "Our model uses two distinct text encoders, E φ and E c . Despite the encoders learning over a joint space, E c and E φ do not share any parameters. While models in related work (Schmitt et al., 2021;Cosler et al., 2023;Radford et al., 2021) are trained from scratch, we initialize both encoders as CodeBERT models (Feng et al., 2020). As shown by Schmitt et al. (2023) for the closely related task of reactive synthesis, pre-trained Transformer models can have a simpler architecture, and achieve similar results.",
+    "A single input sample, consisting of a specification and a circuit, is fed into the encoders separately: E c only sees the AIGER circuit c, and E φ sees only the LTL specification φ. The forward pass through E c and E φ produces the respective input's sequence embeddings. We take the output of the pooling of their encodings as the intermediate representation of the whole sequence. Both summary vectors are then multiplied by a learned projection matrix (one for E c and another for E φ ), which is used to upscale the embedding dimension to 1024.",
+    "The use of two independent encoders forces each one to focus on its own modality. This separation prevents overfitting to syntactic patterns that may arise from specific circuit-specification pairings.",
+    "Additionally, the self-supervised approach enables the implicit construction of negative samples without requiring explicit model-checking of all possible circuit-specification pairs, which would otherwise be computationally infeasible. This allows for generation of a larger corpora, which is easier to augment and does not require manual generation of negative samples.",
+    "At the start of each epoch, we construct the mini-batches using a greedy algorithm. The mini-batches are optimized to ensure that they do not contain any duplicate circuits or any duplicate specifications. Furthermore, the algorithm cross-checks off-diagonal samples with the rest of the dataset to minimize the rate of false negatives which we find to be roughly 4%.",
+    "Based on N circuit-specification pairs (c 1 , φ 1 ), . . . , (c N , φ N ) that are directly known to be positive (c i satisfies φ i ), we compute the embeddings of circuits and specifications as described previously, creating embeddings",
+    "We then create all pairwise combinations of circuit embeddings and specification embeddings (u ci , v φj ), 0 < i, j ≤ N through a N × N matrix.",
+    "Following that, we calculate the cosine similarity for all pairings by computing a dot product between all the L2 normalized circuit embeddings and the specification embeddings. On the diagonal of the resulting matrix lie the N embeddings of circuit-specification pairs (c 1 , φ 1 ), . . . , (c N , φ N ) that are directly known to be positive. The remaining N 2 -N pairs (c i , φ j ), where i ̸ = j and 0 < i, j ≤ N , are implicitly coded negative.",
+    "The full training objective consists of two components: the contrastive component L CE , and the regularization component L RR , with λ being the weighting factor.",
+    "The contrastive loss is calculated using a symmetric cross-entropy loss function computed over rows and columns of the matrix of similarity scores, following the method from van den Oord et al. ( 2018).",
+    "We further augment the contrastive loss with a weighted representation similarity regularization loss, as introduced in Shi et al. (2023). We find that it provides stability during the training, prevents overfitting, and importantly, allows the use of a higher learning rate, without risking the catastrophic forgetting common in BERT models (Sun et al., 2019;McCloskey & Cohen, 1989). The forward pass and loss computation are visualized in Figure 2. We report the hyperparameters and the detailed training setup in Appendix C.",
+    "We train two models: CNML-base trained on the cnml-base dataset for demonstrating the performance of our method on various tasks, and CNML-simple trained on the cnml-split dataset of simple formulas, designed to showcase the model's ability to generalize (described in detail in Section 6.4). We evaluate the learned embeddings by inspecting the latent space and distribution of cosine similarity scores between various circuit-specification pairs, and by assessing performance on two retrieval tasks based on real-world problems from Computer-Aided Design (CAD), as well as downstream fine-tuning for the model checking task.",
+    "We inspect the learned embedding space by observing the distributions of the cosine similarity that our model produces on the test split of cnml-base. For a dataset-level insight, Figure 3a plots the distributions of cosine similarity values that the model attributes to positive (circuit satisfies the specification) and negative (circuit violates the specification) pairs. Both distributions are normalized to the probability density function, with the red distribution showing negative, and the green positive circuit-specification pairs. For a batch level insight, Figure 3b shows a normalized heatmap of the similarity matrix for a singular batch from the test dataset.",
+    "Both visualizations in Figure 3 show that the model is able to separate satisfying from violating pairs of circuits and specification. Figure 3a shows that the model effectively separates the two distributions, with a small remaining overlap. On the heatmap plot, we see that the model produces the highest cosine similarity values on the diagonal -the satisfying pairs of circuits and specifications. We evaluate our model on two retrieval tasks. The first task is cross-modal retrieval: given an LTL specification, we seek to retrieve a matching design from a collection of candidate circuits. By retrieving an existing design, it is possible to avoid the computational expense of automatic synthesis or the effort of manual design. Archiving and reusing existing circuits is a common occurrence in industry and is supported by many commercial tools (Fang et al., 2025). The second evaluation task is an intra-modal retrieval task, in which we look for potential optimization replacements for a given circuit. Even when automated tools or engineers design a circuit that satisfies the formal specification, the result may still lack desirable properties such as minimal gate count, wire placement, or manufacturability.",
+    "We generate two test retrieval datasets through mining the test split of cnml-base. The first dataset consists of 99 test batches, each of size N = 100, where exactly one circuit is a matching candidate while all others do not satisfy the main specification. In the same way, we construct the second dataset with 20 test batches of size N = 1000.",
+    "We compare the CNML models against several baseline methods. Bag-of-Keywords and Weisfeiler-Lehman Graph Kernels (Shervashidze et al., 2011) were recently used for feature extraction of circuits in Lu et al. (2025). For a text-edit based similarity metric, we use the Inverted Levenshtein distance. For machine-learning baselines we compare against the CodeBert model without any CNML pre-training, and against a bi-encoder model following the Sentence-BERT architecture (Reimers & Gurevych, 2019), to which we refer as Siamese-CNML.",
+    "We measure Mean Reciprocal Rank (MRR), Mean Rank (MR) and the Recall@1% (R@1%) and Recall@10% ( R@10%) values which measure the recall metric for the top 1% and 10% of the batch, respectively. We report the results for cross-modal retrieval in Table 1, and for intra-modal in Table 2.",
+    "Results in both tables show that the CNML-base model significantly outperforms all baseline methods across both scenario sizes. The advantage of CNML-base expands on the larger problem sizes, with an approximately 75% Mean Rank improvement versus the algorithmic baselines. Overall, these results indicate that CNML representations can capture relevant semantics more effectively than other machine learning or algorithmic approaches, and that CNML embeddings can be ported into other tasks. We further evaluate CNML as a pre-training objective for downstream fine-tuning. We train models to perform binary classification on circuit-specification pairs to determine whether the circuit satisfies the specification -the model checking task. The architecture follows the Sentence-Bert architecture (Reimers & Gurevych, 2019), with the bi-encoders being followed by a linear probe.  The results in Table 3 demonstrate that CNML pretraining provides substantial benefits for downstream performance over the baseline model, where we initialize the models with CodeBERT weights and no CNML pretraining. The performance gain over the baseline CodeBert models shows that the contrastive pre-training objective successfully learns transferable representations that capture the semantic relationship between specifications and circuits.",
+    "We set-up an experiment to test the generalization capabilities of our approach. We evaluate the generalization capability of CNML models by training on simple formulas and testing on more complex specifications. To construct a suitable training dataset of circuit-specification pairs, we employ formula splitting. This technique allows us to soundly transform the cnml-base dataset into one with simpler LTL formulas while preserving the soundness of circuit-specifications pairs.",
+    "Formula splitting systematically weakens specification guarantees to create new formulas. Consider an LTL specification φ defined as:",
+    "where φ A and φ G are sets of assumption and guarantee formulas, respectively. For any circuit C satisfying C |= φ and any guarantee φ ′ ∈ φ G , the following holds:",
+    "We use this observation and apply formula splitting to specifications in cnml-base while preserving the original circuit. By doing this, we generate the cnml-split dataset and transform the original formulas into ones that contain exactly one guarantee. We train the CNML-simple model on this dataset, exposing the model only to single-guarantee formulas during training, while evaluating on multi-guarantee formulas by using cnml-base in the same experiments as with CNML-base.",
+    "We evaluate the CNML-simple model on retrieval and fine-tuning tasks. Tables 1 and2 present the performance of CNML-simple on retrieval problems based on specifications more complex than the ones seen during training. The model outperforms all baseline methods on both retrieval tasks, although performance decreases compared to CNML-base due to the distribution shift and the mini-batch noise. Additionally, as shown by fine-tuning results on the model checking task (Section 6.3) reported in Table 3, the learned representations transfer to downstream tasks even when they involve complex formulas.",
+    "These results demonstrate that CNML models can generalize from simple training formulas to complex multi-guarantee specifications. Since CNML-simple is exposed to only single-guarantee formulas during training, its successful performance on multi-guarantee test formulas indicates the ability of CNML models to generalize.",
+    "In this paper, we introduced CNML, a neural model checking framework that learns joint embeddings of LTL specifications and AIGER circuits. The contrastive self-supervised training approach allows for training using only the positive circuit-specification pairs, and can effectively use such samples to learn aligned representations of both semantics. We also presented a method for data generation and augmentation at scale, which we used to create a large dataset of 295, 665 samples. We expect this dataset to be of significant help to future work in machine learning for formal logics and verificationa domain where data is usually scarce and computation is prohibitively expensive.",
+    "Evaluation on industry-inspired retrieval tasks shows that CNML notably outperforms the baselines in terms of Recall@1% and Recall@10% for both cross-modal and intra-modal tasks. We further demonstrate that the learned representations can be used for fine-tuning on downstream tasks. We show that the method is able to generalize from training on simple formulas, to performing tasks on formulas in more complex formats. Our results validate the effectiveness of self-supervised contrastive pre-training in learning semantics for used in verification.",
+    "We believe that the model training paradigm and data generation facilitate learning of aligned representation, which is a promising research direction for future work combining formal methods and deep learning in problems such as verification, synthesis and retrieval.",
+    "A LINEAR TEMPORAL LOGIC Formally, LTL syntax is defined as:",
+    "We evaluate LTL semantics over a set of traces: T R := (2 AP ) ω . For a trace π ∈ T R, we denote π[0] as the starting element of a trace π, and for a k ∈ N, let π[k] be the k-th element of the trace π. With π[k, ∞] we denote the infinite suffix of π starting at k. We write π |= φ for the trace π that satisfies the formula φ.",
+    "For a trace π ∈ T R, p ∈ AP , and formulas φ:",
+    "with the default β 1 = 0.9, β 2 = 0.999 values. The weighing parameter for the representation regularization is set to λ = 0.25. We initialize the learnable temperature parameter to τ = 0.07 same as in Radford et al. (2021).",
+    "The learnable projection matrices are set to project to 1024 dimensions and are initialized in the same way as in Radford et al. (2021). We find that while going from 768 to 1024 helps the model, there are diminishing returns in increasing dimension higher then that and therefore we keep it at 1024.",
+    "We diverge from Radford et al. (2021) by keeping the logit scaling factor fixed. We use a relatively low value for the learning rate, of 2e -4 , due to the nature of BERT models and the catastrophic forgetting problem appearing at higher values (Sun et al., 2019). We use a linear warm-up and decay scheduler policy with a warm-up period of 12000 steps and a linear decay policy to 0.",
+    "We show that representations learned on simple specifications generalize to complex formulas and transfer effectively to downstream tasks. This shows that by appropriately structuring our learning objective, we can successfully learn aligned representations and the underlying semantics."
+  ],
+  "references": [
+    {
+      "id": 1,
+      "text": "Principles of model checking\n\t\t\n\t\t\tChristelBaier\n\t\t\n\t\t\n\t\t\tJoost-PieterKatoen\n\t\t\n\t\t\n\t\t\t2008\n\t\t\tMIT Press"
+    },
+    {
+      "id": 2,
+      "text": "LatinX in AI at Neural Information Processing Systems Conference 2018\n\t\t\n\t\t\tMislavBalunovic\n\t\t\n\t\t\n\t\t\tPavolBielik\n\t\t\n\t\t\n\t\t\tMartinTVechev\n\t\t\n\t\t\n\t\t\tMHanna\n\t\t\n\t\t\n\t\t\tHugoWallach\n\t\t\n\t\t\n\t\t\tKristenLarochelle\n\t\t\n\t\t\n\t\t\tGrauman\n\t\t\n\t\t10.52591/lxai201812030\n\t\t\n\t\n\t\n\t\tAdvances in Neural Information Processing Systems 31: Annual Conference on Neural Information Processing Systems\n\t\t\n\t\t\tNicolòCesa-Bianchi\n\t\t\n\t\t\n\t\t\tRomanGarnett\n\t\t\n\t\tNeurIPS; Montréal, Canada\n\t\t\n\t\t\tJournal of LatinX in AI Research\n\t\t\t2018. 2018. December 3-8, 2018. 2018\n\t\t\t\n\t\t\n\t\n\tSamy Bengio. ff0427b551b68e911eebe35233b-Abstract.html"
+    },
+    {
+      "id": 3,
+      "text": "Holist: An environment for machine learning of higher order logic theorem proving\n\t\t\n\t\t\tKshitijBansal\n\t\t\n\t\t\n\t\t\tSarahMLoos\n\t\t\n\t\t\n\t\t\tMarkusNRabe\n\t\t\n\t\t\n\t\t\tChristianSzegedy\n\t\t\n\t\t\n\t\t\tStewartWilcox\n\t\t\n\t\t\n\t\n\t\n\t\tProceedings of the 36th International Conference on Machine Learning, ICML\n\t\t\n\t\t\tKamalikaChaudhuri\n\t\t\n\t\t\n\t\t\tRuslanSalakhutdinov\n\t\t\n\t\tthe 36th International Conference on Machine Learning, ICMLLong Beach, California, USA\n\t\t\n\t\t\t2019, 9-15 June 2019. 2019\n\t\t\t97\n\t\t\t\n\t\t\n\t\n\tPMLR"
+    },
+    {
+      "id": 4,
+      "text": "The aiger and-inverter graph (aig) format version\n\t\t\n\t\t\tRBrummayer\n\t\t\n\t\t\n\t\t\tACimatti\n\t\t\n\t\t\n\t\t\tKClaessen\n\t\t\n\t\t\n\t\t\tNEen\n\t\t\n\t\t\n\t\t\tMHerbstritt\n\t\t\n\t\t\n\t\t\tHKim\n\t\t\n\t\t\n\t\t\tTJussila\n\t\t\n\t\t\n\t\t\tKMcmillan\n\t\t\n\t\t\n\t\t\tAMishchenko\n\t\t\n\t\t\n\t\t\tFSomenzi\n\t\t\n\t\t\n\t\t\n\t\t\t20070427. 2007"
+    },
+    {
+      "id": 5,
+      "text": "Learning Interpretable Models Expressed in Linear Temporal Logic\n\t\t\n\t\t\tAlbertoCamacho\n\t\t\n\t\t\n\t\t\tSheilaAMcilraith\n\t\t\n\t\t10.1609/icaps.v29i1.3529\n\t\t\n\t\n\t\n\t\tProceedings of the International Conference on Automated Planning and Scheduling\n\t\tICAPS\n\t\t\n\t\t\tJBenton\n\t\t\n\t\t\n\t\t\tNirLipovetzky\n\t\t\n\t\t\n\t\t\tEvaOnaindia\n\t\t\n\t\t\n\t\t\tDavidESmith\n\t\t\n\t\t\n\t\t\tSiddharthSrivastava\n\t\t\n\t\t2334-0835\n\t\t2334-0843\n\t\t\n\t\t\t29\n\t\t\t\n\t\t\tJuly 11-15, 2019. 2019\n\t\t\tAssociation for the Advancement of Artificial Intelligence (AAAI)\n\t\t\tBerkeley, CA, USA"
+    },
+    {
+      "id": 6,
+      "text": "A simple framework for contrastive learning of visual representations\n\t\t\n\t\t\tTingChen\n\t\t\n\t\t\n\t\t\tSimonKornblith\n\t\t\n\t\t\n\t\t\tMohammadNorouzi\n\t\t\n\t\t\n\t\t\tGeoffreyEHinton\n\t\t\n\t\t\n\t\n\t\n\t\tProceedings of the 37th International Conference on Machine Learning, ICML 2020\n\t\tthe 37th International Conference on Machine Learning, ICML 2020\n\t\t\n\t\t\t13-18 July 2020. 2020\n\t\t\t119\n\t\t\t\n\t\t\n\t\n\tPMLR"
+    },
+    {
+      "id": 7,
+      "text": "Application of recursive arithmetic to the problem of circuit synthesis\n\t\t\n\t\t\tAlonzoChurch\n\t\t\n\t\n\t\n\t\tJournal of Symbolic Logic\n\t\t\n\t\t\t28\n\t\t\t4\n\t\t\t1963"
+    },
+    {
+      "id": 8,
+      "text": "2 5 years of model checking\n\t\t\n\t\t\tEdmundMClarke\n\t\t\n\t\t\n\t\t\tQinsiWang\n\t\t\n\t\t10.1007/978-3-662-46823-4\\2\n\t\t\n\t\n\t\n\t\tPerspectives of System Informatics -9th International Ershov Informatics Conference\n\t\tLecture Notes in Computer Science\n\t\t\n\t\t\tAndreiVoronkov\n\t\t\n\t\t\n\t\t\tIrinaBVirbitskaite\n\t\t\n\t\tSt. Petersburg, Russia\n\t\t\n\t\t\tSpringer\n\t\t\t2014. June 24-27, 2014. 2014\n\t\t\t8974\n\t\t\t\n\t\t\n\t\n\tRevised Selected Papers"
+    },
+    {
+      "id": 9,
+      "text": "Model checking\n\t\t\n\t\t\tEdmundMClarke\n\t\t\n\t\t\n\t\t\tEAllenEmerson\n\t\t\n\t\t\n\t\t\tJosephSifakis\n\t\t\n\t\t10.1145/1592761.1592781\n\t\t\n\t\n\t\n\t\tCommunications of the ACM\n\t\tCommun. ACM\n\t\t0001-0782\n\t\t1557-7317\n\t\t\n\t\t\t52\n\t\t\t11\n\t\t\t\n\t\t\t2009\n\t\t\tAssociation for Computing Machinery (ACM)"
+    },
+    {
+      "id": 10,
+      "text": "Model checking and the state explosion problem\n\t\t\n\t\t\tEdmundMClarke\n\t\t\n\t\t\n\t\t\tWilliamKlieber\n\t\t\n\t\t\n\t\t\tMilosNovácek\n\t\t\n\t\t\n\t\t\tPaoloZuliani\n\t\t\n\t\t10.1007/978-3-642-35746-6\\1\n\t\t\n\t\n\t\n\t\tTools for Practical Software Verification, LASER, International Summer School\n\t\tLecture Notes in Computer Science\n\t\t\n\t\t\tBertrandMeyer\n\t\t\n\t\t\n\t\t\tMartinNordio\n\t\t\n\t\tElba Island, Italy\n\t\t\n\t\t\tSpringer\n\t\t\t2011. 2011\n\t\t\t7682\n\t\t\t\n\t\t\n\t\n\tRevised Tutorial Lectures"
+    },
+    {
+      "id": 11,
+      "text": "Handbook of Model Checking\n\t\t\n\t\t\tEdmundMClarke\n\t\t\n\t\t\n\t\t\tThomasAHenzinger\n\t\t\n\t\t10.1007/978-3-319-10575-8\n\t\t\n\t\n\t\n\t\tHandbook of Model Checking\n\t\t\n\t\t\tHelmutVeith\n\t\t\n\t\t\n\t\t\tRoderickBloem\n\t\t\n\t\t\n\t\t\tSpringer International Publishing\n\t\t\t2018"
+    },
+    {
+      "id": 12,
+      "text": "Iterative circuit repair against formal specifications\n\t\t\n\t\t\tMatthiasCosler\n\t\t\n\t\t\n\t\t\tFrederikSchmitt\n\t\t\n\t\t\n\t\t\tChristopherHahn\n\t\t\n\t\t\n\t\t\tBerndFinkbeiner\n\t\t\n\t\t\n\t\n\t\n\t\tThe Eleventh International Conference on Learning Representations, ICLR 2023\n\t\tKigali, Rwanda\n\t\t\n\t\t\tMay 1-5, 2023. 2023\n\t\t\n\t\n\tOpenReview.net"
+    },
+    {
+      "id": 13,
+      "text": "Circuitfusion: Multimodal circuit representation learning for agile chip design\n\t\t\n\t\t\tWenjiFang\n\t\t\n\t\t\n\t\t\tShangLiu\n\t\t\n\t\t\n\t\t\tJingWang\n\t\t\n\t\t\n\t\t\tZhiyaoXie\n\t\t\n\t\t\n\t\n\t\n\t\tThe Thirteenth International Conference on Learning Representations, ICLR 2025\n\t\tSingapore\n\t\t\n\t\t\tApril 24-28, 2025. 2025\n\t\t\n\t\n\tOpenReview.net"
+    },
+    {
+      "id": 14,
+      "text": "Codebert: A pre-trained model for programming and natural languages\n\t\t\n\t\t\tZhangyinFeng\n\t\t\n\t\t\n\t\t\tDayaGuo\n\t\t\n\t\t\n\t\t\tDuyuTang\n\t\t\n\t\t\n\t\t\tNanDuan\n\t\t\n\t\t\n\t\t\tXiaochengFeng\n\t\t\n\t\t\n\t\t\tMingGong\n\t\t\n\t\t\n\t\t\tLinjunShou\n\t\t\n\t\t\n\t\t\tBingQin\n\t\t\n\t\t\n\t\t\tTingLiu\n\t\t\n\t\t\n\t\t\tDaxinJiang\n\t\t\n\t\t\n\t\t\tMingZhou\n\t\t\n\t\t10.18653/V1/2020.FINDINGS-EMNLP.139\n\t\t\n\t\n\t\n\t\tFindings of the Association for Computational Linguistics: EMNLP 2020, Online Event\n\t\t\n\t\t\tTrevorCohn\n\t\t\n\t\t\n\t\t\tYulanHe\n\t\t\n\t\t\n\t\t\tYangLiu\n\t\t\n\t\t\n\t\t\tAssociation for Computational Linguistics\n\t\t\t16-20 November 2020. 2020\n\t\t\t\n\t\t\n\t\n\tEMNLP 2020 of Findings of ACL"
+    },
+    {
+      "id": 15,
+      "text": "SimCSE: Simple Contrastive Learning of Sentence Embeddings\n\t\t\n\t\t\tTianyuGao\n\t\t\n\t\t\n\t\t\tXingchengYao\n\t\t\n\t\t\n\t\t\tDanqiChen\n\t\t\n\t\t10.18653/v1/2021.emnlp-main.552\n\t\t\n\t\n\t\n\t\tProceedings of the 2021 Conference on Empirical Methods in Natural Language Processing\n\t\t\n\t\t\tMarie-FrancineMoens\n\t\t\n\t\t\n\t\t\tXuanjingHuang\n\t\t\n\t\t\n\t\t\tLuciaSpecia\n\t\t\n\t\t\n\t\t\tScottWen\n\t\t\n\t\t\n\t\t\t-TauYih\n\t\t\n\t\tthe 2021 Conference on Empirical Methods in Natural Language ProcessingDominican Republic\n\t\t\n\t\t\tAssociation for Computational Linguistics\n\t\t\t7-11 November, 2021\n\t\t\t2021"
+    },
+    {
+      "id": 16,
+      "text": "Learning better representations from less data for propositional satisfiability\n\t\t\n\t\t\tMohamedGhanem\n\t\t\n\t\t\n\t\t\tFrederikSchmitt\n\t\t\n\t\t\n\t\t\tJulianSiber\n\t\t\n\t\t\n\t\t\tBerndFinkbeiner\n\t\t\n\t\t\n\t\n\t\n\t\tAdvances in Neural Information Processing Systems 38: Annual Conference on Neural Information Processing Systems 2024, NeurIPS 2024\n\t\t\n\t\t\tAmirGlobersons\n\t\t\n\t\t\n\t\t\tLesterMackey\n\t\t\n\t\t\n\t\t\tDanielleBelgrave\n\t\t\n\t\t\n\t\t\tAngelaFan\n\t\t\n\t\t\n\t\t\tUlrichPaquet\n\t\t\n\t\t\n\t\t\tMJakub\n\t\t\n\t\t\n\t\t\tChengTomczak\n\t\t\n\t\t\n\t\t\tZhang\n\t\t\n\t\tVancouver, BC, Canada\n\t\t\n\t\t\tDecember 10 -15, 2024, 2024\n\t\t\n\t\n\ta225639da77e8f7c0409f6d5ba996b-Abstract-Conference.html"
+    },
+    {
+      "id": 17,
+      "text": "Neural Model Checking\n\t\t\n\t\t\tMircoGiacobbe\n\t\t\n\t\t\n\t\t\tDanielKroening\n\t\t\n\t\t\n\t\t\tAbhinandanPal\n\t\t\n\t\t\n\t\t\tMichaelTautschnig\n\t\t\n\t\t10.52202/079017-2742\n\t\t\n\t\n\t\n\t\tAdvances in Neural Information Processing Systems 37\n\t\t\n\t\t\tAmirGlobersons\n\t\t\n\t\t\n\t\t\tLesterMackey\n\t\t\n\t\t\n\t\t\tDanielleBelgrave\n\t\t\n\t\t\n\t\t\tAngelaFan\n\t\t\n\t\t\n\t\t\tUlrichPaquet\n\t\t\n\t\t\n\t\t\tMJakub\n\t\t\n\t\t\n\t\t\tChengTomczak\n\t\t\n\t\t\n\t\t\tZhang\n\t\t\n\t\tVancouver, BC, Canada\n\t\t\n\t\t\tNeural Information Processing Systems Foundation, Inc. (NeurIPS)\n\t\t\tDecember 10 -15, 2024. 2024\n\t\t\t\n\t\t\n\t\n\td0947107ea92d6ce369dce7749180dd-Abstract-Conference.html"
+    },
+    {
+      "id": 18,
+      "text": "Teaching temporal logics to neural networks\n\t\t\n\t\t\tChristopherHahn\n\t\t\n\t\t\n\t\t\tFrederikSchmitt\n\t\t\n\t\t\n\t\t\tJensUKreber\n\t\t\n\t\t\n\t\t\tMarkusNorman Rabe\n\t\t\n\t\t\n\t\t\tBerndFinkbeiner\n\t\t\n\t\t\n\t\n\t\n\t\t9th International Conference on Learning Representations, ICLR 2021, Virtual Event\n\t\tAustria\n\t\t\n\t\t\tMay 3-7, 2021\n\t\t\n\t\n\tOpenReview.net, 2021"
+    },
+    {
+      "id": 19,
+      "text": "Contrastive finetuning of generative language models for informal premise selection\n\t\t\n\t\t\tJesseMichael Han\n\t\t\n\t\t\n\t\t\tTaoXu\n\t\t\n\t\t\n\t\t\tStanislasPolu\n\t\t\n\t\t\n\t\t\tArvindNeelakantan\n\t\t\n\t\t\n\t\t\tAlecRadford\n\t\t\n\t\n\t\n\t\t6th Conference on Artificial Intelligence and Theorem Proving\n\t\t\n\t\t\t2021"
+    },
+    {
+      "id": 20,
+      "text": "Contrastive learning with adversarial examples\n\t\t\n\t\t\tChih-HuiHo\n\t\t\n\t\t\n\t\t\tNunoVasconcelos\n\t\t\n\t\t\n\t\n\t\n\t\tAdvances in Neural Information Processing Systems 33: Annual Conference on Neural Information Processing Systems 2020, NeurIPS 2020\n\t\t\n\t\t\tHugoLarochelle\n\t\t\n\t\t\n\t\t\tMarc'aurelioRanzato\n\t\t\n\t\t\n\t\t\tRaiaHadsell\n\t\t\n\t\t\n\t\t\tMaria-FlorinaBalcan\n\t\t\n\t\t\n\t\t\tHsuan-TienLin\n\t\t\n\t\t\n\t\t\tDecember 6-12, 2020, virtual, 2020\n\t\t\n\t\n\td85472dd6fd0015f047-Abstract.html"
+    },
+    {
+      "id": 21,
+      "text": "IEC 62531 Ed. 1 (2007-11) (IEEE Std 1850-2005): Standard for Property Specification Language (PSL)\n\t\t\n\t\t\tIeee-Commission\n\t\t\n\t\t10.1109/ieeestd.2007.4408637\n\t\n\t\n\t\tIEEE Std 1850-2005\n\t\t\n\t\t\tIEEE\n\t\t\t2005"
+    },
+    {
+      "id": 22,
+      "text": "Ieee standard for systemverilog-unified hardware design, specification, and verification language\n\t\t\n\t\t\tIeee-Commission\n\t\t\n\t\t10.1109/IEEESTD.2024.10458102\n\t\n\t\n\t\tIEEE Std 1800-2023\n\t\t\n\t\t\t2024\n\t\t\n\t\n\tRevision of IEEE Std 1800-2017"
+    },
+    {
+      "id": 23,
+      "text": "Scaling up visual and vision-language representation learning with noisy text supervision\n\t\t\n\t\t\tChaoJia\n\t\t\n\t\t\n\t\t\tYinfeiYang\n\t\t\n\t\t\n\t\t\tYeXia\n\t\t\n\t\t\n\t\t\tYi-TingChen\n\t\t\n\t\t\n\t\t\tZaranaParekh\n\t\t\n\t\t\n\t\t\tHieuPham\n\t\t\n\t\t\n\t\t\tQuocVLe\n\t\t\n\t\t\n\t\t\tYun-HsuanSung\n\t\t\n\t\t\n\t\t\tZhenLi\n\t\t\n\t\t\n\t\t\tTomDuerig\n\t\t\n\t\t\n\t\n\t\n\t\tProceedings of the 38th International Conference on Machine Learning, ICML 2021\n\t\t\n\t\t\tMarinaMeila\n\t\t\n\t\t\n\t\t\tTongZhang\n\t\t\n\t\tthe 38th International Conference on Machine Learning, ICML 2021\n\t\t\n\t\t\t18-24 July 2021. 2021\n\t\t\t139\n\t\t\t\n\t\t\n\t\n\tPMLR"
+    },
+    {
+      "id": 24,
+      "text": "Scaling laws for neural language models\n\t\t\n\t\t\tJaredKaplan\n\t\t\n\t\t\n\t\t\tSamMccandlish\n\t\t\n\t\t\n\t\t\tTomHenighan\n\t\t\n\t\t\n\t\t\tTomBBrown\n\t\t\n\t\t\n\t\t\tBenjaminChess\n\t\t\n\t\t\n\t\t\tRewonChild\n\t\t\n\t\t\n\t\t\tScottGray\n\t\t\n\t\t\n\t\t\tAlecRadford\n\t\t\n\t\t\n\t\t\tJeffreyWu\n\t\t\n\t\t\n\t\t\tDarioAmodei\n\t\t\n\t\tCoRR, abs/2001.08361\n\t\t\n\t\t\n\t\t\t2020"
+    },
+    {
+      "id": 25,
+      "text": "Supervised contrastive learning\n\t\t\n\t\t\tPrannayKhosla\n\t\t\n\t\t\n\t\t\tPiotrTeterwak\n\t\t\n\t\t\n\t\t\tChenWang\n\t\t\n\t\t\n\t\t\tAaronSarna\n\t\t\n\t\t\n\t\t\tYonglongTian\n\t\t\n\t\t\n\t\t\tPhillipIsola\n\t\t\n\t\t\n\t\t\tAaronMaschinot\n\t\t\n\t\t\n\t\t\tCeLiu\n\t\t\n\t\t\n\t\t\tDilipKrishnan\n\t\t\n\t\n\t\n\t\tAdvances in neural information processing systems\n\t\t\n\t\t\t33\n\t\t\t\n\t\t\t2020"
+    },
+    {
+      "id": 26,
+      "text": "Semml: Enhancing automata-theoretic LTL synthesis with machine learning\n\t\t\n\t\t\tJanKretínský\n\t\t\n\t\t\n\t\t\tTobiasMeggendorfer\n\t\t\n\t\t\n\t\t\tMaximilianProkop\n\t\t\n\t\t\n\t\t\tAshkanZarkhah\n\t\t\n\t\t10.1007/978-3-031-90643-5\\12\n\t\t\n\t\n\t\n\t\tTools and Algorithms for the Construction and Analysis of Systems -31st International Conference, TACAS 2025, Held as Part of the International Joint Conferences on Theory and Practice of Software, ETAPS 2025\n\t\tLecture Notes in Computer Science\n\t\t\n\t\t\tArieGurfinkel\n\t\t\n\t\t\n\t\t\tMarijnHeule\n\t\t\n\t\tHamilton, ON, Canada\n\t\t\n\t\t\tSpringer\n\t\t\tMay 3-8, 2025\n\t\t\t15696\n\t\t\t2025\n\t\t\n\t\n\tProceedings, Part I"
+    },
+    {
+      "id": 27,
+      "text": "Contrastive representation learning: A framework and review\n\t\t\n\t\t\tHPhuc\n\t\t\n\t\t\n\t\t\tGrahamLe-Khac\n\t\t\n\t\t\n\t\t\tAlanFHealy\n\t\t\n\t\t\n\t\t\tSmeaton\n\t\t\n\t\t10.1109/ACCESS.2020.3031549\n\t\t\n\t\n\t\n\t\tIEEE Access\n\t\t\n\t\t\t8\n\t\t\t193907-193934, 2020"
+    },
+    {
+      "id": 28,
+      "text": "A survey on deep learning for theorem proving\n\t\t\n\t\t\tZhaoyuLi\n\t\t\n\t\t\n\t\t\tJialiangSun\n\t\t\n\t\t\n\t\t\tLoganMurphy\n\t\t\n\t\t\n\t\t\tQidongSu\n\t\t\n\t\t\n\t\t\tZenanLi\n\t\t\n\t\t\n\t\t\tXianZhang\n\t\t\n\t\t\n\t\t\tKaiyuYang\n\t\t\n\t\t\n\t\t\tXujieSi\n\t\t\n\t\t10.48550/ARXIV.2404.09939\n\t\t\n\t\t\n\t\t\t2024"
+    },
+    {
+      "id": 29,
+      "text": "Decoupled weight decay regularization\n\t\t\n\t\t\tIlyaLoshchilov\n\t\t\n\t\t\n\t\t\tFrankHutter\n\t\t\n\t\t\n\t\n\t\n\t\t7th International Conference on Learning Representations\n\t\tNew Orleans, LA, USA\n\t\t\n\t\t\t2019. May 6-9, 2019. OpenReview.net, 2019"
+    },
+    {
+      "id": 30,
+      "text": "Btor2-select: Machine learning based algorithm selection for hardware model checking\n\t\t\n\t\t\tZhengyangLu\n\t\t\n\t\t\n\t\t\tPo-ChunChien\n\t\t\n\t\t\n\t\t\tNian-ZeLee\n\t\t\n\t\t\n\t\t\tArieGurfinkel\n\t\t\n\t\t\n\t\t\tVijayGanesh\n\t\t\n\t\t10.1007/978-3-031-98668-0\\15\n\t\t\n\t\n\t\n\t\tComputer Aided Verification -37th International Conference, CAV 2025\n\t\tLecture Notes in Computer Science\n\t\t\n\t\t\tRuzicaPiskac\n\t\t\n\t\t\n\t\t\tZvonimirRakamaric\n\t\t\n\t\tZagreb, Croatia\n\t\t\n\t\t\tSpringer\n\t\t\tJuly 23-25, 2025\n\t\t\t15931\n\t\t\t2025\n\t\t\n\t\n\tProceedings, Part I"
+    },
+    {
+      "id": 31,
+      "text": "Teaching LTLf Satisfiability Checking to Neural Networks\n\t\t\n\t\t\tWeilinLuo\n\t\t\n\t\t\n\t\t\tHaiWan\n\t\t\n\t\t\n\t\t\tJianfengDu\n\t\t\n\t\t\n\t\t\tXiaodaLi\n\t\t\n\t\t\n\t\t\tYuzeFu\n\t\t\n\t\t\n\t\t\tRongzhenYe\n\t\t\n\t\t\n\t\t\tDelongZhang\n\t\t\n\t\t10.24963/ijcai.2022/457\n\t\t\n\t\n\t\n\t\tProceedings of the Thirty-First International Joint Conference on Artificial Intelligence\n\t\t\n\t\t\tLucDe\n\t\t\n\t\t\n\t\t\tRaedt\n\t\t\n\t\tthe Thirty-First International Joint Conference on Artificial IntelligenceVienna, Austria\n\t\t\n\t\t\tInternational Joint Conferences on Artificial Intelligence Organization\n\t\t\tJuly 2022\n\t\t\t2022"
+    },
+    {
+      "id": 32,
+      "text": "Identifying the limits of transformers when performing model-checking with natural language\n\t\t\n\t\t\tTharinduMadusanka\n\t\t\n\t\t\n\t\t\tRizaBatista-Navarro\n\t\t\n\t\t\n\t\t\tIanPratt-Hartmann\n\t\t\n\t\t10.18653/v1/2023.eacl-main.257\n\t\t\n\t\n\t\n\t\tProceedings of the 17th Conference of the European Chapter of the Association for Computational Linguistics\n\t\t\n\t\t\tAndreasVlachos\n\t\t\n\t\t\n\t\t\tIsabelleAugenstein\n\t\t\n\t\tthe 17th Conference of the European Chapter of the Association for Computational LinguisticsDubrovnik, Croatia\n\t\t\n\t\t\tAssociation for Computational Linguistics\n\t\t\tMay 2-6, 2023\n\t\t\t\n\t\t\n\t\n\tEACL 2023"
+    },
+    {
+      "id": 33,
+      "text": "Catastrophic Interference in Connectionist Networks: The Sequential Learning Problem\n\t\t\n\t\t\tMichaelMccloskey\n\t\t\n\t\t\n\t\t\tNealJCohen\n\t\t\n\t\t10.1016/s0079-7421(08)60536-8\n\t\n\t\n\t\tPsychology of Learning and Motivation\n\t\t\n\t\t\tElsevier\n\t\t\t1989\n\t\t\t24"
+    },
+    {
+      "id": 34,
+      "text": "Explicit reactive synthesis strikes back\n\t\t\n\t\t\tJPhilipp\n\t\t\n\t\t\n\t\t\tSalomonMeyer\n\t\t\n\t\t\n\t\t\tMichaelSickert\n\t\t\n\t\t\n\t\t\tLuttenberger\n\t\t\n\t\t\n\t\t\tStrix\n\t\t\n\t\t10.1007/978-3-319-96145-3\\31\n\t\n\t\n\t\tComputer Aided Verification -30th International Conference, CAV 2018, Held as Part of the Federated Logic Conference\n\t\tLecture Notes in Computer Science\n\t\tFloC; Oxford, UK\n\t\t\n\t\t\tSpringer\n\t\t\t2018. July 14-17, 2018. 2018\n\t\t\t10981\n\t\t\t\n\t\t\n\t\n\tProceedings, Part I"
+    },
+    {
+      "id": 35,
+      "text": "PauliusMicikevicius\n\t\t\n\t\t\n\t\t\tSharanNarang\n\t\t\n\t\t\n\t\t\tJonahAlben\n\t\t\n\t\t\n\t\t\tGregoryFDiamos\n\t\t\n\t\t\n\t\t\tErichElsen\n\t\t\n\t\t\n\t\t\tDavidGarcía\n\t\t\n\t\t\n\t\t\tBorisGinsburg\n\t\t\n\t\t\n\t\t\tMichaelHouston\n\t\t\n\t\t\n\t\t\tOleksiiKuchaiev\n\t\t\n\t\t\n\t\t\tGaneshVenkatesh\n\t\t\n\t\t\n\t\t\tHaoWu\n\t\t\n\t\tCoRR, abs/1710.03740\n\t\t\n\t\t\n\t\t\t2017"
+    },
+    {
+      "id": 36,
+      "text": "Magnushammer: A transformer-based approach to premise selection\n\t\t\n\t\t\tMaciejMikula\n\t\t\n\t\t\n\t\t\tSzymonTworkowski\n\t\t\n\t\t\n\t\t\tSzymonAntoniak\n\t\t\n\t\t\n\t\t\tBartoszPiotrowski\n\t\t\n\t\t\n\t\t\tAlbertQJiang\n\t\t\n\t\t\n\t\t\tJinPengZhou\n\t\t\n\t\t\n\t\t\tChristianSzegedy\n\t\t\n\t\t\n\t\t\tLukaszKucinski\n\t\t\n\t\t\n\t\t\tPiotrMilos\n\t\t\n\t\t\n\t\t\tYuhuaiWu\n\t\t\n\t\t\n\t\n\t\n\t\tThe Twelfth International Conference on Learning Representations, ICLR 2024\n\t\tVienna, Austria\n\t\t\n\t\t\tMay 7-11, 2024. 2024\n\t\t\n\t\n\tOpenReview.net"
+    },
+    {
+      "id": 37,
+      "text": "Learning linear temporal properties\n\t\t\n\t\t\tDanielNeider\n\t\t\n\t\t\n\t\t\tIvanGavran\n\t\t\n\t\t10.23919/FMCAD.2018.8603016\n\t\t\n\t\n\t\n\t\t2018 Formal Methods in Computer Aided Design\n\t\t\n\t\t\tSNikolaj\n\t\t\n\t\t\n\t\t\tArieBjørner\n\t\t\n\t\t\n\t\t\tGurfinkel\n\t\t\n\t\tAustin, TX, USA\n\t\t\n\t\t\tIEEE\n\t\t\t2018. October 30 -November 2, 2018. 2018"
+    },
+    {
+      "id": 38,
+      "text": "Graph Representations for Higher-Order Logic and Theorem Proving\n\t\t\n\t\t\tAdityaPaliwal\n\t\t\n\t\t\n\t\t\tSarahMLoos\n\t\t\n\t\t\n\t\t\tMarkusNRabe\n\t\t\n\t\t\n\t\t\tKshitijBansal\n\t\t\n\t\t\n\t\t\tChristianSzegedy\n\t\t\n\t\t10.1609/aaai.v34i03.5689\n\t\t\n\t\n\t\n\t\tProceedings of the AAAI Conference on Artificial Intelligence\n\t\tAAAI\n\t\t2159-5399\n\t\t2374-3468\n\t\t\n\t\t\t34\n\t\t\t03\n\t\t\t\n\t\t\tFebruary 7-12, 2020. 2020\n\t\t\tAssociation for the Advancement of Artificial Intelligence (AAAI)\n\t\t\tNew York, NY, USA"
+    },
+    {
+      "id": 39,
+      "text": "GILE: A generalized input-label embedding for text classification\n\t\t\n\t\t\tNikolaosPappas\n\t\t\n\t\t\n\t\t\tJamesHenderson\n\t\t\n\t\t10.1162/TACL\\A\\00259\n\t\t\n\t\n\t\n\t\tTrans. Assoc. Comput. Linguistics\n\t\t\n\t\t\t7\n\t\t\t\n\t\t\t2019"
+    },
+    {
+      "id": 40,
+      "text": "Pytorch: An imperative style, high-performance deep learning library\n\t\t\n\t\t\tAdamPaszke\n\t\t\n\t\t\n\t\t\tSamGross\n\t\t\n\t\t\n\t\t\tFranciscoMassa\n\t\t\n\t\t\n\t\t\tAdamLerer\n\t\t\n\t\t\n\t\t\tJamesBradbury\n\t\t\n\t\t\n\t\t\tGregoryChanan\n\t\t\n\t\t\n\t\t\tTrevorKilleen\n\t\t\n\t\t\n\t\t\tZemingLin\n\t\t\n\t\t\n\t\t\tNataliaGimelshein\n\t\t\n\t\t\n\t\t\tLucaAntiga\n\t\t\n\t\t\n\t\t\tAlbanDesmaison\n\t\t\n\t\t\n\t\t\tAndreasKöpf\n\t\t\n\t\t\n\t\t\tEdwardZYang\n\t\t\n\t\t\n\t\t\tZacharyDevito\n\t\t\n\t\t\n\t\t\tMartinRaison\n\t\t\n\t\t\n\t\t\tAlykhanTejani\n\t\t\n\t\t\n\t\t\tSasankChilamkurthy\n\t\t\n\t\t\n\t\t\tBenoitSteiner\n\t\t\n\t\t\n\t\t\tLuFang\n\t\t\n\t\t\n\t\t\tJunjieBai\n\t\t\n\t\t\n\t\t\tSoumithChintala\n\t\t\n\t\t\n\t\n\t\n\t\tAdvances in Neural Information Processing Systems 32: Annual Conference on Neural Information Processing Systems\n\t\t\n\t\t\tMHanna\n\t\t\n\t\t\n\t\t\tHugoWallach\n\t\t\n\t\t\n\t\t\tAlinaLarochelle\n\t\t\n\t\t\n\t\t\tBeygelzimer\n\t\t\n\t\t\n\t\t\tEmilyBFlorence D'alché-Buc\n\t\t\n\t\t\n\t\t\tRomanFox\n\t\t\n\t\t\n\t\t\tGarnett\n\t\t\n\t\tNeurIPS; Vancouver, BC, Canada\n\t\t\n\t\t\t2019. 2019. December 8-14, 2019. 2019\n\t\t\t\n\t\t\n\t\n\t288fee7f92f2bfa9f7012727740-Abstract.html"
+    },
+    {
+      "id": 41,
+      "text": "The temporal logic of programs\n\t\t\n\t\t\tAmirPnueli\n\t\t\n\t\t10.1109/sfcs.1977.32\n\t\t\n\t\n\t\n\t\t18th Annual Symposium on Foundations of Computer Science (sfcs 1977)\n\t\tProvidence, Rhode Island, USA\n\t\t\n\t\t\tIEEE\n\t\t\t31 October -1 November 1977. 1977"
+    },
+    {
+      "id": 42,
+      "text": "Learning transferable visual models from natural language supervision\n\t\t\n\t\t\tAlecRadford\n\t\t\n\t\t\n\t\t\tJongWookKim\n\t\t\n\t\t\n\t\t\tChrisHallacy\n\t\t\n\t\t\n\t\t\tAdityaRamesh\n\t\t\n\t\t\n\t\t\tGabrielGoh\n\t\t\n\t\t\n\t\t\tSandhiniAgarwal\n\t\t\n\t\t\n\t\t\tGirishSastry\n\t\t\n\t\t\n\t\t\tAmandaAskell\n\t\t\n\t\t\n\t\t\tPamelaMishkin\n\t\t\n\t\t\n\t\t\tJackClark\n\t\t\n\t\t\n\t\t\tGretchenKrueger\n\t\t\n\t\t\n\t\t\tIlyaSutskever\n\t\t\n\t\t\n\t\n\t\n\t\tProceedings of the 38th International Conference on Machine Learning, ICML 2021\n\t\t\n\t\t\tMarinaMeila\n\t\t\n\t\t\n\t\t\tTongZhang\n\t\t\n\t\tthe 38th International Conference on Machine Learning, ICML 2021\n\t\t\n\t\t\t18-24 July 2021. 2021\n\t\t\t139\n\t\t\t\n\t\t\n\t\n\tPMLR"
+    },
+    {
+      "id": 43,
+      "text": "Sentence-BERT: Sentence Embeddings using Siamese BERT-Networks\n\t\t\n\t\t\tNilsReimers\n\t\t\n\t\t\n\t\t\tIrynaGurevych\n\t\t\n\t\t10.18653/v1/d19-1410\n\t\t\n\t\n\t\n\t\tProceedings of the 2019 Conference on Empirical Methods in Natural Language Processing and the 9th International Joint Conference on Natural Language Processing (EMNLP-IJCNLP)\n\t\t\n\t\t\tKentaroInui\n\t\t\n\t\t\n\t\t\tJingJiang\n\t\t\n\t\t\n\t\t\tVincentNg\n\t\t\n\t\t\n\t\t\tXiaojunWan\n\t\t\n\t\tthe 2019 Conference on Empirical Methods in Natural Language Processing and the 9th International Joint Conference on Natural Language Processing (EMNLP-IJCNLP)Hong Kong, China\n\t\t\n\t\t\tAssociation for Computational Linguistics\n\t\t\tNovember 3-7, 2019. 2019"
+    },
+    {
+      "id": 44,
+      "text": "A Primer on Contrastive Pretraining in Language Processing: Methods, Lessons Learned, and Perspectives\n\t\t\n\t\t\tNilsRethmeier\n\t\t\t0000-0002-4496-7307\n\t\t\n\t\t\n\t\t\tIsabelleAugenstein\n\t\t\t0000-0003-1562-7909\n\t\t\n\t\t10.1145/3561970\n\t\t\n\t\n\t\n\t\tACM Computing Surveys\n\t\tACM Comput. Surv.\n\t\t0360-0300\n\t\t1557-7341\n\t\t\n\t\t\t55\n\t\t\t10\n\t\t\t\n\t\t\t\n\t\t\tAssociation for Computing Machinery (ACM)"
+    },
+    {
+      "id": 45,
+      "text": "LatinX in AI at Neural Information Processing Systems Conference 2021\n\t\t\n\t\t\tFrederikSchmitt\n\t\t\n\t\t\n\t\t\tChristopherHahn\n\t\t\n\t\t\n\t\t\tMarkusNRabe\n\t\t\n\t\t\n\t\t\tBerndFinkbeiner\n\t\t\n\t\t10.52591/202112070\n\t\t\n\t\n\t\n\t\tAdvances in Neural Information Processing Systems 34: Annual Conference on Neural Information Processing Systems 2021, NeurIPS 2021\n\t\t\n\t\t\tAurelioMarc\n\t\t\n\t\t\n\t\t\tAlinaRanzato\n\t\t\n\t\t\n\t\t\tYannNBeygelzimer\n\t\t\n\t\t\n\t\t\tPercyDauphin\n\t\t\n\t\t\n\t\t\tJenniferWortmanLiang\n\t\t\n\t\t\n\t\t\tVaughan\n\t\t\n\t\t\n\t\t\tJournal of LatinX in AI Research\n\t\t\tDecember 6-14, 2021. 2021\n\t\t\t\n\t\t\n\t\n\td54bcdf99cdfe85cb07313d5-Abstract.html"
+    },
+    {
+      "id": 46,
+      "text": "Neural circuit synthesis with pre-trained language models\n\t\t\n\t\t\tFrederikSchmitt\n\t\t\n\t\t\n\t\t\tMatthiasCosler\n\t\t\n\t\t\n\t\t\tBerndFinkbeiner\n\t\t\n\t\n\t\n\t\tFirst International Workshop on Deep Learning-aided Verification\n\t\t\n\t\t\t2023"
+    },
+    {
+      "id": 47,
+      "text": "Guiding High-Performance SAT Solvers with Unsat-Core Predictions\n\t\t\n\t\t\tDanielSelsam\n\t\t\n\t\t\n\t\t\tNikolajSBjørner\n\t\t\n\t\t10.1007/978-3-030-24258-9_24\n\t\n\t\n\t\tLecture Notes in Computer Science\n\t\tLecture Notes in Computer Science\n\t\t\n\t\t\tMikolásJanota\n\t\t\n\t\t\n\t\t\tInêsLynce\n\t\t\n\t\tLisbon, Portugal\n\t\t\n\t\t\tSpringer International Publishing\n\t\t\tJuly 9-12, 2019\n\t\t\t11628"
+    },
+    {
+      "id": 48,
+      "text": "Springer\n\t\t\n\t\t10.1007/978-3-030-24258-9\\24\n\t\t978-3-030-24258-9_24\n\t\t\n\t\t\n\t\t\t2019"
+    },
+    {
+      "id": 49,
+      "text": "Learning a SAT solver from single-bit supervision\n\t\t\n\t\t\tDanielSelsam\n\t\t\n\t\t\n\t\t\tMatthewLamm\n\t\t\n\t\t\n\t\t\tBenediktBünz\n\t\t\n\t\t\n\t\t\tPercyLiang\n\t\t\n\t\t\n\t\t\tLeonardoDe Moura\n\t\t\n\t\t\n\t\t\tDavidLDill\n\t\t\n\t\t\n\t\n\t\n\t\t7th International Conference on Learning Representations, ICLR 2019\n\t\tNew Orleans, LA, USA\n\t\t\n\t\t\tMay 6-9, 2019. OpenReview.net, 2019"
+    },
+    {
+      "id": 50,
+      "text": "Weisfeiler-lehman graph kernels\n\t\t\n\t\t\tNinoShervashidze\n\t\t\n\t\t\n\t\t\tPascalSchweitzer\n\t\t\n\t\t\n\t\t\tErikJan Van Leeuwen\n\t\t\n\t\t\n\t\t\tKurtMehlhorn\n\t\t\n\t\t\n\t\t\tKarstenMBorgwardt\n\t\t\n\t\t10.5555/1953048.2078187\n\t\t\n\t\n\t\n\t\tJ. Mach. Learn. Res\n\t\t\n\t\t\t12\n\t\t\t\n\t\t\t2011"
+    },
+    {
+      "id": 51,
+      "text": "Enhance audio generation controllability through representation similarity regularization\n\t\t\n\t\t\tYangyangShi\n\t\t\n\t\t\n\t\t\tGaëlLe Lan\n\t\t\n\t\t\n\t\t\tVarunNagaraja\n\t\t\n\t\t\n\t\t\tZhaohengNi\n\t\t\n\t\t\n\t\t\tXinhaoMei\n\t\t\n\t\t\n\t\t\tErnieChang\n\t\t\n\t\t\n\t\t\tForrestNIandola\n\t\t\n\t\t\n\t\t\tYangLiu\n\t\t\n\t\t\n\t\t\tVikasChandra\n\t\t\n\t\t10.48550/ARXIV.2309.08773\n\t\t\n\t\t\n\t\t\t2023"
+    },
+    {
+      "id": 52,
+      "text": "Deepgate3: Towards scalable circuit representation learning\n\t\t\n\t\t\tZhengyuanShi\n\t\t\n\t\t\n\t\t\tZiyangZheng\n\t\t\n\t\t\n\t\t\tSadafKhan\n\t\t\n\t\t\n\t\t\tJianyuanZhong\n\t\t\n\t\t\n\t\t\tMinLi\n\t\t\n\t\t\n\t\t\tQiangXu\n\t\t\n\t\t10.1145/3676536.3676791\n\t\t\n\t\n\t\n\t\tProceedings of the 43rd IEEE/ACM International Conference on Computer-Aided Design, ICCAD 2024\n\t\t\n\t\t\tJinjunXiong\n\t\t\n\t\t\n\t\t\tRobertWille\n\t\t\n\t\tthe 43rd IEEE/ACM International Conference on Computer-Aided Design, ICCAD 2024Newark Liberty International Airport Marriott, NJ, USA\n\t\t\n\t\t\tACM\n\t\t\tOctober 27-31, 2024\n\t\t\t184\n\t\t\t2024"
+    },
+    {
+      "id": 53,
+      "text": "The complexity of propositional linear temporal logics\n\t\t\n\t\t\tA\n\t\t\n\t\t\n\t\t\tPrasadSistla\n\t\t\n\t\t\n\t\t\tEdmundMClarke\n\t\t\n\t\t10.1145/3828.3837\n\t\t\n\t\n\t\n\t\tJ. ACM\n\t\t\n\t\t\t32\n\t\t\t3\n\t\t\t\n\t\t\t1985"
+    },
+    {
+      "id": 54,
+      "text": "An Optimized Bracing System for Distributed Lateral Loads\n\t\t\n\t\t\tBenjaminJacot\n\t\t\n\t\t\n\t\t\tCorentinFivet\n\t\t\n\t\t\n\t\t\tMitchellShope\n\t\t\n\t\t\n\t\t\tDimitriosPagonakis\n\t\t\n\t\t\n\t\t\tJohnOchsendorf\n\t\t\n\t\t10.5176/2301-394x_ace17.117\n\t\t\n\t\n\t\n\t\tAnnual International Conference on Architecture and Civil Engineering (ACE 2017)\n\t\t\n\t\t\tGlobal Science & Technology Forum (GSTF)\n\t\t\t1974\n\t\t\t\n\t\t\n\t\t\n\t\t\tMassachusetts Institute of Technology, USA\n\t\t\n\t\n\tPhD thesis"
+    },
+    {
+      "id": 55,
+      "text": "How to fine-tune BERT for text classification?\n\t\t\n\t\t\tChiSun\n\t\t\n\t\t\n\t\t\tXipengQiu\n\t\t\n\t\t\n\t\t\tYigeXu\n\t\t\n\t\t\n\t\t\tXuanjingHuang\n\t\t\n\t\t10.1007/978-3-030-32381-3\\16\n\t\t\n\t\n\t\n\t\tChinese Computational Linguistics -18th China National Conference\n\t\tLecture Notes in Computer Science\n\t\t\n\t\t\tMaosongSun\n\t\t\n\t\t\n\t\t\tXuanjingHuang\n\t\t\n\t\t\n\t\t\tHengJi\n\t\t\n\t\t\n\t\t\tZhiyuanLiu\n\t\t\n\t\t\n\t\t\tYangLiu\n\t\t\n\t\tKunming, China\n\t\t\n\t\t\tSpringer\n\t\t\t2019. October 18-20, 2019. 2019\n\t\t\t11856\n\t\t\t\n\t\t\n\t\n\tProceedings"
+    },
+    {
+      "id": 56,
+      "text": "Representation learning with contrastive predictive coding\n\t\t\n\t\t\tAäronVan Den Oord\n\t\t\n\t\t\n\t\t\tYazheLi\n\t\t\n\t\t\n\t\t\tOriolVinyals\n\t\t\n\t\tCoRR, abs/1807.03748\n\t\t\n\t\t\n\t\t\t2018"
+    },
+    {
+      "id": 57,
+      "text": "Learning finite linear temporal logic specifications with a specialized neural operator\n\t\t\n\t\t\tHomerWalke\n\t\t\n\t\t\n\t\t\tDanielRitter\n\t\t\n\t\t\n\t\t\tCarlTrimbach\n\t\t\n\t\t\n\t\t\tMichaelLittman\n\t\t\n\t\tCoRR, abs/2111.04147\n\t\t\n\t\t\n\t\t\t2021"
+    },
+    {
+      "id": 58,
+      "text": "Huggingface's transformers: State-of-the-art natural language processing\n\t\t\n\t\t\tThomasWolf\n\t\t\n\t\t\n\t\t\tLysandreDebut\n\t\t\n\t\t\n\t\t\tVictorSanh\n\t\t\n\t\t\n\t\t\tJulienChaumond\n\t\t\n\t\t\n\t\t\tClementDelangue\n\t\t\n\t\t\n\t\t\tAnthonyMoi\n\t\t\n\t\t\n\t\t\tPierricCistac\n\t\t\n\t\t\n\t\t\tTimRault\n\t\t\n\t\t\n\t\t\tRémiLouf\n\t\t\n\t\t\n\t\t\tMorganFuntowicz\n\t\t\n\t\t\n\t\t\tJamieBrew\n\t\t\n\t\tCoRR, abs/1910.03771\n\t\t\n\t\t\n\t\t\t2019"
+    },
+    {
+      "id": 59,
+      "text": "Circuit representation learning with masked gate modeling and verilog-aig alignment\n\t\t\n\t\t\tHaoyuanWu\n\t\t\n\t\t\n\t\t\tHaishengZheng\n\t\t\n\t\t\n\t\t\tYuanPu\n\t\t\n\t\t\n\t\t\tBeiYu\n\t\t\n\t\t\n\t\n\t\n\t\tThe Thirteenth International Conference on Learning Representations, ICLR 2025\n\t\tSingapore\n\t\t\n\t\t\tApril 24-28, 2025. 2025\n\t\t\n\t\n\tOpenReview.net"
+    },
+    {
+      "id": 60,
+      "text": "Survey of machine learning for software-assisted hardware design verification: Past, present, and prospect\n\t\t\n\t\t\tNanWu\n\t\t\n\t\t\n\t\t\tYingjieLi\n\t\t\n\t\t\n\t\t\tHangYang\n\t\t\n\t\t\n\t\t\tHanqiuChen\n\t\t\n\t\t\n\t\t\tSteveDai\n\t\t\n\t\t\n\t\t\tCongHao\n\t\t\n\t\t\n\t\t\tCunxiYu\n\t\t\n\t\t\n\t\t\tYuanXie\n\t\t\n\t\t10.1145/3661308\n\t\t\n\t\n\t\n\t\tACM Trans. Design Autom. Electr. Syst\n\t\t\n\t\t\t29\n\t\t\t4\n\t\t\t\n\t\t\t2024"
+    },
+    {
+      "id": 61,
+      "text": "CLEAR: contrastive learning for sentence representation\n\t\t\n\t\t\tZhuofengWu\n\t\t\n\t\t\n\t\t\tSinongWang\n\t\t\n\t\t\n\t\t\tJiataoGu\n\t\t\n\t\t\n\t\t\tMadianKhabsa\n\t\t\n\t\t\n\t\t\tFeiSun\n\t\t\n\t\t\n\t\t\tHaoMa\n\t\t\n\t\t\n\t\t\n\t\t\tCoRR, abs/2012.15466, 2020"
+    },
+    {
+      "id": 62,
+      "text": "On-the-fly model checking with neural mcts\n\t\t\n\t\t\tRuiyangXu\n\t\t\n\t\t\n\t\t\tKarlLieberherr\n\t\t\n\t\t10.1007/978-3-031-06773-030\n\t\t978-3-031-06773-0_30\n\t\t\n\t\n\t\n\t\tNASA Formal Methods: 14th International Symposium\n\t\tPasadena, CA, USA; Berlin, Heidelberg\n\t\t\n\t\t\tSpringer-Verlag\n\t\t\tMay 24-27, 2022. 2022\n\t\t\t2022\n\t\t\t\n\t\t\n\t\n\tProceedings"
+    },
+    {
+      "id": 63,
+      "text": "Investigating why contrastive learning benefits robustness against label noise\n\t\t\n\t\t\tYihaoXue\n\t\t\n\t\t\n\t\t\tKyleWhitecross\n\t\t\n\t\t\n\t\t\tBaharanMirzasoleiman\n\t\t\n\t\t\n\t\n\t\n\t\tInternational Conference on Machine Learning\n\t\t\n\t\t\tKamalikaChaudhuri\n\t\t\n\t\t\n\t\t\tStefanieJegelka\n\t\t\n\t\t\n\t\t\tLeSong\n\t\t\n\t\t\n\t\t\tCsabaSzepesvári\n\t\t\n\t\t\n\t\t\tGangNiu\n\t\t\n\t\t\n\t\t\tSivanSabato\n\t\t\n\t\tBaltimore, Maryland, USA\n\t\t\n\t\t\t17-23 July 2022. 2022\n\t\t\t2022\n\t\t\t\n\t\t\n\t\n\tPMLR"
+    },
+    {
+      "id": 64,
+      "text": "Deepgate4: Efficient and effective representation learning for circuit design at scale\n\t\t\n\t\t\tZiyangZheng\n\t\t\n\t\t\n\t\t\tShanHuang\n\t\t\n\t\t\n\t\t\tJianyuanZhong\n\t\t\n\t\t\n\t\t\tZhengyuanShi\n\t\t\n\t\t\n\t\t\tGuohaoDai\n\t\t\n\t\t\n\t\t\tNingyiXu\n\t\t\n\t\t\n\t\t\tQiangXu\n\t\t\n\t\t\n\t\n\t\n\t\tThe Thirteenth International Conference on Learning Representations, ICLR 2025\n\t\tSingapore\n\t\t\n\t\t\tApril 24-28, 2025. 2025\n\t\t\n\t\n\tOpenReview.net"
+    },
+    {
+      "id": 65,
+      "text": "TAG: learning circuit spatial embedding from layouts\n\t\t\n\t\t\tKerenZhu\n\t\t\n\t\t\n\t\t\tHaoChen\n\t\t\n\t\t\n\t\t\tWalkerJTurner\n\t\t\n\t\t\n\t\t\tGeorgeFKokai\n\t\t\n\t\t\n\t\t\tPo-HsuanWei\n\t\t\n\t\t\n\t\t\tDavidZPan\n\t\t\n\t\t\n\t\t\tHaoxingRen\n\t\t\n\t\t10.1145/3508352.3549384\n\t\t\n\t\n\t\n\t\tProceedings of the 41st IEEE/ACM International Conference on Computer-Aided Design, ICCAD 2022\n\t\t\n\t\t\tTulikaMitra\n\t\t\n\t\t\n\t\t\tEvangelineF YYoung\n\t\t\n\t\t\n\t\t\tJinjunXiong\n\t\t\n\t\tthe 41st IEEE/ACM International Conference on Computer-Aided Design, ICCAD 2022San Diego, California, USA\n\t\t\n\t\t\tACM\n\t\t\t30 October 2022 -3 November 2022\n\t\t\t66\n\t\t\t2022"
+    },
+    {
+      "id": 66,
+      "text": "LTL model checking based on binary classification of machine learning\n\t\t\n\t\t\tWeijunZhu\n\t\t\n\t\t\n\t\t\tHuanmeiWu\n\t\t\n\t\t\n\t\t\tMiaoleiDeng\n\t\t\n\t\t10.1109/ACCESS.2019.2942762\n\t\t\n\t\n\t\n\t\tIEEE Access\n\t\t\n\t\t\t7\n\t\t\t\n\t\t\t2019"
+    }
+  ],
+  "formulas": [
+    {
+      "id": "FORMULA_1",
+      "raw": "φ = ( i 0 ) → ( (¬i 1 → o 1 ))"
+    },
+    {
+      "id": "FORMULA_2",
+      "raw": "u c1 , • • • , u c N and v φ1 , • • • , v φ N ."
+    },
+    {
+      "id": "FORMULA_3",
+      "raw": "L CNML = L CE + λ L RR ,"
+    },
+    {
+      "id": "FORMULA_4",
+      "raw": "φ := assumption∈φ A assumption → guarantee∈φ G guarantee"
+    },
+    {
+      "id": "FORMULA_5",
+      "raw": "C |= assumption∈φ A assumption → φ ′"
+    },
+    {
+      "id": "FORMULA_6",
+      "raw": "φ := p | φ ∧ φ | ¬φ | ⃝φ | φ U φ"
+    },
+    {
+      "id": "FORMULA_7",
+      "raw": "• π |= ¬φ iff π ̸ |= φ • π |= p iff p ∈ π[0]; π |= ¬p iff p / ∈ π[0]"
+    }
+  ]
+}

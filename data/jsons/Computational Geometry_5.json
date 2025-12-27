@@ -1,0 +1,497 @@
+{
+  "title": "The Road to the Closest Point is Paved by Good Neighbors",
+  "authors": [
+    {
+      "firstname": "Sariel",
+      "surname": "Har-Peled",
+      "email": "sariel@illinois.edu"
+    },
+    {
+      "firstname": "Benjamin",
+      "surname": "Raichel",
+      "email": "benjamin.raichel@utdallas.edu"
+    },
+    {
+      "firstname": "Eliot",
+      "surname": "Robson",
+      "email": "erobson2@illinois.edu"
+    }
+  ],
+  "abstract": "Given a set P of n points in R d , and a parameter ε ∈ (0, 1), we present a new construction of a directed graph G, of size O(n/ε d), such that (1 + ε)-ANN queries can be answered by performing a greedy walk on G, repeatedly moving to a neighbor that is (significantly) better than the current point. To the best of our knowledge, this is the first construction of a linear size with no dependency on the spread of the point set. The resulting query time, is O(ε-d log Ψ), where Ψ is the spread of P. The new construction is surprisingly simple and should be practical.",
+  "sections": [
+    {
+      "title": "Introduction",
+      "paragraphs": [
+        "A problem commonly encountered is nearest neighbor search (aka proximity search) -given a finite set P, endowed with a metric d, preprocess P such that given a query point q one can quickly compute its nearest neighbor nn q (P) = arg min p∈P d(q, p) in P. This problem was studied extensively in the last 60 years. In high-dimensional Euclidean space, the exact problem can not be solved faster than the time it takes to scan the input. Even in moderate dimensions (say four), exact data structures seem hopeless. Thus, people turned to approximation, when one is allowed to return a point sufficiently close to the actual answer.",
+        "For low/moderate dimensions, data structures based on kd-tree perform well for the ANN (i.e., approximate nearest-neighbor ) problem, both in theory and practice [ AMN+98 ]. The problem is significantly more challenging in higher dimensions, and even getting a data structure with sublinear query time is not easy. Locality-sensitive hashing (LSH) introduced by Indy and Motwani [ IM98 ,HIM12 ] offered a data structure that performed well in theory and practice.",
+        "NN graph. Another natural approach is constructing a graph on the points P. Then perform an A * -type search for the nearest neighbor, walking on the graph towards the nearest point to the query. Arya and Mount [ AM93 ] and Clarkson [ Cla94 ] both offered results along this direction, see Table 1.1 for details. This research direction was abandoned in theory because of better theoretical results [ AMN+98 ], but empirical work using this technique continued.",
+        "A desired property of many of these graphs is that greedy routing suffices -that is, one starts with an arbitrary vertex, and performs a walk always moving to the neighbor of the current vertex closest to the query point, till convergence, and this yields the desired ANN.",
+        "Navigable graphs. For α > 1, a graph is α-navigable if for any pair s, t, either s → t ∈ E(G), or there exist s → y ∈ E(G), such that d(y, t) < 1 α ∥s -t∥. Namely, a neighbor of s is \"significantly\" closer to the destination. Indyk and Xu [ IX23 ] showed that greedy routing on α-navigable graph answers γ-ANN queries, where γ ≈ α+1 α-1 .",
+        "DiskANN. Recently, Subramanya et al. [ SDS+19 ] (DiskANN) presented results that seem to outperform existing techniques in practice. DiskANN presents a rather interesting, but hard to analyze, construction of the NN-graph. It starts with a random graph over the points, then queries all points for their nearest neighbors, performing an A * -type search in the graph. The algorithm then adds some edges along the found solution to the graph. The algorithm prunes whenever a vertex degree exceeds a certain threshold. Somewhat related approaches used in practice include HNSW [ MY20 ], and NSG [ FXWC19 ]. Indyk and Xu [ IX23 ] studied a variant of DiskANN and provided theoretical analysis for its performance -showing that it works well if the data is low-dimensional and of bounded spread. This slow preprocessing version performs a cleanup for each vertex in the graph separately, starting with the whole point set. They also showed a matching lower-bound showing that in the worst case, DiskANN (with \"fast preprocessing\") needs linear query time.",
+        "To spread or not to spread? Traditionally, there is a dislike for theoretical results that depend on the spread of the input. As a reminder, for a set P in a metric space, its spread Ψ = ∇(P)/cp(P) -that is, the ratio between the longest distance to the smallest distance between any two points of P. Generally speaking, any dependency of the form log Ψ in results can be replaced, usually after tedious and involved work, with log n, where n = |P| [ HM05 ]. In practice, even in moderate dimensions, frequently the spread Ψ is small. Thus, logarithmic dependency on the spread is quite acceptable, and in some cases, even preferable [ IX23 ] to logarithmic dependency on n.",
+        "Greedy permutation. Given a set P of n points in a metric space, a natural way of ordering the points is provided by starting with an arbitrary point of P, and then repeatedly picking the furthest point in P from the set of points picked so far. The resulting ordering of P = ⟨p 1 , . . . , p n ⟩ is known as the greedy permutation [ Har11 ], see Section 4.1 for details. The greedy permutation can be approximated in near-linear time if the dimension of the metric space is low. It has the desired property that for any k ∈ {1, . . . , n}, the prefix P k = {p 1 , . . . , p k } is a 2-approximation to the optimal k-center clustering of P. [ Gon85 ]"
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Our results",
+      "paragraphs": [
+        "We revisit the underlying problem, developing a better guaranteed construction of navigable graphs in low dimensions. Specifically, the input is a set P of n points in R d , and a parameter ε ∈ (0, 1). (Our results also hold verbatim when O(d) is the doubling dimension of the metric space hosting P.) We show the following: (I) NN graph using WSPD. Inspired by the analysis of Indyk and Xu [ IX23 ], we show how to construct a graph that can be used to answer (1 + ε)-ANN by performing a greedy walk. Our construction"
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Space",
+      "paragraphs": [
+        "Query time Ref Remark uses WSPD, and it intuitively provides a direct construction of a graph similar to the one built by DiskANN for the settings analyzed by Indyk and Xu. Namely, our construction can be interpreted as providing an alternative explanation for the graph constructed by DiskANN (when using \"slowpreprocessing\"). The resulting graph size depends logarithmically on the spread of the input, see Table 1.1 for details. (II) NN graph using greedy permutation. We provide a new construction for navigable graphs that uses the greedy permutation -it connects O(1/ε d ) edges into a point in the permutation from previous points. Thus, the resulting graph has a size that is linear and independent of the spread of the point set. To our knowledge, this is the first construction to have this property. In addition, it does not use any Euclidean space properties, and applies to doubling spaces, unlike the constructions of Arya and Mount and the one by Clarkson.",
+        "Paper organization. We provide some necessary background in Section 2 . Section 2.2 describes some key components of DiskANN. Section 2.3 describes WSPD in detail. Section 3 describes the construction of navigable graph using WSPD. Section 4 describes the new construction using greedy permutation."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Preliminaries",
+      "paragraphs": [],
+      "subsections": []
+    },
+    {
+      "title": "Metric spaces",
+      "paragraphs": [
+        "Definition 2.1. A metric space X is a pair X = (U, d), where U is the ground set, and The ratio between these two quantities is the spread : Ψ(P) = ∇(P)/cp(P).",
+        "Definition 2.3. For a point q ∈ U , and a set P ⊆ U , its nearest-neighbor in P, is the point nn P (q) = arg min p∈P d(q, p). The distance between q and nn P (q) is denoted by d(q, P) = min p∈P d(q, p).",
+        "Definition 2.4. Consider a metric space (U, d), and a set P ⊆ U . A set N ⊆ P is an r-packing for P if the following hold: (i) Covering property: All the points of P are within a distance < r from the points of N . Formally, for all p ∈ P, d(p, N ) < r. (ii) Separation property: For any pair of points x, y ∈ N , we have that d(x, y) ≥ r.",
+        "The packing is computed by repeatedly adding any point in P at a distance ≥ r from the current packing, to the current packing, till no such point exists. Faster algorithms are known in some cases [ HR15 ,EHS20 ].",
+        "Definition 2.5. For a point x ∈ U , and a radius r ≥ 0, the ball of radius r centered at x is the set b",
+        "Definition 2.6. For ε ∈ (0, 1), and a query point q ∈ U , a point p is (1 + ε)-ANN (approximate nearestneighbor) for q if d(q, p) ≤ (1 + ε)d(q, P). Doubling metrics. Consider a finite metric space X = (U, d), The doubling constant λ of a set U , is the minimum integer m > 0, such that for every ball b of X, can be covered by at most m balls of at most half the radius. The doubling dimension of the metric space, denoted by δ, is ⌈log 2 λ⌉. it is not hard to verify that R d has doubling constant 2 O(d) , and thus doubling dimension O(d). Doubling dimension is an abstraction of the standard Euclidean dimension, and in many cases, real data lying in a high-dimensional ambient space has a much lower doubling dimension. Many algorithms, for lowdimensional Euclidean input, extend to spaces with low doubling dimension [ HM06 ]."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Background on graph-based search for ANN",
+      "paragraphs": [
+        "Search procedure. Consider a directed graph G = (P, E) built over a set P of n points in some metric space. The task is to compute the ANN (or k closest such points) for a given query point q. The algorithm performs a Dijkstra-like exploration of the graph -specifically, one initializes the queue to contain some arbitrary start vertex s. Now, in each iteration, one extracts the minimum distance point in the queue from q, and adds all its outgoing neighbors (not yet visited or queued) to the queue. If the queue exceeds a certain threshold, one removes all the points from the queue except the L closest to q, where L is some prespecified parameter. As in Dijkstra, the algorithm avoids visiting the same node more than once. Once the queue is empty, the search is completed. Let V be the set of all vertices visited during the search. The procedure returns the k closest vertices visited, sorted by distance from q (it might also return the set V ).",
+        "Greedy routing. A more straightforward search procedure performs a walk in the graph starting from a vertex. It repeatedly moves to a neighbor closer to the query point, till reaching a (usually approximate) local minimum. There are two natural variants: (A) The \"impulsive\" version moves as soon as a neighbor, significantly closer to the query, is encountered. (B) The more \"mature\" alternative is to move to the best neighbor attached to the current point."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Robust prune (DiskANN).",
+      "paragraphs": [
+        "A key component is pruning the outgoing edges from vertices with high out-degree. So consider a vertex v and its list of outgoing neighbors N v . The idea is to prune away neighbors that are too close together. To this end, one sorts the points of N v by increasing distance from v, and let N = ⟨p 1 , . . . , p m ⟩ be the resulting ordered list. The algorithm repeatedly takes the first Figure 2.1: Left: The points selected by robust prune, with α = 4, where the original set of ≈ 200, 000 points is a uniformly distributed set of points in the square, except for a disallowed \"island\" in the middle. Right: The Apollonius disks that were used during this process. (We have not shown the original point set, as it simply form a solid blob, and that seemed pointless [or is it pointfull?].) point p from N , adds it to the output list O v (initially empty), and removes all the points of N that are inside the ball",
+        "where α > 1 is some parameter (e.g., α = 2). In words, the set B v→p contains all the points of N that are α-times closer to p than to v. Intuitively, p serves as a local distribution center for v for all the points in B v→p . In Euclidean space the loci of all points that are α-times closer to p than v is an Apollonius ball , with center at",
+        "and of radius r = α α 2 -1 ∥v -p∥ , see Lemma A.1 . The algorithm removes B v→p from N , and repeats the process till N is exhausted. One then sets the outgoing edges from v to the (hopefully) reduced list of centers selected -that is, the edges",
+        "1 shows the example of the output of this process. Indyk and Xu [ IX23 ] showed that starting with N v = P, and performing this pruning for all the vertices of G, the resulting graph answers γ-ANN queries using greedy routing, where γ ≈ α+1 α-1 . (The version using N v = P is the \"slow-preprocessing\" variant of DiskANN.) Observation 2.7. We are interested in the (1 + ε)-ANN regime. That is γ = 1 + ε, for some ε ∈ (0, 1). We thus have that α = 2/ε + 1 in this case. The algorithm does pruning for the edge v → p, and we get that the Apollonius ball in this case has its center close to p, and it has radius ≈ (ε/2) ∥v -p∥. More precisely, the center is at p + ε 2 4(1+ε) (p -v) and the radius is r = 1 + ε 2 ε 2(1+ε) ∥v -p∥ ."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Background on WSPD",
+      "paragraphs": [
+        "For a graph G = (V, E), and a set",
+        "In the following, assume we are given a metric space (U, d).",
+        "Definition 2.8.",
+        "Definition 2.9. For a point set P ⊆ U , a pair decomposition of P is a set of pairs",
+        "such that (I) A i , B i ⊂ P for every i, (II) A i ∩ B i = ∅ for every i, and (III) s i=1 A i ⊗ B i = P 2 = P ⊗ P.",
+        "Definition 2.10. The pair",
+        "Definition 2.11. For a point set P, a well-separated pair decomposition of P with parameter 1/ε, denoted by 1 ε -WSPD, is a pair decomposition W = {A 1 , B 1 } , . . . , {A s , B s } of P, such that, for all i, the sets A i and B i are 1 ε -separated.",
+        "Theorem 2.12 ([ CK95 ]). For 1 ≥ ε > 0, and a set",
+        "Remark 2.13. A similar result to Theorem 2.12 is known for doubling metrics, see the work by Har-Peled and Mendel [ HM06 ]. Formally, for a point set P in a metric with doubling dimension d, one can compute a WSPD of",
+        "For a pair p = {B, C} ∈ W, its diameter is ∇(p) = ∇(B ∪ C)."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Nearest-neighbor graph via WSPD",
+      "paragraphs": [
+        "Observation 2.7 points out that the Apollonius ball, constructed for the edge v → p, used to prune away \"useless\" neighbors of v near p, is 1 ε -well-separated from v. Namely, v should be connected to all the representatives r in all well-separated pairs, where v and r are on different sides. As we show next, this interpretation gives rise to a direct construction of a navigable graph. Let G = (P, E) be the resulting graph. Given a query point q ∈ R d , let p 1 , . . . , p k be the sequence of vertices visited by the greedy walk in G for q (here p 1 is picked arbitrarily). Let t ∈ P be the nearest neighbor to q in P, let ℓ = ∥q -t∥. and ℓ i = ∥p i -q∥, for i = 1, . . . , k.",
+        "So, assume that ℓ i > (1 + ε)ℓ, and let {B i , C i } be the pair covering the pair p i t, and assume for concreteness that p i ∈ B i and t ∈ C i , and let p ′ i = ζ C i . By the WSPD property, we have that",
+        "That implies that",
+        "But then, the algorithm terminates in the next iteration, as (1 -ε)ℓ i+1 ≤ (1 -ε 2 )ℓ < ℓ, Namely, the algorithm performs O( log Ψ log(1/ε) + 1) iterations, and each iteration takes O(ε -d log Ψ) time, as this is the out-degree of each vertex of G."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Improving performance",
+      "paragraphs": [
+        "It is not hard to improve the above scheme, as described next. A natural approach is to build two graphs G 1/2 and G ε -the first uses ε = 1/2, and the second uses the given value of ε. We do the 1/2-NN greedy walk in G 1/2 , and then use the end vertex of this walk as a starting point for the ε-NN greedy walk in G ε . This two-round approach yields the following result.",
+        "Theorem 3.2. Given a set P of n points in R d with spread Ψ, one can construct two graphs G 1/2 , G ε on P, such that (1 + ε)-NN queries on P can be answered by first performing a 1/2-NN greedy walk in G 1/2 , and then using the returned vertex as the starting vertex for a ε-NN greedy walk in G ε . The resulting point is a (1+ε)-NN to the query point, and the walks take O(ε -d log Ψ+log 2 Ψ) time. The two computed graphs have O( 1 ε d n log Ψ) edges overall."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Proof:",
+      "paragraphs": [
+        "The key observation is that the first walk takes O(log 2 Ψ) time, as the approximation factor is a constant. While the second walk involves at most two iterations, and thus takes O(ε -d log Ψ) time."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "An improved query time",
+      "paragraphs": [
+        "One can improve the query time even further by slicing the graphs. We point this out as an indication that the above scheme is probably not optimal, although the suggested scheme is a bit involved. The basic idea is to use the intuition from the previous analysis -the length of edges used by the walk is exponentially decreasing till you get close to the query. We can thus use this by limiting the algorithm to use only edges that are roughly in the current resolution. If these edges provide no improvement, the algorithm moves down to a lower resolution. Assume the closest-pair distance in P is 1. We slice the graph G 1/2 into graphs H 1 , . . . , H m , where m = ⌈log 2 Ψ⌉, and H i contains all the edges of G 1/2 of length in the range [Ψ/2 i+3 , Ψ/2 i-3 ]. It is easy to verify that the degree of each vertex in the graph H i is O(1/(1/2) d ) = O(1). Note that an edge of G 1/2 appears in 7 of the slice graphs. Now, the idea is to start the 1 2 -NN greedy walk in H i for i = 1. As soon as it gets stuck, the algorithm moves the walk to H i+1 , and continues until it arrives at H m . Assume this process ended at a point p ∈ P, with L = ∥q -p∥, where q is the query point.",
+        "We now repeat the same slicing idea for G ε , and start the walk from p in the first sliced graph that contains edges of length L. It is easy to verify that the walk now would use only O(log 1 ε ) of these graphs till the length of the edges becomes so small that the search stops, and the desired (1 + ε)-ANN is computed.",
+        "Putting everything together, the resulting running time is O(log Ψ + 1 ε d log 1 ε )."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "A NN graph via greedy permutation",
+      "paragraphs": [
+        "4.1. Background: Greedy permutation.",
+        "Given a finite metric space X = (P, d), a κ-greedy permutation, for some κ ≥ 1, is an ordering p 1 , . . . , p n of the points of P, with associated radii r 1 ≥ r 2 ≥ • • • ≥ r n+1 , such that:",
+        "(A) The point p 1 is an arbitrary point of P, and r 1 = max p∈P ∥p -p 1 ∥.",
+        "(B) For all i ∈ n = {1, . . . , n}, all the points of P are covered by the union of balls of radius κr i centered at the points of P i = {p 1 , . . . , p i } -formally, P ⊆ ∪ i j=1 b(p j , r i ).",
+        "(C) For all i > 1, the distance of p i from P i-1 is r i-1 , and furthermore, cp(P i ) = r i (i.e., the closest-pair distance in P i is r i ).",
+        "Observation 4.1. The algorithm repeatedly picking the furthest point p i ∈ P \\ P i-1 from P i-1 computes the (exact) greedy permutation (i.e., κ = 1) in quadratic time, The exact greedy permutation is a packing for all prefixes: That is, for all i, the set P i is an r i -packing 1 of P, see Definition 2.4 .",
+        "For a set P of n points in R d (or in a metric space of bounded doubling dimension), Har-Peled and Mendel [ HM06 ] showed how to compute the κ-greedy permutation in O(n log n) time, where κ = 1 + 1/n O(1) . We assume that the exact greedy permutation is available for simplicity of exposition.",
+        "An additional useful property of the algorithm of Har-Peled and Mendel is that, for all i, one can compute for each point p i , all the points of P i-1 in distance at most (say) 4r i-1 /ε from it. Formally, let",
+        "be the friend list of p i (the friend list definition in [ HM06 ] is roughly the same when ε > 1/4, otherwise one needs to perform a local traversal on the net-tree, to compute F i , that takes O(|F i |) time). Intuitively, the friend list of p i is the set of all the points, in the packing P i-1 , that are relatively close to p i .",
+        "Since P i-1 is a r i-1 -packing, if we place a ball of radius r i-1 /2 around each point of P i-1 , they would all be interior disjoint. As such, for all p ∈ R d and R > 0, we have that"
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Thus, we have |F",
+      "paragraphs": [
+        "Observe that for all p j ∈ F i , we have j < i."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "The graph construction",
+      "paragraphs": [
+        "Given a set P of n points in R d , and a parameter ε ∈ (0, 1/2), the algorithm first computes the greedy permutation of P, and the friends list of each point, as described above. Next, the algorithm builds a directed graph G = (P, E), with the edges being",
+        "1 Assuming, for the sake of simplicity of exposition, all pairwise distances in P are unique.",
+        "In the constructed graph, the list of outgoing edges E v , from a vertex v, is sorted in increasing order by the index of the destination. This ordering can be realized by always adding the outgoing edges at the end of this list.",
+        "Answering ANN queries. The search uses the \"impulsive\" greedy routing described in Section 2.2 . Given a query point q ∈ R d , the algorithm starts with the current point being c = p 1 . The algorithm now scans the outgoing edges c → p j from the current vertex, sorted by increasing index j. The algorithm sets c = p j , as soon as an edge c → p j is encountered such that ∥q -p j ∥ ≤ (1 -ε/4) ∥q -c∥ .",
+        "It then restarts the scanning process of the out edges of the new vertex c. This process continues until all the outgoing edges of the current vertex have been scanned without finding a profitable move, and the algorithm returns the current node."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Analysis",
+      "paragraphs": [
+        "Clearly the graph G has O(n/ε d ) edges, as the ith vertex has at most",
+        "Observation 4.2. Consider a distance L > 0, and point p j , p i ∈ P. An edge",
+        ". This implies that the radius r i-1 = Ω(εL). Indeed, otherwise, p j is too far away from p i to be connected to it, and the edge would not be present in G. The above packing argument implies that there are at most O(1/ε d ) L-admissible edges emanating from a vertex p ∈ P. Let n(p, L) denote the number of L-admissible edges for p. The total number of out-edges of p is at most log Ψ i=0 n(p, ∇(P)/2 i ) = O ε -d log Ψ , where Ψ is the spread of P.",
+        "Lemma 4.3. For any query point q ∈ R d , the greedy routing for q (starting from p 1 ), in the above constructed graph G, returns a point p ∈ P, such that ∥q -p∥ ≤ (1 + ε)d(q, P). The query time is O(ε -d-1 log 2 Ψ), where Ψ = Ψ(P).",
+        "Proof: Assume the algorithm just moved to the point p j ∈ P and let L = ∥q -p j ∥. Let t be the nearestneighbor to q in P, with ℓ = ∥q -t∥. If L ≤ (1 + ε)ℓ, the algorithm gets the desired ANN and returns. Otherwise, L > (1 + ε)ℓ and",
+        "since ε ≤ 1/2. Namely, for ψ = εL/4, the ball b = b(t, ψ) is fully contained inside the ball B = b(q, (1 -ε/4)L), see Figure 4.1 .",
+        "Observe that the algorithm has not scanned any point in B ∩ P. Indeed, if it had scanned such a point, it would have moved to this point. Let p α be the point in P, with minimum index α, such that p α ∈ b. Assume for the time being that α > j (i.e., the current point c = p j ). We have r α-1 ≥ r α = d(p α , P α-1 ) ≥ d(t, P α-1 ) ≥ ψ, as p α is the furthest point in P from P α-1 (by the greedy permutation construction), and the ball b does not contain any point of P α-1 , see Observation 4.1 . We conclude that",
+        "But then the algorithm added the edge p j → p α to G during its construction, see Eq. (4.1) . Furthermore,",
+        "Thus, either the algorithm moved to p α , or some other close point to q. Namely, the distance of the point the algorithm moved to after p j had decreased the distance to q by a factor of (at least) 1 -ε/4. If α < j, consider the last point p β that the algorithm moved to (before moving to p j ) with β < α. But then, the same argument as above shows that p β → p α ∈ E(G), see Remark 4.4 below. Namely, the algorithm must have moved to p α , and thus never moved to p j , which is a contradiction.",
+        "The number of steps performed by the algorithm is O(log 1/(1-ε/4) Ψ(P)) = O(ε -1 log Ψ). Each scan naively takes O(ε -d log Ψ) time, thus implying the stated bound.",
+        "Remark 4.4. We elaborate here on the \"same\" argument above. The algorithm visited a vertex p β , then took an edge to a later vertex p γ , such that β < α < γ (i.e., the algorithm skipped2 p α ), on its way to the current vertex p j . As a reminder, p α is the first point (in the permutation) in b. We have L + = ∥q -p β ∥ > ∥q -p j ∥ = L. Let ψ + = εL + /4, and observe that b ⊆ b + = b(t, ψ + ) ⊆ B + = b(q, (1 -ε/4)L + ). But then, r α-1 ≥ ψ + , and (arguing as above) the edge p β → p α is in the graph, and the search algorithm is forced to take it when scanning the outgoing edges of p β . A contradiction.",
+        "Improving the query process. We rebuild the above graph so that it answers (1+ε/4)-ANN queries. The above algorithm is forward scanning -if an edge p j → p i is inspected by the algorithm, all future edges p u → p v inspected by the algorithm would have v ≥ i (we also have that u = j or u ≥ i).",
+        "The idea is to modify the algorithm so that it terminates early.",
+        "Claim 4.5. If e = p j → p i is inspected by the algorithm, ∥q -p j ∥ < ∥q -p i ∥, and r i < (ε/8) ∥q -p j ∥, then p j is (1 + ε)-ANN to q in P, and the algorithm can stop.",
+        "Proof: Since P i is an r i -packing of P, there must be a point p ′ ∈ P i that is in distance r i from t, where t = nn q (P). We can interpret the algorithm as working on P i (instead of P). Indeed, the induced subgraph on P i , G i = G P i , is the same as the graph the algorithm would build if the input point set is P i . The query process on G i is identical to the one on G, as long as we inspect edges in G i . Thus, if we run the algorithm on G i , e is the last edge inspected. But p i is not an improvement, so p j is the point the algorithm returns when run on G i . Lemma 4.3 then implies that p j is (1 + ε/4)-ANN (as we calibrated ε to be ε/4). Thus, we have that ν = ∥q -p j ∥ ≤ (1 + ε/4)d(q, P i ), and",
+        "We conclude that ∥q -p j ∥ ≤ (1 + ε/4)d(q, P i ) ≤ (1 + ε/4)(d(q, P)",
+        "Let ∇ = ∇(P), and let R i = ∇ 2 i for i = 0, 1, . . . , h, where h = ⌈log 2 Ψ(P)⌉. Consider the greedy permutation p 1 , . . . , p n , and the associ-",
+        "Lemma 4.6. When using early stop, the query time of the ANN algorithm is at most O(ε -d log Ψ).",
+        "Proof: The algorithm's running time is proportional to the number of edges p j → p i it scans. There could be at most O(ε -1 log Ψ) edges that cause the algorithm to change the current vertex, as each such change decreases the NN distance by a factor of 1 -O(ε).",
+        "So we only have to pay for edges scanned in vain, without triggering a change to the current vertex. And let E i be all these edges whose destination is in the ith epoch B i , and let V i ⊆ B i be the set of destinations of the edges of E i .",
+        "Let x → y be the first edge of E i scanned, and let L i = ∥q -x∥. Claim 4.5 implies that L i = O(R i /ε) (as otherwise the algorithm would have terminated). But then, all the points of V i are contained inside the ball b(q, 2L i ). Since these points are all at a distance of at least R i /2 from each other, it follows that",
+        "Since there are O(log Ψ) epochs, it follows that the total number of edges scanned in vain is O(ε -d log Ψ), which also bounds the running time.",
+        "Theorem 4.7. Given a set P of n points in R d , and a parameter ε ∈ (0, 1), one can construct a directed graph G = (P, E) with O(n/ε d ) edges, such that given a query point q, one can compute a (1 + ε)-ANN to q by performing a greedy ε-NN walk in G. This walk takes O(ε -d log Ψ) time, where Ψ is the spread of P.",
+        "Remark 4.8. The result of Theorem 4.7 holds if P ⊆ U is a set of n points in a metric space X = (U, d) of bounded doubling dimension δ. The term d is then replaced by O(δ). Thus, the space of the construction is n/ε O(δ) , and the query time is ε -O(δ) log Ψ."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "A. Apollonius circle",
+      "paragraphs": [
+        "Lemma A.1. Let u 1 , u 2 be two points in R d , and consider the set U of all points p ∈ R d , such that w 1 ∥u 1 -p∥ ≥ w 2 ∥u 2 -p∥, where w 1 , w 2 are two specified weights. For ξ = ∥u 1 -u 2 ∥, the set U is the Apollonius ball centered at",
+        "and of radius κ κ 2 -1 ξ.",
+        "Proof: By rotating and translating space, we can assume that u 1 = (0, 0) and u 2 = (ξ, 0) be two points, with weights w 1 and w 2 , respectively. The Apollonius circle they define is w 1 ∥u 1 -(x, y)∥ = w 2 ∥u 2 -(x, y)∥ .",
+        "Setting κ = w 2 /w 1 , and squaring, we have",
+        "Namely, the disk has a center at",
+        "and its radius is r = κ κ 2 -1 ξ."
+      ],
+      "subsections": []
+    }
+  ],
+  "body_paragraphs": [
+    "A problem commonly encountered is nearest neighbor search (aka proximity search) -given a finite set P, endowed with a metric d, preprocess P such that given a query point q one can quickly compute its nearest neighbor nn q (P) = arg min p∈P d(q, p) in P. This problem was studied extensively in the last 60 years. In high-dimensional Euclidean space, the exact problem can not be solved faster than the time it takes to scan the input. Even in moderate dimensions (say four), exact data structures seem hopeless. Thus, people turned to approximation, when one is allowed to return a point sufficiently close to the actual answer.",
+    "For low/moderate dimensions, data structures based on kd-tree perform well for the ANN (i.e., approximate nearest-neighbor ) problem, both in theory and practice [ AMN+98 ]. The problem is significantly more challenging in higher dimensions, and even getting a data structure with sublinear query time is not easy. Locality-sensitive hashing (LSH) introduced by Indy and Motwani [ IM98 ,HIM12 ] offered a data structure that performed well in theory and practice.",
+    "NN graph. Another natural approach is constructing a graph on the points P. Then perform an A * -type search for the nearest neighbor, walking on the graph towards the nearest point to the query. Arya and Mount [ AM93 ] and Clarkson [ Cla94 ] both offered results along this direction, see Table 1.1 for details. This research direction was abandoned in theory because of better theoretical results [ AMN+98 ], but empirical work using this technique continued.",
+    "A desired property of many of these graphs is that greedy routing suffices -that is, one starts with an arbitrary vertex, and performs a walk always moving to the neighbor of the current vertex closest to the query point, till convergence, and this yields the desired ANN.",
+    "Navigable graphs. For α > 1, a graph is α-navigable if for any pair s, t, either s → t ∈ E(G), or there exist s → y ∈ E(G), such that d(y, t) < 1 α ∥s -t∥. Namely, a neighbor of s is \"significantly\" closer to the destination. Indyk and Xu [ IX23 ] showed that greedy routing on α-navigable graph answers γ-ANN queries, where γ ≈ α+1 α-1 .",
+    "DiskANN. Recently, Subramanya et al. [ SDS+19 ] (DiskANN) presented results that seem to outperform existing techniques in practice. DiskANN presents a rather interesting, but hard to analyze, construction of the NN-graph. It starts with a random graph over the points, then queries all points for their nearest neighbors, performing an A * -type search in the graph. The algorithm then adds some edges along the found solution to the graph. The algorithm prunes whenever a vertex degree exceeds a certain threshold. Somewhat related approaches used in practice include HNSW [ MY20 ], and NSG [ FXWC19 ]. Indyk and Xu [ IX23 ] studied a variant of DiskANN and provided theoretical analysis for its performance -showing that it works well if the data is low-dimensional and of bounded spread. This slow preprocessing version performs a cleanup for each vertex in the graph separately, starting with the whole point set. They also showed a matching lower-bound showing that in the worst case, DiskANN (with \"fast preprocessing\") needs linear query time.",
+    "To spread or not to spread? Traditionally, there is a dislike for theoretical results that depend on the spread of the input. As a reminder, for a set P in a metric space, its spread Ψ = ∇(P)/cp(P) -that is, the ratio between the longest distance to the smallest distance between any two points of P. Generally speaking, any dependency of the form log Ψ in results can be replaced, usually after tedious and involved work, with log n, where n = |P| [ HM05 ]. In practice, even in moderate dimensions, frequently the spread Ψ is small. Thus, logarithmic dependency on the spread is quite acceptable, and in some cases, even preferable [ IX23 ] to logarithmic dependency on n.",
+    "Greedy permutation. Given a set P of n points in a metric space, a natural way of ordering the points is provided by starting with an arbitrary point of P, and then repeatedly picking the furthest point in P from the set of points picked so far. The resulting ordering of P = ⟨p 1 , . . . , p n ⟩ is known as the greedy permutation [ Har11 ], see Section 4.1 for details. The greedy permutation can be approximated in near-linear time if the dimension of the metric space is low. It has the desired property that for any k ∈ {1, . . . , n}, the prefix P k = {p 1 , . . . , p k } is a 2-approximation to the optimal k-center clustering of P. [ Gon85 ]",
+    "We revisit the underlying problem, developing a better guaranteed construction of navigable graphs in low dimensions. Specifically, the input is a set P of n points in R d , and a parameter ε ∈ (0, 1). (Our results also hold verbatim when O(d) is the doubling dimension of the metric space hosting P.) We show the following: (I) NN graph using WSPD. Inspired by the analysis of Indyk and Xu [ IX23 ], we show how to construct a graph that can be used to answer (1 + ε)-ANN by performing a greedy walk. Our construction",
+    "Query time Ref Remark uses WSPD, and it intuitively provides a direct construction of a graph similar to the one built by DiskANN for the settings analyzed by Indyk and Xu. Namely, our construction can be interpreted as providing an alternative explanation for the graph constructed by DiskANN (when using \"slowpreprocessing\"). The resulting graph size depends logarithmically on the spread of the input, see Table 1.1 for details. (II) NN graph using greedy permutation. We provide a new construction for navigable graphs that uses the greedy permutation -it connects O(1/ε d ) edges into a point in the permutation from previous points. Thus, the resulting graph has a size that is linear and independent of the spread of the point set. To our knowledge, this is the first construction to have this property. In addition, it does not use any Euclidean space properties, and applies to doubling spaces, unlike the constructions of Arya and Mount and the one by Clarkson.",
+    "Paper organization. We provide some necessary background in Section 2 . Section 2.2 describes some key components of DiskANN. Section 2.3 describes WSPD in detail. Section 3 describes the construction of navigable graph using WSPD. Section 4 describes the new construction using greedy permutation.",
+    "Definition 2.1. A metric space X is a pair X = (U, d), where U is the ground set, and The ratio between these two quantities is the spread : Ψ(P) = ∇(P)/cp(P).",
+    "Definition 2.3. For a point q ∈ U , and a set P ⊆ U , its nearest-neighbor in P, is the point nn P (q) = arg min p∈P d(q, p). The distance between q and nn P (q) is denoted by d(q, P) = min p∈P d(q, p).",
+    "Definition 2.4. Consider a metric space (U, d), and a set P ⊆ U . A set N ⊆ P is an r-packing for P if the following hold: (i) Covering property: All the points of P are within a distance < r from the points of N . Formally, for all p ∈ P, d(p, N ) < r. (ii) Separation property: For any pair of points x, y ∈ N , we have that d(x, y) ≥ r.",
+    "The packing is computed by repeatedly adding any point in P at a distance ≥ r from the current packing, to the current packing, till no such point exists. Faster algorithms are known in some cases [ HR15 ,EHS20 ].",
+    "Definition 2.5. For a point x ∈ U , and a radius r ≥ 0, the ball of radius r centered at x is the set b",
+    "Definition 2.6. For ε ∈ (0, 1), and a query point q ∈ U , a point p is (1 + ε)-ANN (approximate nearestneighbor) for q if d(q, p) ≤ (1 + ε)d(q, P). Doubling metrics. Consider a finite metric space X = (U, d), The doubling constant λ of a set U , is the minimum integer m > 0, such that for every ball b of X, can be covered by at most m balls of at most half the radius. The doubling dimension of the metric space, denoted by δ, is ⌈log 2 λ⌉. it is not hard to verify that R d has doubling constant 2 O(d) , and thus doubling dimension O(d). Doubling dimension is an abstraction of the standard Euclidean dimension, and in many cases, real data lying in a high-dimensional ambient space has a much lower doubling dimension. Many algorithms, for lowdimensional Euclidean input, extend to spaces with low doubling dimension [ HM06 ].",
+    "Search procedure. Consider a directed graph G = (P, E) built over a set P of n points in some metric space. The task is to compute the ANN (or k closest such points) for a given query point q. The algorithm performs a Dijkstra-like exploration of the graph -specifically, one initializes the queue to contain some arbitrary start vertex s. Now, in each iteration, one extracts the minimum distance point in the queue from q, and adds all its outgoing neighbors (not yet visited or queued) to the queue. If the queue exceeds a certain threshold, one removes all the points from the queue except the L closest to q, where L is some prespecified parameter. As in Dijkstra, the algorithm avoids visiting the same node more than once. Once the queue is empty, the search is completed. Let V be the set of all vertices visited during the search. The procedure returns the k closest vertices visited, sorted by distance from q (it might also return the set V ).",
+    "Greedy routing. A more straightforward search procedure performs a walk in the graph starting from a vertex. It repeatedly moves to a neighbor closer to the query point, till reaching a (usually approximate) local minimum. There are two natural variants: (A) The \"impulsive\" version moves as soon as a neighbor, significantly closer to the query, is encountered. (B) The more \"mature\" alternative is to move to the best neighbor attached to the current point.",
+    "A key component is pruning the outgoing edges from vertices with high out-degree. So consider a vertex v and its list of outgoing neighbors N v . The idea is to prune away neighbors that are too close together. To this end, one sorts the points of N v by increasing distance from v, and let N = ⟨p 1 , . . . , p m ⟩ be the resulting ordered list. The algorithm repeatedly takes the first Figure 2.1: Left: The points selected by robust prune, with α = 4, where the original set of ≈ 200, 000 points is a uniformly distributed set of points in the square, except for a disallowed \"island\" in the middle. Right: The Apollonius disks that were used during this process. (We have not shown the original point set, as it simply form a solid blob, and that seemed pointless [or is it pointfull?].) point p from N , adds it to the output list O v (initially empty), and removes all the points of N that are inside the ball",
+    "where α > 1 is some parameter (e.g., α = 2). In words, the set B v→p contains all the points of N that are α-times closer to p than to v. Intuitively, p serves as a local distribution center for v for all the points in B v→p . In Euclidean space the loci of all points that are α-times closer to p than v is an Apollonius ball , with center at",
+    "and of radius r = α α 2 -1 ∥v -p∥ , see Lemma A.1 . The algorithm removes B v→p from N , and repeats the process till N is exhausted. One then sets the outgoing edges from v to the (hopefully) reduced list of centers selected -that is, the edges",
+    "1 shows the example of the output of this process. Indyk and Xu [ IX23 ] showed that starting with N v = P, and performing this pruning for all the vertices of G, the resulting graph answers γ-ANN queries using greedy routing, where γ ≈ α+1 α-1 . (The version using N v = P is the \"slow-preprocessing\" variant of DiskANN.) Observation 2.7. We are interested in the (1 + ε)-ANN regime. That is γ = 1 + ε, for some ε ∈ (0, 1). We thus have that α = 2/ε + 1 in this case. The algorithm does pruning for the edge v → p, and we get that the Apollonius ball in this case has its center close to p, and it has radius ≈ (ε/2) ∥v -p∥. More precisely, the center is at p + ε 2 4(1+ε) (p -v) and the radius is r = 1 + ε 2 ε 2(1+ε) ∥v -p∥ .",
+    "For a graph G = (V, E), and a set",
+    "In the following, assume we are given a metric space (U, d).",
+    "Definition 2.8.",
+    "Definition 2.9. For a point set P ⊆ U , a pair decomposition of P is a set of pairs",
+    "such that (I) A i , B i ⊂ P for every i, (II) A i ∩ B i = ∅ for every i, and (III) s i=1 A i ⊗ B i = P 2 = P ⊗ P.",
+    "Definition 2.10. The pair",
+    "Definition 2.11. For a point set P, a well-separated pair decomposition of P with parameter 1/ε, denoted by 1 ε -WSPD, is a pair decomposition W = {A 1 , B 1 } , . . . , {A s , B s } of P, such that, for all i, the sets A i and B i are 1 ε -separated.",
+    "Theorem 2.12 ([ CK95 ]). For 1 ≥ ε > 0, and a set",
+    "Remark 2.13. A similar result to Theorem 2.12 is known for doubling metrics, see the work by Har-Peled and Mendel [ HM06 ]. Formally, for a point set P in a metric with doubling dimension d, one can compute a WSPD of",
+    "For a pair p = {B, C} ∈ W, its diameter is ∇(p) = ∇(B ∪ C).",
+    "Observation 2.7 points out that the Apollonius ball, constructed for the edge v → p, used to prune away \"useless\" neighbors of v near p, is 1 ε -well-separated from v. Namely, v should be connected to all the representatives r in all well-separated pairs, where v and r are on different sides. As we show next, this interpretation gives rise to a direct construction of a navigable graph. Let G = (P, E) be the resulting graph. Given a query point q ∈ R d , let p 1 , . . . , p k be the sequence of vertices visited by the greedy walk in G for q (here p 1 is picked arbitrarily). Let t ∈ P be the nearest neighbor to q in P, let ℓ = ∥q -t∥. and ℓ i = ∥p i -q∥, for i = 1, . . . , k.",
+    "So, assume that ℓ i > (1 + ε)ℓ, and let {B i , C i } be the pair covering the pair p i t, and assume for concreteness that p i ∈ B i and t ∈ C i , and let p ′ i = ζ C i . By the WSPD property, we have that",
+    "That implies that",
+    "But then, the algorithm terminates in the next iteration, as (1 -ε)ℓ i+1 ≤ (1 -ε 2 )ℓ < ℓ, Namely, the algorithm performs O( log Ψ log(1/ε) + 1) iterations, and each iteration takes O(ε -d log Ψ) time, as this is the out-degree of each vertex of G.",
+    "It is not hard to improve the above scheme, as described next. A natural approach is to build two graphs G 1/2 and G ε -the first uses ε = 1/2, and the second uses the given value of ε. We do the 1/2-NN greedy walk in G 1/2 , and then use the end vertex of this walk as a starting point for the ε-NN greedy walk in G ε . This two-round approach yields the following result.",
+    "Theorem 3.2. Given a set P of n points in R d with spread Ψ, one can construct two graphs G 1/2 , G ε on P, such that (1 + ε)-NN queries on P can be answered by first performing a 1/2-NN greedy walk in G 1/2 , and then using the returned vertex as the starting vertex for a ε-NN greedy walk in G ε . The resulting point is a (1+ε)-NN to the query point, and the walks take O(ε -d log Ψ+log 2 Ψ) time. The two computed graphs have O( 1 ε d n log Ψ) edges overall.",
+    "The key observation is that the first walk takes O(log 2 Ψ) time, as the approximation factor is a constant. While the second walk involves at most two iterations, and thus takes O(ε -d log Ψ) time.",
+    "One can improve the query time even further by slicing the graphs. We point this out as an indication that the above scheme is probably not optimal, although the suggested scheme is a bit involved. The basic idea is to use the intuition from the previous analysis -the length of edges used by the walk is exponentially decreasing till you get close to the query. We can thus use this by limiting the algorithm to use only edges that are roughly in the current resolution. If these edges provide no improvement, the algorithm moves down to a lower resolution. Assume the closest-pair distance in P is 1. We slice the graph G 1/2 into graphs H 1 , . . . , H m , where m = ⌈log 2 Ψ⌉, and H i contains all the edges of G 1/2 of length in the range [Ψ/2 i+3 , Ψ/2 i-3 ]. It is easy to verify that the degree of each vertex in the graph H i is O(1/(1/2) d ) = O(1). Note that an edge of G 1/2 appears in 7 of the slice graphs. Now, the idea is to start the 1 2 -NN greedy walk in H i for i = 1. As soon as it gets stuck, the algorithm moves the walk to H i+1 , and continues until it arrives at H m . Assume this process ended at a point p ∈ P, with L = ∥q -p∥, where q is the query point.",
+    "We now repeat the same slicing idea for G ε , and start the walk from p in the first sliced graph that contains edges of length L. It is easy to verify that the walk now would use only O(log 1 ε ) of these graphs till the length of the edges becomes so small that the search stops, and the desired (1 + ε)-ANN is computed.",
+    "Putting everything together, the resulting running time is O(log Ψ + 1 ε d log 1 ε ).",
+    "4.1. Background: Greedy permutation.",
+    "Given a finite metric space X = (P, d), a κ-greedy permutation, for some κ ≥ 1, is an ordering p 1 , . . . , p n of the points of P, with associated radii r 1 ≥ r 2 ≥ • • • ≥ r n+1 , such that:",
+    "(A) The point p 1 is an arbitrary point of P, and r 1 = max p∈P ∥p -p 1 ∥.",
+    "(B) For all i ∈ n = {1, . . . , n}, all the points of P are covered by the union of balls of radius κr i centered at the points of P i = {p 1 , . . . , p i } -formally, P ⊆ ∪ i j=1 b(p j , r i ).",
+    "(C) For all i > 1, the distance of p i from P i-1 is r i-1 , and furthermore, cp(P i ) = r i (i.e., the closest-pair distance in P i is r i ).",
+    "Observation 4.1. The algorithm repeatedly picking the furthest point p i ∈ P \\ P i-1 from P i-1 computes the (exact) greedy permutation (i.e., κ = 1) in quadratic time, The exact greedy permutation is a packing for all prefixes: That is, for all i, the set P i is an r i -packing 1 of P, see Definition 2.4 .",
+    "For a set P of n points in R d (or in a metric space of bounded doubling dimension), Har-Peled and Mendel [ HM06 ] showed how to compute the κ-greedy permutation in O(n log n) time, where κ = 1 + 1/n O(1) . We assume that the exact greedy permutation is available for simplicity of exposition.",
+    "An additional useful property of the algorithm of Har-Peled and Mendel is that, for all i, one can compute for each point p i , all the points of P i-1 in distance at most (say) 4r i-1 /ε from it. Formally, let",
+    "be the friend list of p i (the friend list definition in [ HM06 ] is roughly the same when ε > 1/4, otherwise one needs to perform a local traversal on the net-tree, to compute F i , that takes O(|F i |) time). Intuitively, the friend list of p i is the set of all the points, in the packing P i-1 , that are relatively close to p i .",
+    "Since P i-1 is a r i-1 -packing, if we place a ball of radius r i-1 /2 around each point of P i-1 , they would all be interior disjoint. As such, for all p ∈ R d and R > 0, we have that",
+    "Observe that for all p j ∈ F i , we have j < i.",
+    "Given a set P of n points in R d , and a parameter ε ∈ (0, 1/2), the algorithm first computes the greedy permutation of P, and the friends list of each point, as described above. Next, the algorithm builds a directed graph G = (P, E), with the edges being",
+    "1 Assuming, for the sake of simplicity of exposition, all pairwise distances in P are unique.",
+    "In the constructed graph, the list of outgoing edges E v , from a vertex v, is sorted in increasing order by the index of the destination. This ordering can be realized by always adding the outgoing edges at the end of this list.",
+    "Answering ANN queries. The search uses the \"impulsive\" greedy routing described in Section 2.2 . Given a query point q ∈ R d , the algorithm starts with the current point being c = p 1 . The algorithm now scans the outgoing edges c → p j from the current vertex, sorted by increasing index j. The algorithm sets c = p j , as soon as an edge c → p j is encountered such that ∥q -p j ∥ ≤ (1 -ε/4) ∥q -c∥ .",
+    "It then restarts the scanning process of the out edges of the new vertex c. This process continues until all the outgoing edges of the current vertex have been scanned without finding a profitable move, and the algorithm returns the current node.",
+    "Clearly the graph G has O(n/ε d ) edges, as the ith vertex has at most",
+    "Observation 4.2. Consider a distance L > 0, and point p j , p i ∈ P. An edge",
+    ". This implies that the radius r i-1 = Ω(εL). Indeed, otherwise, p j is too far away from p i to be connected to it, and the edge would not be present in G. The above packing argument implies that there are at most O(1/ε d ) L-admissible edges emanating from a vertex p ∈ P. Let n(p, L) denote the number of L-admissible edges for p. The total number of out-edges of p is at most log Ψ i=0 n(p, ∇(P)/2 i ) = O ε -d log Ψ , where Ψ is the spread of P.",
+    "Lemma 4.3. For any query point q ∈ R d , the greedy routing for q (starting from p 1 ), in the above constructed graph G, returns a point p ∈ P, such that ∥q -p∥ ≤ (1 + ε)d(q, P). The query time is O(ε -d-1 log 2 Ψ), where Ψ = Ψ(P).",
+    "Proof: Assume the algorithm just moved to the point p j ∈ P and let L = ∥q -p j ∥. Let t be the nearestneighbor to q in P, with ℓ = ∥q -t∥. If L ≤ (1 + ε)ℓ, the algorithm gets the desired ANN and returns. Otherwise, L > (1 + ε)ℓ and",
+    "since ε ≤ 1/2. Namely, for ψ = εL/4, the ball b = b(t, ψ) is fully contained inside the ball B = b(q, (1 -ε/4)L), see Figure 4.1 .",
+    "Observe that the algorithm has not scanned any point in B ∩ P. Indeed, if it had scanned such a point, it would have moved to this point. Let p α be the point in P, with minimum index α, such that p α ∈ b. Assume for the time being that α > j (i.e., the current point c = p j ). We have r α-1 ≥ r α = d(p α , P α-1 ) ≥ d(t, P α-1 ) ≥ ψ, as p α is the furthest point in P from P α-1 (by the greedy permutation construction), and the ball b does not contain any point of P α-1 , see Observation 4.1 . We conclude that",
+    "But then the algorithm added the edge p j → p α to G during its construction, see Eq. (4.1) . Furthermore,",
+    "Thus, either the algorithm moved to p α , or some other close point to q. Namely, the distance of the point the algorithm moved to after p j had decreased the distance to q by a factor of (at least) 1 -ε/4. If α < j, consider the last point p β that the algorithm moved to (before moving to p j ) with β < α. But then, the same argument as above shows that p β → p α ∈ E(G), see Remark 4.4 below. Namely, the algorithm must have moved to p α , and thus never moved to p j , which is a contradiction.",
+    "The number of steps performed by the algorithm is O(log 1/(1-ε/4) Ψ(P)) = O(ε -1 log Ψ). Each scan naively takes O(ε -d log Ψ) time, thus implying the stated bound.",
+    "Remark 4.4. We elaborate here on the \"same\" argument above. The algorithm visited a vertex p β , then took an edge to a later vertex p γ , such that β < α < γ (i.e., the algorithm skipped2 p α ), on its way to the current vertex p j . As a reminder, p α is the first point (in the permutation) in b. We have L + = ∥q -p β ∥ > ∥q -p j ∥ = L. Let ψ + = εL + /4, and observe that b ⊆ b + = b(t, ψ + ) ⊆ B + = b(q, (1 -ε/4)L + ). But then, r α-1 ≥ ψ + , and (arguing as above) the edge p β → p α is in the graph, and the search algorithm is forced to take it when scanning the outgoing edges of p β . A contradiction.",
+    "Improving the query process. We rebuild the above graph so that it answers (1+ε/4)-ANN queries. The above algorithm is forward scanning -if an edge p j → p i is inspected by the algorithm, all future edges p u → p v inspected by the algorithm would have v ≥ i (we also have that u = j or u ≥ i).",
+    "The idea is to modify the algorithm so that it terminates early.",
+    "Claim 4.5. If e = p j → p i is inspected by the algorithm, ∥q -p j ∥ < ∥q -p i ∥, and r i < (ε/8) ∥q -p j ∥, then p j is (1 + ε)-ANN to q in P, and the algorithm can stop.",
+    "Proof: Since P i is an r i -packing of P, there must be a point p ′ ∈ P i that is in distance r i from t, where t = nn q (P). We can interpret the algorithm as working on P i (instead of P). Indeed, the induced subgraph on P i , G i = G P i , is the same as the graph the algorithm would build if the input point set is P i . The query process on G i is identical to the one on G, as long as we inspect edges in G i . Thus, if we run the algorithm on G i , e is the last edge inspected. But p i is not an improvement, so p j is the point the algorithm returns when run on G i . Lemma 4.3 then implies that p j is (1 + ε/4)-ANN (as we calibrated ε to be ε/4). Thus, we have that ν = ∥q -p j ∥ ≤ (1 + ε/4)d(q, P i ), and",
+    "We conclude that ∥q -p j ∥ ≤ (1 + ε/4)d(q, P i ) ≤ (1 + ε/4)(d(q, P)",
+    "Let ∇ = ∇(P), and let R i = ∇ 2 i for i = 0, 1, . . . , h, where h = ⌈log 2 Ψ(P)⌉. Consider the greedy permutation p 1 , . . . , p n , and the associ-",
+    "Lemma 4.6. When using early stop, the query time of the ANN algorithm is at most O(ε -d log Ψ).",
+    "Proof: The algorithm's running time is proportional to the number of edges p j → p i it scans. There could be at most O(ε -1 log Ψ) edges that cause the algorithm to change the current vertex, as each such change decreases the NN distance by a factor of 1 -O(ε).",
+    "So we only have to pay for edges scanned in vain, without triggering a change to the current vertex. And let E i be all these edges whose destination is in the ith epoch B i , and let V i ⊆ B i be the set of destinations of the edges of E i .",
+    "Let x → y be the first edge of E i scanned, and let L i = ∥q -x∥. Claim 4.5 implies that L i = O(R i /ε) (as otherwise the algorithm would have terminated). But then, all the points of V i are contained inside the ball b(q, 2L i ). Since these points are all at a distance of at least R i /2 from each other, it follows that",
+    "Since there are O(log Ψ) epochs, it follows that the total number of edges scanned in vain is O(ε -d log Ψ), which also bounds the running time.",
+    "Theorem 4.7. Given a set P of n points in R d , and a parameter ε ∈ (0, 1), one can construct a directed graph G = (P, E) with O(n/ε d ) edges, such that given a query point q, one can compute a (1 + ε)-ANN to q by performing a greedy ε-NN walk in G. This walk takes O(ε -d log Ψ) time, where Ψ is the spread of P.",
+    "Remark 4.8. The result of Theorem 4.7 holds if P ⊆ U is a set of n points in a metric space X = (U, d) of bounded doubling dimension δ. The term d is then replaced by O(δ). Thus, the space of the construction is n/ε O(δ) , and the query time is ε -O(δ) log Ψ.",
+    "Lemma A.1. Let u 1 , u 2 be two points in R d , and consider the set U of all points p ∈ R d , such that w 1 ∥u 1 -p∥ ≥ w 2 ∥u 2 -p∥, where w 1 , w 2 are two specified weights. For ξ = ∥u 1 -u 2 ∥, the set U is the Apollonius ball centered at",
+    "and of radius κ κ 2 -1 ξ.",
+    "Proof: By rotating and translating space, we can assume that u 1 = (0, 0) and u 2 = (ξ, 0) be two points, with weights w 1 and w 2 , respectively. The Apollonius circle they define is w 1 ∥u 1 -(x, y)∥ = w 2 ∥u 2 -(x, y)∥ .",
+    "Setting κ = w 2 /w 1 , and squaring, we have",
+    "Namely, the disk has a center at",
+    "and its radius is r = κ κ 2 -1 ξ.",
+    "Or \"overflew\" p α , recalling a memorable excuse why a commercial flight one of the authors took did not land in its stated midway destination."
+  ],
+  "references": [
+    {
+      "id": 1,
+      "text": "An optimal algorithm for approximate nearest neighbor searching fixed dimensions\n\t\t\n\t\t\tSunilArya\n\t\t\n\t\t\n\t\t\tDavidMMount\n\t\t\n\t\t\n\t\t\tNathanSNetanyahu\n\t\t\n\t\t\n\t\t\tRuthSilverman\n\t\t\n\t\t\n\t\t\tAngelaYWu\n\t\t\n\t\t10.1145/293347.293348\n\t\n\t\n\t\tJournal of the ACM\n\t\tJ. ACM\n\t\t0004-5411\n\t\t1557-735X\n\t\t\n\t\t\t45\n\t\t\t6\n\t\t\t\n\t\t\t1993\n\t\t\tAssociation for Computing Machinery (ACM)"
+    },
+    {
+      "id": 2,
+      "text": "An optimal algorithm for approximate nearest neighbor searching fixed dimensions\n\t\t\n\t\t\tSunilArya\n\t\t\n\t\t\n\t\t\tDavidMMount\n\t\t\n\t\t\n\t\t\tNathanSNetanyahu\n\t\t\n\t\t\n\t\t\tRuthSilverman\n\t\t\n\t\t\n\t\t\tAngelaYWu\n\t\t\n\t\t10.1145/293347.293348\n\t\n\t\n\t\tJournal of the ACM\n\t\tJ. ACM\n\t\t0004-5411\n\t\t1557-735X\n\t\t\n\t\t\t45\n\t\t\t6\n\t\t\t\n\t\t\t1998\n\t\t\tAssociation for Computing Machinery (ACM)"
+    },
+    {
+      "id": 3,
+      "text": "A decomposition of multidimensional point sets with applications to <i>k</i> -nearest-neighbors and <i>n</i> -body potential fields\n\t\t\n\t\t\tPaulBCallahan\n\t\t\n\t\t\n\t\t\tSRaoKosaraju\n\t\t\n\t\t10.1145/200836.200853\n\t\n\t\n\t\tJournal of the ACM\n\t\tJ. ACM\n\t\t0004-5411\n\t\t1557-735X\n\t\t\n\t\t\t42\n\t\t\t1\n\t\t\t\n\t\t\t1995\n\t\t\tAssociation for Computing Machinery (ACM)"
+    },
+    {
+      "id": 4,
+      "text": "An algorithm for approximate closest-point queries\n\t\t\n\t\t\tKennethLClarkson\n\t\t\n\t\t10.1145/177424.177609\n\t\n\t\n\t\tProceedings of the tenth annual symposium on Computational geometry - SCG '94\n\t\tthe tenth annual symposium on Computational geometry - SCG '94\n\t\t\n\t\t\tACM Press\n\t\t\t1994"
+    },
+    {
+      "id": 5,
+      "text": "Approximate greedy clustering and distance selection for graph metrics\n\t\t\n\t\t\tDEppstein\n\t\t\n\t\t\n\t\t\tSHar-Peled\n\t\t\n\t\t\n\t\t\tASidiropoulos\n\t\t\n\t\n\t\n\t\tJ. Comput. Geom\n\t\t\n\t\t\t11\n\t\t\t1\n\t\t\t\n\t\t\t2020"
+    },
+    {
+      "id": 6,
+      "text": "Fast approximate nearest neighbor search with the navigating spreading-out graph\n\t\t\n\t\t\tCongFu\n\t\t\n\t\t\n\t\t\tChaoXiang\n\t\t\n\t\t\n\t\t\tChangxuWang\n\t\t\n\t\t\n\t\t\tDengCai\n\t\t\n\t\t10.14778/3303753.3303754\n\t\n\t\n\t\tProceedings of the VLDB Endowment\n\t\tProc. VLDB Endow.\n\t\t2150-8097\n\t\t\n\t\t\t12\n\t\t\t5\n\t\t\t\n\t\t\t2019\n\t\t\tAssociation for Computing Machinery (ACM)"
+    },
+    {
+      "id": 7,
+      "text": "Clustering to minimize the maximum intercluster distance\n\t\t\n\t\t\tTeofiloFGonzalez\n\t\t\n\t\t10.1016/0304-3975(85)90224-5\n\t\n\t\n\t\tTheoretical Computer Science\n\t\tTheoretical Computer Science\n\t\t0304-3975\n\t\t\n\t\t\t38\n\t\t\t\n\t\t\t1985\n\t\t\tElsevier BV"
+    },
+    {
+      "id": 8,
+      "text": "Geometric Approximation Algorithms\n\t\t\n\t\t\tSarielHar-Peled\n\t\t\n\t\t10.1090/surv/173\n\t\t\n\t\t\t2011\n\t\t\tAmerican Mathematical Society\n\t\t\t173\n\t\t\tBoston, MA, USA\n\t\t\n\t\n\tMath. Surveys & Monographs"
+    },
+    {
+      "id": 9,
+      "text": "Approximate nearest neighbors: Towards removing the curse of dimensionality\n\t\t\n\t\t\tSHar-Peled\n\t\t\n\t\t\n\t\t\tPIndyk\n\t\t\n\t\t\n\t\t\tRMotwani\n\t\t\n\t\n\t\n\t\tTheory Comput., 8. Special issue in honor of Rajeev Motwani\n\t\t\n\t\t\t\n\t\t\t2012"
+    },
+    {
+      "id": 10,
+      "text": "Fast construction of nets in low dimensional metrics, and their applications\n\t\t\n\t\t\tSarielHar-Peled\n\t\t\n\t\t\n\t\t\tManorMendel\n\t\t\n\t\t10.1145/1064092.1064117\n\t\n\t\n\t\tProceedings of the twenty-first annual symposium on Computational geometry\n\t\tthe twenty-first annual symposium on Computational geometryPisa, Italy\n\t\t\n\t\t\tACM\n\t\t\tJune 6-8, 2005. 2005"
+    },
+    {
+      "id": 11,
+      "text": "Fast Construction of Nets in Low-Dimensional Metrics and Their Applications\n\t\t\n\t\t\tSarielHar-Peled\n\t\t\n\t\t\n\t\t\tManorMendel\n\t\t\n\t\t10.1137/s0097539704446281\n\t\n\t\n\t\tSIAM Journal on Computing\n\t\tSIAM J. Comput.\n\t\t0097-5397\n\t\t1095-7111\n\t\t\n\t\t\t35\n\t\t\t5\n\t\t\t\n\t\t\t2006\n\t\t\tSociety for Industrial & Applied Mathematics (SIAM)"
+    },
+    {
+      "id": 12,
+      "text": "Net and Prune\n\t\t\n\t\t\tSarielHar-Peled\n\t\t\n\t\t\n\t\t\tBenjaminRaichel\n\t\t\n\t\t10.1145/2831230\n\t\n\t\n\t\tJournal of the ACM\n\t\tJ. ACM\n\t\t0004-5411\n\t\t1557-735X\n\t\t\n\t\t\t62\n\t\t\t6\n\t\t\t\n\t\t\t2015\n\t\t\tAssociation for Computing Machinery (ACM)"
+    },
+    {
+      "id": 13,
+      "text": "Approximate nearest neighbors\n\t\t\n\t\t\tPiotrIndyk\n\t\t\n\t\t\n\t\t\tRajeevMotwani\n\t\t\n\t\t10.1145/276698.276876\n\t\n\t\n\t\tProceedings of the thirtieth annual ACM symposium on Theory of computing - STOC '98\n\t\tthe thirtieth annual ACM symposium on Theory of computing - STOC '98\n\t\t\n\t\t\tACM Press\n\t\t\t1998"
+    },
+    {
+      "id": 14,
+      "text": "Worst-case performance of popular approximate nearest neighbor search implementations: guarantees and limitations\n\t\t\n\t\t\tPIndyk\n\t\t\n\t\t\n\t\t\tHXu\n\t\t\n\t\n\t\n\t\tAdvances in Neural Information Processing Systems 36: Annual Conference on Neural Information Processing Systems 2023, NeurIPS 2023\n\t\tNew Orleans, LA, USA\n\t\t\n\t\t\tDecember 10 -16, 2023"
+    },
+    {
+      "id": 15,
+      "text": "Efficient and Robust Approximate Nearest Neighbor Search Using Hierarchical Navigable Small World Graphs\n\t\t\n\t\t\tYuAMalkov\n\t\t\t0000-0003-4324-6433\n\t\t\n\t\t\n\t\t\tDAYashunin\n\t\t\n\t\t10.1109/tpami.2018.2889473\n\t\n\t\n\t\tIEEE Transactions on Pattern Analysis and Machine Intelligence\n\t\tIEEE Trans. Pattern Anal. Mach. Intell.\n\t\t0162-8828\n\t\t1939-3539\n\t\t\n\t\t\t42\n\t\t\t4\n\t\t\t\n\t\t\t2020\n\t\t\tInstitute of Electrical and Electronics Engineers (IEEE)"
+    },
+    {
+      "id": 16,
+      "text": "DiskANN: Fast accurate billion-point nearest neighbor search on a single node\n\t\t\n\t\t\tSJSubramanya\n\t\t\n\t\t\n\t\t\tFDevvrit\n\t\t\n\t\t\n\t\t\tHVSimhadri\n\t\t\n\t\t\n\t\t\tRKrishnawamy\n\t\t\n\t\t\n\t\t\tRKadekodi\n\t\t\n\t\n\t\n\t\tAdvances in Neural Information Processing Systems\n\t\t\n\t\t\t32"
+    }
+  ],
+  "formulas": [
+    {
+      "id": "FORMULA_1",
+      "raw": "O n ε d-1 log n O( 1 ε d-1 log 3 n) [ AM93 ] Yao graph + skip-list. O n ε (d-1)/2 log Ψ O( 1 ε (d-1)/2 log Ψ • log n) [ Cla94 ] Opt approx Voronoi cells + skip-list O n ε d log Ψ O 1 ε d log(1/ε) log 2 Ψ [ IX23 ] Analyzing DiskANN [ SDS+19 ] O n ε d log Ψ O 1 ε d log(1/ε) log 2 Ψ Lemma 3.1 WSPD based O n ε d log Ψ O 1 ε d log Ψ +"
+    },
+    {
+      "id": "FORMULA_2",
+      "raw": "d : U × U → [0, ∞)"
+    },
+    {
+      "id": "FORMULA_3",
+      "raw": "(x, r) = {z ∈ U | d(x, z) ≤ r} ."
+    },
+    {
+      "id": "FORMULA_4",
+      "raw": "B v→p = {f ∈ N | αd(p, f ) < d(v, f )} ,"
+    },
+    {
+      "id": "FORMULA_5",
+      "raw": "p + 1 α 2 -1 (p -v),"
+    },
+    {
+      "id": "FORMULA_6",
+      "raw": "added to v are {v → u | u ∈ O v }. Figure 2."
+    },
+    {
+      "id": "FORMULA_7",
+      "raw": "Y ⊆ V, the induced subgraph of G by Y is G Y = (Y, {uv ∈ E | u, v, ∈ Y }."
+    },
+    {
+      "id": "FORMULA_8",
+      "raw": "For two sets B, C ⊆ U , let B ⊗ C = {bc | b ∈ B, c ∈ C, b ̸ = c} ."
+    },
+    {
+      "id": "FORMULA_9",
+      "raw": "W = {A 1 , B 1 } , . . . , {A s , B s } ,"
+    },
+    {
+      "id": "FORMULA_10",
+      "raw": "{Q, R} is 1 ε -separated by d if max ∇ d (Q), ∇ d (R) ≤ ε d(Q, R), where d(Q, R) = min x∈Q,y∈R d(x, y)."
+    },
+    {
+      "id": "FORMULA_11",
+      "raw": "P of n points in R d , one can construct, in O n log n + n/ε d time, an 1 ε -WSPD of P of size O(n/ε d )."
+    },
+    {
+      "id": "FORMULA_12",
+      "raw": "P of size n/ε O(d) in O n log n + n/ε O(d) time."
+    },
+    {
+      "id": "FORMULA_13",
+      "raw": "∥p ′ i -t∥ ≤ ∇(C i ) ≤ ε 8 d(B i , C i ) ≤ ε 8 ∥p i -t∥ ≤ ε 8 (∥p i -q∥ + ∥q -t∥) = ε 8 (ℓ i + ℓ)."
+    },
+    {
+      "id": "FORMULA_14",
+      "raw": "ℓ i+1 ≤ ∥p ′ i -q∥ ≤ ∥p ′ i -t∥ + ∥t -q∥ ≤ ε 8 (ℓ i + ℓ) + ℓ ≤ ε 4 ℓ i + ℓ. If ℓ i > 8ℓ/ε, then ℓ i+1 ≤ εℓ i . If ℓ i ∈ [3ℓ, 8ℓ/ε], then ℓ i+1 ≤ 3ℓ. Finally, if ℓ i ≤ 3ℓ, then ℓ i+1 ≤ ε 4 ℓ i +ℓ ≤ (1 + ε)ℓ."
+    },
+    {
+      "id": "FORMULA_15",
+      "raw": "F i = P i-1 ∩ b(p i , 8r i-1 /ε) (4.1)"
+    },
+    {
+      "id": "FORMULA_16",
+      "raw": "|b(p, R) ∩ P i-1 | = O (1 + R/r i-1 ) d ."
+    },
+    {
+      "id": "FORMULA_17",
+      "raw": "i | = O(1/ε d ) for all i."
+    },
+    {
+      "id": "FORMULA_18",
+      "raw": "E = {p j → p i | p j ∈ F i , for i = 1, . . . , n} ."
+    },
+    {
+      "id": "FORMULA_19",
+      "raw": "t L ψ = εL/2 (1 -ε/2)L c q Figure 4.1: Illustration of proof."
+    },
+    {
+      "id": "FORMULA_20",
+      "raw": "|F i | = O(1/ε d ) incoming edges."
+    },
+    {
+      "id": "FORMULA_21",
+      "raw": "p j → p i ∈ E(G), with j < i, is L-admissible if ∥p j -p i ∥ ∈ [L/2, L]"
+    },
+    {
+      "id": "FORMULA_22",
+      "raw": "L -ε 4 L - ε 4 L = L(1 -ε 2 ) ≥ (1 + ε)(1 -ε 2 )ℓ = (1 + ε 4 )ℓ > ℓ,"
+    },
+    {
+      "id": "FORMULA_23",
+      "raw": "∥p j -p α ∥ ≤ ∥p j -q∥ + ∥q -t∥ + ∥t -p α ∥ ≤ 2L = 8 ε ψ ≤ 8 ε r α-1 ."
+    },
+    {
+      "id": "FORMULA_24",
+      "raw": "∥q -p α ∥ ≤ ∥q -t∥ + ∥t -p α ∥ ≤ ℓ + ε 4 L ≤ 1 - ε 4 L."
+    },
+    {
+      "id": "FORMULA_25",
+      "raw": "r i < ε 8 ∥q -p j ∥ ≤ ε 8 1 + ε 4 d(q, P i ) ≤ ε 4 (d(q, P) + r i ) =⇒ r i ≤ ε 4(1 -ε/4) d(q, P) ≤ ε 3 d(q, P)."
+    },
+    {
+      "id": "FORMULA_26",
+      "raw": "+ r i ) ≤ 1 + ε 4 1 + ε 3 d(q, P) ≤ (1 + ε)d(q, P)."
+    },
+    {
+      "id": "FORMULA_27",
+      "raw": "ated radii r 1 ≥ r 2 ≥ • • • ≥ r n . The ith epoch of P, is a block B i = ⟨p α , . . . , p β ⟩, such that α < β, |β -α| is maximal, and r α , r α+1 , . . . , r β ∈ [R i , R i-1 )."
+    },
+    {
+      "id": "FORMULA_28",
+      "raw": "|V i | = |B i ∩ b(q, 2L i )| = O(1/ε d )."
+    },
+    {
+      "id": "FORMULA_29",
+      "raw": "u 2 + 1 κ 2 -1 (u 2 -u 1 ),"
+    },
+    {
+      "id": "FORMULA_30",
+      "raw": "x 2 + y 2 = κ 2 (x -ξ) 2 + y 2 ⇐⇒ 0 = (κ 2 -1) x 2 + y 2 + κ 2 -2ξx + ξ 2 ⇐⇒ 0 = x 2 -2 κ 2 κ 2 -1 ξx + y 2 + κ 2 κ 2 -1 ξ 2 ⇐⇒ x - κ 2 κ 2 -1 ξ 2 + y 2 = κ 2 κ 2 -1 ξ 2 - κ 2 κ 2 -1 ξ 2 = κ κ 2 -1 ξ 2 , since κ 2 κ 2 -1 ξ 2 κ 2 κ 2 -1 -1 = κ 2 κ 2 -1 ξ 2 1 κ 2 -1 = κ 2 (κ 2 -1) 2 ξ 2 ."
+    },
+    {
+      "id": "FORMULA_31",
+      "raw": "κ 2 κ 2 -1 ξ, 0 = u 1 + κ 2 κ 2 -1 (u 2 -u 1 ) = u 1 + 1 + 1 κ 2 -1 (u 2 -u 1 ) = u 2 + 1 κ 2 -1 (u 2 -u 1 )."
+    }
+  ]
+}

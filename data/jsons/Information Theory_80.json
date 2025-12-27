@@ -1,0 +1,1900 @@
+{
+  "title": "Fundamental Limit of Discrete Distribution Estimation under Utility-Optimized Local Differential Privacy",
+  "authors": [],
+  "abstract": "We study the problem of discrete distribution estimation under utility-optimized local differential privacy (ULDP), which enforces local differential privacy (LDP) on sensitive data while allowing more accurate inference on non-sensitive data. In this setting, we completely characterize the fundamental privacy-utility trade-off. The converse proof builds on several key ideas, including a generalized uniform asymptotic Cramér-Rao lower bound, a reduction showing that it suffices to consider a newly defined class of extremal ULDP mechanisms, and a novel distribution decomposition technique tailored to ULDP constraints. For the achievability, we propose a class of utilityoptimized block design (uBD) schemes, obtained as nontrivial modifications of the block design mechanism known to be optimal under standard LDP constraints, while incorporating the distribution decomposition idea used in the converse proof and a score-based linear estimator. These results provide a tight characterization of the estimation accuracy achievable under ULDP and reveal new insights into the structure of optimal mechanisms for privacy-preserving statistical inference.",
+  "sections": [
+    {
+      "title": "I. INTRODUCTION",
+      "paragraphs": [
+        "Local differential privacy (LDP) [1]- [3] has already been deployed at scale in industry [4]- [8]. Under LDP, each individual perturbs their data locally before transmission so that the reported value reveals provably little about the true record, thereby removing the need for a trusted curator [1], [2]. Formally, LDP bounds how much the distribution of a user's reported value can differ as their true data vary, thereby embedding privacy directly at the source. This user-level privacy guarantee-quantified through information-theoretic bounds [9, Thm. 14]-has propelled LDP into a wide spectrum of statistical inference and machine-learning tasks involving sensitive data [7], [10]- [14].",
+        "However, LDP offers blanket protection: for any pair of input values, the distribution of reported data must remain nearly indistinguishable [9]. Although such protection is reassuring, it can be inefficient in scenarios where only certain S.-M. Yoon, H.-Y. Park, and S.-H. Lee are with the School of Electrical Engineering, Korea Advanced Institute of Science and Technology (KAIST), Daejeon, South Korea (e-mail: ysm4078@kaist.ac.kr, phy811@kaist.ac.kr, sihyeon@kaist.ac.kr). S.-H. Nam is with the Information & Electronics Research Institute, KAIST, Daejeon, South Korea (e-mail: shnam@kaist.ac.kr). S.-M. Yoon and H.-Y. Park contributed equally to this work. (Corresponding author: Si-Hyeon Lee)",
+        "The appendix of this paper is provided in the supplementary material.",
+        "inputs are truly sensitive. Consider the survey, \"Have you violated a policy?\", with X ∈ {\"Yes\", \"No\"} as the truthful answer, adapted from the illustrative example in [15]. Under Warner's randomized response (RR) [10] shown in Fig. 1 (a), respondents flip a biased coin and potentially report the opposite answer. Consequently, the reported value Y conveys only limited information about X, restricting the analyst's ability to infer the true outcome. Notably, however, only the affirmative response (\"Yes\") is genuinely sensitive, while the negative response (\"No\") is not. Mangat's randomized response [16] in Fig. 1 (b), exploits this asymmetry: those who answered \"Yes\" always report truthfully, while those who answered \"No\" randomize their answer. This ensures privacy when Y = \"Yes\", while enabling reliable inference when Y = \"No\". Utility-optimized local differential privacy (ULDP) [15] formalizes this idea. A ULDP mechanism partitions outputs into protected symbols-subject to the full LDP guarantee-and invertible symbols that faithfully reveal non-sensitive inputs. Thus, ULDP preserves LDPlevel privacy exactly where needed, while permitting enhanced inference elsewhere. This approach has motivated extensions such as high-low LDP [17], (ϵ, δ)-ULDP [18], [19], inputdiscriminative LDP [20], [21], and utility-optimized key-value data LDP [22]. Furthermore, ULDP has already seen adoption in domains including clinical analytics [23], federated learning [24], and natural language processing [25].",
+        "For the representative statistical inference task of discrete distribution estimation, which is the focus of this paper, several ULDP schemes have been proposed [15], [17], [26], [27]. As will be elaborated in Section III, prior ULDP schemes have been analyzed only with respect to order-optimality in specific regimes [15], [17], [27], while the exact leading constant that characterizes the fundamental limit of the PUT under ULDP has not been identified. This unresolved gap motivates our work, which establishes the exact attainable performance."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "A. Our Contribution",
+      "paragraphs": [
+        "Our main contribution is to establish the exact optimal PUT-including the leading constant-for discrete distribution estimation under ULDP. We characterize the optimal PUT in terms of a finite-dimensional concave-convex saddlepoint optimization problem that can be solved using convex optimization solvers and give a closed-form solution to this optimization problem for some regime.",
+        "For converse, we develop two general analytical frameworks which extend previous works: (i) a uniform asymptotic Cramér-Rao lower bound, a versatile concept applicable beyond ULDP to general private estimation problems, and (ii) a reduction showing that optimal ULDP mechanisms can be restricted to a newly defined class of extremal ULDP mechanisms, analogous to extremal LDP mechanisms [28], thereby confining the minimax analysis to this smaller class. After that, we complete the converse proof by exploiting a novel way to decompose the data distribution into several parts based on the structure of the ULDP constraint.",
+        "For achievability, we propose a class of utility-optimized block design (uBD) schemes. The development of uBD schemes builds on several key ideas: (i) nontrivially modifying block design schemes [29] for discrete distribution estimation under LDP, (ii) exploiting the idea of score-based linear estimator in [30], and (iii) decomposing the data distribution as in the converse proof. Notably, the class of uBD schemes subsumes one of the existing schemes, uRR [15], and our closed-form characterization implies that uRR is optimal in some regime. To the best of our knowledge, this is the first work to prove the optimality of uRR in a certain regime. Furthermore, we show that there exists a regime in which previously proposed ULDP schemes cannot achieve the optimal PUT, thereby establishing the strict superiority of our uBD scheme."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "B. Paper Outline",
+      "paragraphs": [
+        "The rest of this paper is organized as follows. Section II formalizes the discrete distribution estimation problem under the ULDP constraint. Section III provides the necessary background and a review of the related works. Our main result-the characterization of the optimal PUT-is stated in Section IV. To establish the optimal PUT, Section V presents the converse proof, and Section VI establishes achievability through the proposed uBD scheme. Section VII provides the numerical evaluations of the proposed scheme and baselines on a realworld dataset, demonstrating that our scheme outperforms existing alternatives. Finally, Section VIII concludes the paper with some discussion on future works."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "C. Notations and Terminologies",
+      "paragraphs": [
+        "For natural numbers a ≤ b, we denote [a : b] := [a, b] ∩ N and [a] := [1 : a]. For a finite set X , P(X ) denotes the set of all probability mass functions on X . For x ∈ X and P ∈ P(X ), we write either P (x) or P x for P ({x}). When"
+      ],
+      "subsections": []
+    },
+    {
+      "title": "X = [w]",
+      "paragraphs": [
+        "for w ∈ N ≥2 , we identify P(X ) with the probability simplex,",
+        "The relative interior of ∆ w is",
+        "and its direction space is",
+        "For x ∈ [w], we write δ (x;w) ∈ ∆ w for the point mass at x, i.e., δ",
+        "For a conditional distribution Q : X → P(Y) between finite sets X , Y, we denote supp(Q) := {y ∈ Y : Q(y|x) > 0 for some x ∈ X }. For simplicity, we often regard Q as the row stochastic matrix (Q x,y ) (x,y)∈X ×Y with entries Q x,y = Q(y|x). Given an input distribution, P ∈ P(X ), we write",
+        "We write 0 m , 1 m ∈ R m as the all-zeros and all-ones vectors (and 0 m×n , 1 m×n for their matrix analogues), and I m as the m × m identity matrix. For γ ∈ R m , we write diag(γ) as the m × m diagonal matrix whose i-th diagonal element is γ i . For A ∈ R n×m , S 1 ⊂ [n], and S 2 ⊂ [m], we write A S1,S2 for the submatrix of A with rows indexed by S 1 and columns indexed by S 2 .",
+        "For a positive definite matrix A, we define tr -1 (A) := tr A -1 , and for a non-invertible positive semidefinite matrix A, we define tr -1 (A) := ∞."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "II. PROBLEM FORMULATION",
+      "paragraphs": [
+        "We consider the private discrete distribution estimation system with n ∈ N clients and a single server, as depicted in Fig. 2. For each i ∈ [n], the i-th client has its own categorical data X i ∈ X = [w], w ∈ N ≥2 , generated in an i.i.d. manner from an unknown distribution P ∈ P(X ). To mitigate privacy leakage, the i-th client perturbs its data X i into Y i through a conditional distribution Q : X → P(Y) for some finite set Y, called a privacy mechanism, and transmits Y i to the server. After collecting Y n = (Y 1 , . . . , Y n ), the server computes the estimate Pn : Y n → R w of P . Let P denote a sequence of estimators ( Pn ) ∞ n=1 and we call the pair (Q, P ) a private estimation scheme. The estimation error of a private estimation scheme (Q, P ) with n clients is measured by the worst-case mean squared error (MSE),",
+        "In this paper, we consider the utility-optimized local differential privacy (ULDP) constraint assuming a partially sensitive domain: sensitive categories are privatized under an ϵ-LDP whereas non-sensitive categories may be disclosed via invertible outputs to enhance utility. Specifically, we suppose that X is partitioned into two sets: the set of sensitive elements X S ⊂ X and the set of non-sensitive elements X N = X \\X S . This partition is common knowledge to all clients and the server. The ULDP is defined as follows.",
+        "Definition 1 (ULDP [15]). For X S ⊂ X and ϵ > 0, a privacy mechanism Q : X → P(Y) is called an (X S , ϵ)-ULDP mechanism if there exists a partition {Y P , Y I } of Y (called the sets of protected data and invertible data, respectively), such that 1) For all x, x ′ ∈ X and y ∈ Y P ,",
+        "2) For all y ∈ Y I , there exists x ∈ X N such that",
+        "Without loss of generality, we assume that the set of sensitive elements is given as X S = [v], v ≤ w, and we simply call an (X S , ϵ)-ULDP mechanism as a (v, ϵ)-ULDP mechanism. We denote the class of all (v, ϵ)-ULDP mechanisms by Q w,v,ϵ . Also, a private estimation scheme (Q, P ) which satisfies Q ∈ Q w,v,ϵ is called a (v, ϵ)-ULDP scheme. Note that (w, ϵ)-ULDP is equivalent to ϵ-LDP. Also, (7) indicates that whenever the event {Y ∈ Y I } occurs, the server can perfectly infer the input x ∈ X N of a ULDP mechanism. Thus, roughly speaking, an (v, ϵ)-ULDP mechanism provides partly more accurate data than an ϵ-LDP mechanism.",
+        "The optimal privacy-utility tradeoff (or, in short, optimal PUT) for a discrete distribution estimation system with nclients under (v, ϵ)-ULDP constraint is defined as",
+        "In [15], it was shown that M * n (w, v, ϵ) = Θ(1/n). Accordingly, the asymptotically optimal PUT is defined as",
+        "and the asymptotic error of a private estimation scheme (Q, P ) is defined as",
+        "We say that a (v, ϵ)-ULDP scheme (Q, P ) is asymptotically optimal if",
+        "In this paper, we focus on characterizing the asymptotically optimal PUT M * (w, v, ϵ) and simply refer to the asymptotically optimal PUT as the optimal PUT from now on. Note that M * (w, w, ϵ) is the optimal PUT under the ϵ-LDP constraint, which has already been established in [11]. Hence, from now on, we assume v < w.",
+        "Remark 1. The following inequalities follow directly from the relation between LDP and ULDP:",
+        "In Remark 3, we show that the above bound is, in fact, tight under specific conditions."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "III. PRELIMINARIES AND RELATED WORKS",
+      "paragraphs": [],
+      "subsections": []
+    },
+    {
+      "title": "A. Discrete Distribution Estimation under LDP & ULDP",
+      "paragraphs": [
+        "Discrete distribution estimation under local differential privacy (LDP) has been extensively studied, and a variety of LDP schemes have been proposed such as randomized response (RR) [10], randomized aggregatable privacy-preserving ordinal response (RAPPOR) [7], subset selection (SS) [11], Hadamard response (HR) [12], projective geometry response (PGR) [13], optimized unary encoding (OUE) protocol [14], and optimized local hasing (OLH) protocol [14]. Among these, the SS is known to attain the optimal PUT M * (w, w, ϵ) [31]. Recently, Park et al. [29] introduced a class of block design schemes that subsumes RR, SS, HR, and PGR while also enabling the construction of new mechanisms that achieve optimal PUT with reduced communication costs.",
+        "Turning to the utility-optimized LDP (ULDP) setting, proposed ULDP schemes are typically derived by modifying classical LDP schemes to satisfy the ULDP requirements in Definition 1. Concretely, uRR and uRAP [15] are derived from RR [10] and RAPPOR [7], respectively; uSS [27] is based on SS [11]; uOUE and uOLH [26], [27] are based on OUE and OLH [14]; and a variant of the Hadamard response [17]-referred to here as uHR-extends HR [12] to the ULDP constraint. To characterize the optimal PUT under ULDP, Murakami et al. [15] utilized Remark 1 and known results in PUT over LDP in [2] to show that for ϵ ∈",
+        "Then, they stated that uRAP attains an estimation error of 4v nϵ 2 as ϵ → 0; hence, it is order-optimal for ϵ ∈ [0, 1]. Subsequently, Acharya et al. [12] refined the optimal PUT as M * n (w, v, ϵ) = Θ v 2 nϵ 2 + w nϵ for the high privacy regime ϵ = O(1), and introduced the uHR scheme whose estimation error matches this rate up to constant factors. 1Recently, [27] showed that M * n (w, v, ϵ) = Θ ve ϵ n(e ϵ -1) 2 for ϵ ≤ log v, and uSS, uOUE, and uOLH are order-optimal in the regime ϵ ≤ log v, which was also proved from Remark 1 and results in PUT over LDP in [11]. Furthermore, it was experimentally shown that uSS [27] achieves the lowest estimation error among previous schemes.",
+        "Despite these advances, the exact optimal PUT under ULDP, in particular the determination of the leading constant, had remained an open problem until our work, where we establish a complete characterization."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "B. Asymptotic Cramér-Rao Lower Bound",
+      "paragraphs": [
+        "A well-known result in asymptotic statistics [32]- [34] is an asymptotic variant of the Cramér-Rao lower bound (CRLB), which we refer to as the asymptotic Cramér-Rao lower bound (asymptotic CRLB). In [31], a key step in establishing the converse of the optimal PUT under LDP is to derive a certain uniform version of the asymptotic CRLB, suitable for distribution estimation under LDP. This subsection revisits the classical asymptotic CRLB and sketches the key ideas behind the uniform refinement of [31]. In Section V-A, we extend the uniform version of [31] substantially, laying the groundwork for showing the converse of the optimal PUT under ULDP.",
+        "The standard asymptotic CRLB [32,Theorem 29.4] implies that for a fixed conditional distribution Q from [w], we have",
+        "where J P,Q is the Fisher information matrix of Q at P (defined in Definition 5). However, this cannot be directly applied to derive a lower bound on the optimal PUT under LDP, which involves the infimum over the privacy mechanisms Q inside the limit over n. To circumvent this challenge, the authors of [31] first reduced the optimization over all ϵ-LDP mechanisms to the optimization over a specific class of ϵ-LDP mechanisms, called the extremal ϵ-LDP mechanisms introduced in [28]. Then, by refining the classical proof of asymptotic CRLB in [33], [34], commonly referred to as the local asymptotic normality (LAN) argument, they derived a certain universal lower bound on inf P R n (Q, P ), holding for all extremal ϵ-LDP mechanisms Q. This gives",
+        "where Q E w,ϵ is the set of all extremal ϵ-LDP mechanisms [28]. We note that the proof exploits the special structures of (extremal) LDP mechanisms, and therefore it is not straightforward to adopt the arguments of [31] in the ULDP setup."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "C. Block Design Schemes",
+      "paragraphs": [
+        "Our proposed ULDP mechanism builds on the block design (BD)-based LDP mechanism in [29], referred to as the BD mechanism. This subsection reviews the BD mechanism with emphasis on elements relevant to the development of the proposed ULDP scheme in Section VI.",
+        "Definition 2 (Block design [35]). Let v, b, r, k ∈ N and λ ∈ Z ≥0 . A hypergraph (V, E), that consists of a set of vertices V and a set of edges (or blocks) E ⊆ 2 V , is called a (v, b, r, k, λ)block design if |V| = v, |E| = b, and it satisfies the following symmetries:",
+        "1) r-regular: every vertex in V is contained in r edges.",
+        "2) k-uniform: ∀e ∈ E, |e| = k.",
+        "3) λ-pairwise balanced: every pair of vertices in V is contained in λ edges.",
+        "Without loss of generality, we assume V = [|V|]. The parameters (v, b, r, k, λ) of a block design should satisfy the following relations. Lemma 1. [35] For any (v, b, r, k, λ)-block design, we have",
+        "-block design called the (v, k)-complete block design [35] (here, if k = 1, we regard v-2 k-2 = 0). This is formed by letting E be the set of all size k subsets of V.",
+        "Given (v, b, r, k, λ)-block design, a BD mechanism regards input data as a vertex and outputs an edge, enforcing ϵ-LDP by biasing towards edges that contain the input vertex.",
+        "Definition 3 (Block design mechanism [29]). For given ϵ > 0 and a (v, b, r, k, λ)-block design (X , Y), the corresponding (v, b, r, k, λ, ϵ)-block design mechanism is the conditional distribution Q : X → P(Y) such that",
+        "Park et al. also proposed the corresponding sequence of unbiased estimators P for the BD mechanism [29,Thm. 3], and called such a pair (Q, P ) a (v, b, r, k, λ, ϵ)-BD scheme. For any (v, ϵ), it was shown that the estimation error of the BD scheme only depends on the uniformity parameter k. In [29, Prop. 1 and Thm. 5], an explicit characterization of optimal k that minimizes the estimation error is provided and the BD scheme with optimal k is shown to achieve the optimal PUT. Theorem 2 ([29, Prop. 1 and Thm. 5]). Let v ≥ 2 and let (Q, P ) be a (v, b, r, k, λ, ϵ)-block design scheme. Its asymptotic error is",
+        "Moreover, we have",
+        "By Theorem 2, it suffices to find a block design with k = k * ∈ K * (v, ϵ) to construct an optimal ϵ-LDP scheme. Remark 2 guarantees the existence of such a (v, k * , ϵ)-block design yielding a scheme equivalent to the optimal SS [11]."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "IV. MAIN RESULTS",
+      "paragraphs": [
+        "Our main contribution is to completely characterize the optimal PUT for the discrete distribution estimation under the ULDP constraint, i.e., the characterization of M * (w, v, ϵ) for all possible (w, v, ϵ).",
+        "Here, M (α, t) is concave-convex and has a saddle point (α * , t * ), which gives sup α inf t M (α, t) = M (α * , t * ). 3For Theorem 3, the converse and the achievability parts are shown in Sections V and VI, respectively. The concave-convex property of M (α, t) and the existence of a saddle point is proved in Appendix B.",
+        "For converse, we first extend two previous results: (i) generalize the uniform asymptotic Cramér-Rao lower bound [31] introduced in Section III-B, and (ii) show that it suffices to consider only a newly defined class of extremal ULDP mechanisms as optimal, in a manner analogous to the extremal LDP mechanisms in [28]. Then, we introduce a novel argument of decomposing the data distribution P into three components: (i) the relative values of P x 's over sensitive x, (ii) the relative values of P x 's over non-sensitive x, and (iii) the total probability of sensitive data P (X S ). Using this, we derive a lower bound on M * (w, v, ϵ) which can be interpreted as the sum of CRLBs for estimating each component. Each M i in Theorem 3 can be intuitively interpreted as the CRLB for estimating the i-th component of the data distribution P .",
+        "For achievability, we propose a class of utility-optimized block design schemes (uBD schemes). Each uBD scheme is associated with parameters (α, t) appearing in Theorem 3, and we show that if (α * , t * ) is a saddle point of M , then every uBD scheme with parameter (α, t) = (α * , t * ) is asymptotically optimal. The privacy mechanism Q of a uBD scheme builds upon the block design mechanisms [29] in Definition 3, with nontrivial modifications. The distinguishing idea is to exploit a mixture of multiple BD mechanisms, rather than restricting to a single BD mechanism. The parameter t represents the mixture proportions, where t k denotes the proportion of a k-uniform BD mechanism. The estimator sequence is constructed based on two ideas. First, we adopt the idea, also utilized in the converse proof, of decomposing the data distribution P into three components, and estimate each component separately. Second, we propose a set of estimator sequences { P (α) } α∈[0,1] , each of which attains the Cramér-Rao lower bound at a specific data distribution P (α) ∈ ∆ w . The supremum over α in Theorem 3 reflects the intuition that for the worst-case optimality, we use the estimator sequence that attains the worst-case CRLB. To attain the CRLB, the idea of 'score-based linear estimator' in [30] is utilized.",
+        "Theorem 3 characterizes the optimal PUT in terms of a finite-dimensional concave-convex saddle-point optimization problem, which can be efficiently solved using existing optimization solvers. Moreover, the following theorem gives a closed-form solution to this optimization problem for some regime, which is proved in Appendix E."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Theorem 4.",
+      "paragraphs": [
+        "Case (a): Suppose that (w, v, ϵ) satisfies at least one of the following three conditions:",
+        "Then, the following (α * , t * ) is a saddle point of M , i.e., M * (w, v, ϵ) = M (α * , t * ):",
+        "Here, K * (v, ϵ) is defined in (20). 4   The closed-form expression in Theorem 4 allows us to verify the optimality or suboptimality of existing schemes, as presented in the following corollary.",
+        "Corollary 5. If (w, v, ϵ) corresponds to Case (a) of Theorem 4, uRR [15] is asymptotically optimal. 4 Note that ln",
+        ", where E is in (22). Hence",
+        "Corollary 6. If (w, v, ϵ) corresponds to Case (b) of Theorem 4 with strict inequality with respect to ϵ, i.e., v ≥ 4 and ϵ <",
+        ", the uSS scheme is suboptimal. In other words, for the uSS scheme",
+        "Corollary 5 is a special case of Corollary 14 and Corollary 6 is proved in Appendix F. Corollary 5 follows from the observation that our uBD scheme with the optimal parameter coincides with uRR in the corresponding regime, resembling the fact that the optimal BD scheme in the low-privacy regime reduces to RR [10]. Since the proposal of uRR in [15], this is the first proof of its optimality in a certain regime. Corollary 6 shows that uSS scheme, which is the best known previous scheme, is suboptimal, thereby demonstrating a strict gap between uBD and the previously known ULDP schemes.",
+        "We conclude this section with the following remark on the relation with the trivial converse bound in Remark 1.",
+        "Remark 3. In the regime of Case (b) in Theorem 4, it can be easily seen that",
+        "where R BD is in (18). Thus, the converse bound in Remark 1 is tight for v ≥ 4 and ϵ ≤ ln (v-1)(v-2) 2 ."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "V. CONVERSE",
+      "paragraphs": [
+        "The goal of this section is to prove the converse part of Theorem 3, that is, to show",
+        "This section consists of three subsections. Section V-A provides a generalized uniform version of asymptotic CRLB [31], and Section V-B provides the notion of extremal ULDP mechanisms analogous to extremal LDP mechanisms [28]. Finally, Section V-C finishes the converse proof by using a distribution decomposition argument, which also plays an important role in the construction of proposed schemes."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "A. Uniform Asymptotic Cramér-Rao Lower Bound",
+      "paragraphs": [
+        "As a first step for the converse proof, we show the generalization of the uniform result in [31], which we call the uniform asymptotic Cramér-Rao lower bound (uniform asymptotic CRLB). Our version of uniform asymptotic CRLB covers the general private discrete distribution estimation, not only private estimation under LDP or ULDP constraint, and thus we expect that it has possible applications to other private estimation problems. Moreover, we provide a much shorter proof for the uniform asymptotic CRLB compared to [31].",
+        "First, we present the necessary definitions for CRLB.",
+        "= ⟨η P,Q (y), h⟩.",
+        "Here, η P,Q : supp(Q) → R w is the score vector, given by",
+        "Definition 5. The Fisher information of Q at P is a symmetric positive semidefinite bilinear map J P,Q : ⃗ ∆ 2 w → R, defined as",
+        "If an orthonormal basis B = (h (1)",
+        "∆ w is given, the Fisher information matrix with respect to such basis is the (w -1) × (w -1) matrix J P,Q;B such that (J P,Q;B ) i,j = J P,Q (h (i) , h (j) ). We omit B from the subscript if it is clear from the context. Remark 4. Fisher information matrices with respect to different orthonormal bases are conjugate via an orthogonal matrix. Therefore, many expressions involving trace of a function of Fisher information matrix (such as tr -1 (J P,Q ) in (13)) are invariant under the choice of basis. If so, we may omit the subscript B without ambiguity.",
+        "Next, we present the notion of degradedness [37], which gives a systematic way of reducing the space of privacy mechanisms to be optimized, as [31] reduced the optimization over all LDP mechanisms to that over extremal LDP mechanisms. Intuitively speaking, we say that Q degrades Q if Q can be simulated by applying some post-processing to the output of Q. The formal definitions are as follows. Definition 6. For finite sets X , Y, Ỹ and two conditional distributions Q : X → P(Y) and Q : X → P( Ỹ), we say Q degrades Q, and denote Q ⊒ Q, if there exists a conditional distribution T : Y → P( Ỹ) such that Q(ỹ|x) = y∈Y Q(y|x)T (ỹ|y) for every x ∈ X and ỹ ∈ Ỹ. Definition 7. For a finite set X and two classes Q, Q of conditional distributions from X to some finite set, we say",
+        "Now, we state the uniform asymptotic CRLB.",
+        "Theorem 7 (Uniform Asymptotic Cramér-Rao Lower Bound). Let w ∈ N ≥2 be given, and let X = [w]. Let Q be a class of conditional distributions from X to some finite set. Suppose that there exist a fixed finite set Y and a compact subset Q of conditional distributions from X to Y, which degrades Q. Then, we have",
+        "We prove Theorem 7 by refining the proof of asymptotic CRLB in [32].",
+        "Proof of Theorem 7. It suffices to show that for each fixed",
+        "Hence, from now on, we fix P ∈ ∆ • w . a) Instantiation of Proof in [32]: The first half of the proof is the same as the proof of asymptotic CRLB in [32]. For the detailed reason for each step, refer to [32, Section 29.1].",
+        "Since P ∈ ∆ • w , there exists D > 0 such that whenever h ∈ ⃗ ∆ w , ∥h∥ ≤ D, we have P + h ∈ ∆ • w . Let us choose an orthonormal basis B = (h (1)",
+        "w . Then, whenever n ≥ (w -1) 2 /D 4 , we can bound the worstcase MSE by the average MSE,",
+        "and following the PDF f (z) = n 1/4 cos 2 n 1/4 πz 2",
+        ". 5 Then, we apply another variant of CRLB, called Bayesian CRLB, resulting that whenever Q ⊒ Q and n ≥ (w -1) 2 /D 4 , we have",
+        "b) New Techniques for the Uniform Result: After that, to derive the uniform result, we establish a technical proposition which shows that {P → J P,Q } Q is equicontinuous in some sense. The formal statement is in Proposition 15 in Appendix C-A. Using this proposition and the n -1/4 order of the diameter of the support of Θ, we derive in Appendix C-B that there exist constants C > 0 and N ∈ N (which only depend on (w, P )) such that for every n ≥ N and every conditional distribution Q from [w], we have",
+        "Using a standard fact [39] that A ⪯ B implies A -1 ⪰ B -1 for positive definite matrices A, B, we obtain that",
+        "for every Q ⊒ Q, where",
+        "Note that R n (Q) ↑ tr -1 (J P,Q ) as n → ∞. Using compactness of Q and Dini's theorem [40,Thm. 7.13], we show in Appendix C-C that",
+        "This finishes the proof of Theorem 7."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "B. Extremal ULDP Mechanisms",
+      "paragraphs": [
+        "As a next step, to utilize the uniform asymptotic CRLB in the ULDP setup, we find a certain compact set of conditional distributions which degrades the class of all ULDP mechanisms. In short, we find such a set analogous to the set of extremal LDP mechanisms [28], which we call the set of extremal ULDP mechanisms. Definition 8. Let 1 ≤ v < w, ϵ > 0 be given, and",
+        "We define Q E w,v,ϵ to be the set of all extremal (v, ϵ)-ULDP mechanisms.",
+        "We can equivalently describe an extremal ULDP mechanism Q by its stochastic matrix as follows. The visualization of the stochastic matrix is in Figure 3. We identify",
+        "First, we bring the staircase pattern matrix in [28]:",
+        "where 1) is the matrix whose y'th column corresponds to the binary representation of y. Then, we set Q XS,YP = S (v) diag(γ), which is precisely an extremal ϵ-LDP mechanism [28]. Next, we set",
+        "Intuitively, for given Q XS,YP , we set each element of Q XN,YP to be the minimum possible value while satisfying the ULDP constraint, so that the probability of returning invertible data given non-sensitive data is maximized. Finally, we set Q XN,YI to be a constant multiple of an identity matrix, where the constant f (γ) = 1y ′ ∈YP γ(y ′ ) is determined by γ so that for each x ∈ X N , the x'th row of Q is summed up to one. Also, we set Q XS,YI to be the all-zero matrix.",
+        "Clearly, every extremal (v, ϵ)-ULDP mechanism is a (v, ϵ)-ULDP mechanism. Also, note that among previously proposed mechanisms, uRR [15] and uHR [17] are equivalent to some extremal ULDP mechanisms. 6 It turns out that the set of all extremal ULDP mechanisms degrades the class of all ULDP mechanisms. Theorem 8. For every 1 ≤ v < w and ϵ > 0, we have",
+        "e ϵ 1 e ϵ 1 e ϵ 1 e ϵ 1 e ϵ e ϵ 1 1 e ϵ e ϵ 1 1 1 e ϵ e ϵ e ϵ e ϵ The proof is similar to the proof of degradation of LDP mechanisms by extremal LDP mechanisms in [41], [42], and we present the proof in Appendix C-D.",
+        "To combine Theorems 7 and 8, it remains to show that",
+        "Clearly, the set of all γ satisfying (48) is compact, and hence Q E w,v,ϵ is compact. Thus, by Theorems 7 and 8, we obtain"
+      ],
+      "subsections": []
+    },
+    {
+      "title": "C. Distribution Decomposition for Tighter Bound",
+      "paragraphs": [
+        "Up to this point, we have established the converse bound by generalizing existing results. Now, we present our prominent idea of decomposing the data distribution, which not only lies behind the converse proof, but also plays an important role in the construction of our proposed schemes in Section VI. Based on this idea, we present the complete converse proof at the end of this subsection.",
+        "To formalize this idea, we introduce the following three mutually orthogonal subspaces of R w which span the direction space ⃗ ∆ w in (3),",
+        "Also, let Π i : R w → H i be the orthogonal projection onto H i . Then, intuitively, Π 1 (P ) and Π 2 (P ) represent the relative values of P x 's over sensitive x and that over non-sensitive x, respectively. Also, Π 3 (P ) designates the probability of sensitive data P (X S ), as it is easy to see that",
+        "Additionally, we define the class of distributions P (α) ∈ ∆ w , α ∈ [0, 1], by the mixture of the uniform distribution on X S and the uniform distribution on X N , with a rate α : 1 -α.",
+        "More precisely, we have",
+        "The key idea for the converse proof is to give a lower bound on the optimal PUT, which can be intuitively interpreted as the sum of CRLBs for estimating Π i (P ) over i = 1, 2, 3. Building on this idea, we now present the formal converse proof.",
+        "Proposition 9. For every w > v ≥ 1 and ϵ > 0, we have",
+        "Proof. First, we further bound (49) by replacing the supremum over all P ∈ ∆ • w with the supremum over P (α) , α ∈ (0, 1), obtaining",
+        "We choose an orthonormal basis B = {h (1) , • • • , h (w-1) } of H, such that the first (v -1) vectors form a basis of H 1 , the next (w -v -1) vectors form a basis of H 2 , and the last vector h (w-1) is the unit vector in H 3 . Now, let Q ∈ Q E w,v,ϵ and α ∈ (0, 1) be given. Let B 1 , B 2 , B 3 be the principal submatrices of J P (α) ,Q;B , where B 1 is formed by selecting the first (v -1) rows and columns, B 2 by selecting the next w -v -1 rows and columns, and B 3 by selecting the last row and column. Using the block matrix inversion formula [36], we derive in Appendix C-E that",
+        "By the arithmetic mean-harmonic mean inequality, we have",
+        ". Also, we derive in Appendix C-F that",
+        "Thus, we obtain",
+        "Since this holds for every Q ∈ Q E w,v,ϵ and α ∈ (0, 1), we have",
+        "By continuity of M and compactness of ∆ v , we can replace sup α∈(0,1) by sup",
+        ". This ends the converse proof.",
+        "VI. ACHIEVABILITY: UTILITY-OPTIMIZED BLOCK DESIGN SCHEME In this section, we propose a new class of ULDP schemes called utility-optimized block design (uBD) schemes. After that, we show that an optimized uBD scheme is asymptotically optimal.",
+        ", where each of Q (k) has the uniformity parameter k. This guarantees that the output spaces of Q (k) 's are disjoint. Also, we prepare a mixture proportion t ∈ ∆ v . Then, a uBD mechanism Q is constructed as follows. The visualization of Q is in Figure 4. If a sensitive data x ∈ X S is given as the input of a uBD mechanism Q, then a uBD mechanism randomly chooses a block design mechanism Q (k) , each with probability t k , respectively, and simulates the chosen Q (k) to generate its output. Hence, in terms of a stochastic matrix, Q XS,YP is the horizontal stack of the stochastic matrices of Q (k) multiplied by t k . After that, we set Q XN,Y so that the resultant Q becomes an extremal (v, ϵ)-ULDP mechanism, which is defined in Definition 8. That is, for given x ∈ X N , Q either outputs one of the edges from the support of some Q (k) , or directly outputs its input x in the form of an edge {x}. Here, the output distribution Q(•|x) is suitably determined to maximize the probability that a mechanism outputs {x} while satisfying the (v, ϵ)-ULDP constraint. The precise definition of a uBD mechanism is as follows.",
+        "Suppose that the following are given:",
+        "Then, the corresponding (w, v, ϵ, t)-uBD mechanism is defined as an extremal (v, ϵ)-ULDP mechanism as in Definition 8, which is induced from the following γ : Y P → R ≥0 :",
+        "By the regularity of block design, it is straightforward to check that this γ satisfies the necessary and sufficient condition to induce an extremal ULDP mechanism in (48). Note that for every (w, v, ϵ, t), there exists a (w, v, ϵ, t)-uBD mechanism, by setting each of (X S , E k ) to be the complete block design in Remark 2. Also, to specify a uBD mechanism, it suffices to designate",
+        "b) Estimator: Now, we propose a class of estimators for a uBD mechanism. The main ideas for our proposed estimators are as follows.",
+        "(i) First, as we derive the lower bound based on a version of CRLB, we target to construct an estimator which saturates CRLB. For this purpose, we exploit the score vector in (34). (ii) Second, by exploiting the decomposition ⃗ ∆ w = H 1 ⊕ H 2 ⊕ H 3 introduced in Section V-C, we construct an estimator based on the relationship between the projections of the unknown distribution P and the score vector onto each of H i . Based on these ideas, we observe that by the symmetries of block designs, for any given α ∈ (0, 1), the expectation of the projection of the score vector of a uBD mechanism at P (α) (defined in (54)) is a linear function of the projection of P -P (α) , where the linear coefficient is related with M i apperaing in Theorem 3 and d i := dim(H i ).",
+        "Proposition 10. Let Q be a (w, v, ϵ, t)-uBD mechanism, and α ∈ (0, 1). Then, for each i = 1, 2, 3, we have",
+        "Recall that Π i : R w → H i is the orthogonal projection onto H i defined in (50)-(52), and",
+        "The proof of Proposition 10 is in Appendix D-A. Using this, we can obtain an unbiased estimator for each of α by inverting the linear relationship for each i = 1, 2, 3 to estimate each Π i (P -P (α) ), and aggregating the results for i's. An exception is the case of v ≥ 2, t = δ (v;v) , where the linear relationship is non-invertible due to M 1 (α, t) = ∞. We note that the idea of score-based linear estimator was used in [30] for private estimation under LDP and a 1-bit communication constraint.",
+        "Definition 10. Let Q be a (w, v, ϵ, t)-uBD mechanism. Suppose that t ̸ = δ (v;v) when v ≥ 2. For each α ∈ [0, 1], we define a sequence of unbiased estimators P (α) corresponding to Q, by",
+        "(ii) For α ∈ {0, 1}, P",
+        "1 is given by the continuous extension of (63). We call such a pair (Q, P (α) ) a (w, v, ϵ, α, t)-uBD scheme.",
+        "To facilitate its implementation, we provide the table of each component of Π i (η P (α) ,Q (y)) for a uBD mechanism (or for a general extremal ULDP mechanism) in Table I in the beginning of the appendix."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "B. Estimation Error and Optimality of uBD Schemes",
+      "paragraphs": [
+        "The estimation error of a uBD scheme can be represented using the objective function M (α, t) in Theorem 3 and its derivative with respect to α. Note that similar to block design schemes [29], given (w, v, ϵ), the estimation error of a uBD scheme only depends on (α, t), and does not depend on specific choices of block designs (X S , E k ). Proposition 11. Let (Q, P ) be a (w, v, ϵ, α, t)-uBD scheme.",
+        "+ (β -α)F (α, t) + M (α, t) , (65) 7 Here, if d i = 0, we regard",
+        "where F (α, t) = ∂ ∂α M (α, t). Proof. Since the estimator is unbiased and Y 1 , • • • , Y n are i.i.d. given P , (64) is straightforward. Next, by the symmetry of a uBD scheme, the similar argument as [29] shows that whenever P (X S ) = β, we have R 1 (Q, P ; P ) ≤ R 1 (Q, P ; P (β) ).",
+        "The detailed proof of (66) is in Appendix D-B. Hence, we have",
+        "In Appendix D-C, we show that",
+        "which proves (65).",
+        "From this, we derive the asymptotic optimality of an optimized uBD scheme and finish the proof of Theorem 3.",
+        "Corollary 12. Let (α * , t * ) be a saddle point of M (α, t), and let (Q, P ) be a (w, v, ϵ, α * , t * )-uBD scheme. Then, (Q, P ) is asymptotically optimal, and M * (w, v, ϵ) = M (α * , t * ).",
+        "Proof. From the concavity of M (α, t) on α, we have",
+        "From this, it is clear that when (α, t) = (α * , t * ), the supremum in ( 65) is attained at β = α * , and thus R(Q, P ) = M (α * , t * ). This implies that M (α * , t * ) ≥ M * (w, v, ϵ). Since we have proved in Section V that M (α * , t * ) ≤ M * (w, v, ϵ), we conclude that M (α * , t * ) = M * (w, v, ϵ), and thus R(Q, P ) = M * (w, v, ϵ).",
+        "Remark 5. Corollary 12 means that an optimized uBD scheme achieves the minimum possible asymptotic error among all (v, ϵ)-ULDP schemes, which are not necessarily unbiased. Moreover, by the same argument as in [29], we can also show that for each of fixed n, an optimized uBD scheme attains the minimum possible estimation error among all unbiased (v, ϵ)-ULDP schemes."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "C. Closed-form Solution: Simple uBD Schemes",
+      "paragraphs": [
+        "Note that in all regimes where we find the closed-form solution as in Theorem 4, t * is a point mass. There is a special behavior of uBD schemes such that t is a point mass, which not only derives a simpler description of such schemes, but also plays an important role in the proof of Theorem 4. In short, the estimator P (α) does not depend on α.",
+        "Then, the estimators P (α) in Definition 10 satisfy P (α) = P (α ′ ) for every α, α ′ ∈ [0, 1]. More precisely, the following holds for all α ∈ [0, 1]:",
+        "Proposition 13 can be shown by a direct calculation of (63) to verify that it is equal to the above expression, hence we omit the proof. Due to this proposition, we say a (w, v, ϵ, k)-simple uBD scheme to mean a (w, v, ϵ, α, δ (k;v) )-scheme, without ambiguity on specifying α. Proposition 13 can be used to implement the estimator for a simple uBD scheme in a simpler way than using (63). As a remark, the (w, v, ϵ, 1)-simple uBD scheme is equivalent to uRR [15].",
+        "Granting Theorem 4 about the closed-form solution in some regimes, which is proved in Appendix E, we deduce a closed-form characterization of optimal uBD schemes in the corresponding regimes. Interestingly, for Case (a), we deduce the optimality of uRR [15], which has not been shown before."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Corollary 14.",
+      "paragraphs": [
+        "(a) Suppose that at least one of the following three conditions holds:",
+        "(ii) v ≥ 2 and ϵ ≥ ln w -v + (w -1)(w -2) 2 ;",
+        "(iii) v = 2 and ϵ ≤ ln 1 + 2(w -2) w -1 ;",
+        "Then, uRR [15] (equivalently, the (w, v, ϵ, 1)-simple uBD scheme) is asymptotically optimal.",
+        "(b) Suppose that v ≥ 4 and ϵ ≤ ln (v-1)(v-2)"
+      ],
+      "subsections": []
+    },
+    {
+      "title": "2",
+      "paragraphs": [
+        ". Then, for each k * ∈ K * (v, ϵ) ∩ [2 : v -1], any (w, v, ϵ, k * )-simple uBD schemes are asymptotically optimal. Remark 6. If (X S , E k ) is the complete block design in Remark 2, the corresponding (w, v, ϵ, k)-simple scheme can be seen as a modification of the SS scheme [11]. However, this uBD scheme is not equivalent to the uSS scheme [27], especially because the uBD scheme matches precisely one invertible element to each non-sensitive element, whereas the uSS scheme matches more than one invertible element, thereby introducing additional variance in the estimation.",
+        "Remark 7. The main advantage of considering the class of uBD schemes is that we can find an optimal and \"communication-efficient\" ULDP scheme, similar to the class of block design schemes [29]. Here, the communication cost is defined as log 2 |supp(Q)| bits per client. Specifically, a straightforward generalization of the argument in [29, Section IV-B] shows that in the regime of Case (b) in Theorem 4, if there exists a block design with b = v and k ∈ K * (v, ϵ) ∩ [2 : v -1], then there exists a simple uBD scheme which is not only optimal, but also has communication cost of log 2 w. This amount of communication is the smallest possible communication cost required for a consistent estimation [29], [43]. Note that in the regime of Case (a), uRR [15] achieves optimal PUT and the communication cost of log 2 w.",
+        "The region where a closed-form solution cannot be obtained through Theorem 4 is v ≥ 2 and ϵ ∈ (ϵ L , ϵ H ), where",
+        "In the next section, while performing experiments on a real dataset, we find the optimal parameters (α, t) by MATLAB Optimization Toolbox in the region above and analyze the result."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "VII. EXPERIMENTS",
+      "paragraphs": [
+        "We empirically evaluate the PUTs of uBD and baseline schemes [15], [17], [26], [27]. We use the American Community Survey (ACS) 2023 1-year public use microdata sample (PUMS) [44], which contains records for n = 1, 732, 343 individuals. Six attributes are retained: age, educational attainment, marital status, disability record, employment status, and income-to-poverty ratio, whose category counts are (4, 2, 2, 3, 2, 3), giving 288 in total; excluding empty nominal categories yields w = 277 unique input alphabets.",
+        "We applied two alternative criteria: (i) Stringent criterion (v = 35): A value is sensitive only if all three conditions hold simultaneously:",
+        "• educationally disadvantaged, widowed/divorced, or disabled, • absence from the labor force,",
+        "• income below the poverty threshold. (ii) Permissive criterion (v = 253): A value is sensitive if it satisfies any one of the above conditions. The stringent rule labels 79,141 records as sensitive, while the permissive rule identifies 1,022,617.",
+        "For each criterion, we randomly sample 50, 000 users twenty times and report the average PUT across these subsamples. Guided by Theorem 4, we partition the privacy budget into three intervals: 10], where (ϵ L , ϵ H ) are in (72)-(73). Figs. 5 and6 show that our scheme consistently outperforms all baselines, regardless of privacy regimes and sensitive-set sizes. In the intermediate regime ϵ ∈ (ϵ L , ϵ H ), where a closed-form expression of the optimal parameter (α * , t * ) is unknown, we plot the empirical values of t * in Fig. 7. Remarkably, t * collapses to the two-point form t * = (t 1 , t 2 , 0, . . . , 0). 8 This observation leads us to carefully conjecture that utilizing a single block design is not sufficient, but utilizing just two block designs-those with k = 1 and k = 2-is sufficient to attain the optimal PUT   VIII. CONCLUSION In this paper, we characterized the optimal PUT for discrete distribution estimation under the ULDP constraint. We proved the converse by leveraging a uniform asymptotic Cramér-Rao lower bound, a reduction to extremal ULDP mechanisms, and a distribution decomposition argument. Also, we proposed a class of PUT-optimal uBD schemes, obtained through nontrivial modifications of block design mechanisms and by employing a score-based estimator together with a distribution decomposition argument.",
+        "An interesting direction for future research is to derive closed-form solutions to our optimization problem in the intermediate privacy regime, thereby specifying the optimal parameters for the estimator α * and the mixture proportion t * . Also, we could consider other formulations of PUT, such as instance-optimality setup [45] rather than worst-case setup, and considering general ℓ p loss or f -divergence loss (such as relative entropy) other than MSE loss (ℓ 2 ). It is also of interest to extend the analysis to a broader class of privacy metrics beyond LDP and ULDP. We believe that the analytical tools developed in this paper-particularly the uniform asymptotic Cramér-Rao lower bound-will provide a valuable foundation for pursuing these directions.",
+        "Proposition 15. Let P, P ′ ∈ ∆ • w . Then, for any conditional distribution Q from [w] to a finite set Y, we have",
+        ". We need to show that: for any h ∈ ⃗ ∆ w , we have",
+        "Thus, we obtain",
+        "B. Derivation of (40) in Theorem 7",
+        "First, observe that P x P (θ)",
+        "Since ∥h (i) ∥ = 1, we have",
+        "x Px ≤ (w-1) maxi |θi| Px . Also, note that 1 1-z ≤ 1 + z for z ∈ (0, 1). Thus, letting",
+        "we derive that whenever n ≥ N and Θ ∼ ϕ n , we have (w-1) maxi |Θi| Px ≤ Cn -1/4 < 1 almost surely, and thus",
+        "Combining this with Proposition 15, we derive (40).",
+        "C. Derivation of ( 44) in Theorem 7",
+        "We first remark that J P,Q is continuous in Q but it can be singular, and hence tr -1 (J P,Q ) is extended real-valued continuous function on Q. To address this issue, we note that there is an order-preserving homeomorphism σ : R ∪ {-∞, ∞} → [0, 1], e.g., a logistic function σ(x) = 1 1+e -x . Then, by Dini's theorem, σ(R n (P, Q)) ↑ σ (tr -1 (J P,Q )) uniformly as n → ∞, and thus",
+        "By taking σ -1 on both sides, we obtain (44)."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "D. Proof of Theorem 8",
+      "paragraphs": [
+        "Let an (v, ϵ)-ULDP mechanism Q : X → P( Ỹ) be given, whose sets of protected and invertible data are ỸP and ỸI , respectively. Also, let Y = Y P ⊔ Y I , Y P = 2 [v] \\{∅}, and",
+        "and T : Y → P( Ỹ) such that",
+        "Suppose that Q ∈ Q E w,v,ϵ is induced from γ : Y P → R ≥0 as in Definition 8. Then, (87) is equivalent to that the following holds for every ỹ ∈ Ỹ:",
+        "where Qỹ := ( Q(ỹ|1), • • • , (ỹ|w)), δ (x) := δ (x;w) , and for each z ⊂ X , s (z) ∈ {1, e ϵ } w is defined by",
+        "Therefore, it suffices to find γ and T which satisfy (88). By [11,Lemma 12] and the definition of protected data, for each ỹ ∈ ỸP , Qỹ is in a conic hull of {s (z) : z ⊂ X }. Moreover, for each z ⊂ X , s (z) is in a conic hull of S := {s (y) : y ∈ Y P } ∪ {δ (x) : x ∈ X N }, as follows:",
+        "Thus, for each ỹ ∈ ỸP , Qỹ is in a conic hull of S. Moreover, for each ỹ ∈ ỸI , Qỹ is a constant multiple of δ (x) for some",
+        "x ∈ X N , which is also in a conic hull of S. Thus, for each ỹ ∈ Ỹ, we can write",
+        "for some γ(y, ỹ), u(x, ỹ) ≥ 0. Using this, we can observe that (88) is achieved by the following γ and T :",
+        "Here, if y ∈ Y P satisfies γ(y) = 0, then we set T (•|y) to be an arbitrary PMF. From (92) and ỹ∈ Ỹ Qỹ = 1 w , it is straightforward to see that above γ satisfies (48) to induce a valid extremal (v, ϵ)-ULDP mechanism, and above T is a valid conditional distribution satisfying ỹ∈ Ỹ T (ỹ|y) = 1. This finishes the proof."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "E. Derivation of (57) in Proposition 9",
+      "paragraphs": [
+        "The block matrix inversion formula [36] implies that for a positive definite matrix A with A = B C T C D , where both B and D are square submatrices, A -1 has the following block form",
+        "where both B -C T D -1 C and D -CB -1 C T are positive definite by the Schur complement lemma [36]. This result, together with A ⪯ B ⇒ A -1 ⪰ B -1 [39], we obtain",
+        "(96) also holds when A is non-invertible positive semidefinite, by the definition that tr -1 (A) = ∞. Now, (57) follows directly from applying (96) twice."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "F. Derivation of (58) in Proposition 9",
+      "paragraphs": [
+        "For each i = 1, 2, 3, we have",
+        "for an orthonormal basis {h (j;i) } di j=1 of H i . By definition of Fisher information and the standard fact [32] that the score has zero mean, we have",
+        "Now, suppose that Q is induced from γ : Y P → R ≥0 as in Definition 8. Also, for simplicity, let t := t(Q). It is straightforward to see that for each k ∈ [v], we have",
+        "Furthermore, referring Table I, we obtain that",
+        "(107) Thus, we have",
+        "The desired result (58) follows from the direct calculation."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "APPENDIX D DETAILED PROOF FOR SECTION VI A. Proof of Proposition 10",
+      "paragraphs": [
+        "We show (62) separately for each of i = 1, 2, 3.",
+        "Hence, from Table I, we deduce that showing (62) is equivalent to showing the equality below for all x ∈ X S :",
+        "Using symmetries of block designs and Lemma 1, we can see that for every x, x ′ ∈ X S and x ′′ ∈ X N such that x ̸ = x ′ , we have",
+        "By direct calculation, we can see that for every x ∈ X S and x ′ ∈ X , (112) holds for P = δ (x ′ ;v) . Since both sides of (112) are linear in P , we conclude that (112) holds for every x ∈ X S and P ∈ P(X ).",
+        "2) i = 2: We have",
+        "Similarly to the i = 1 case, we deduce that showing (62) is equivalent to showing the equality below for all x ∈ X N :",
+        "We can see that for each x ∈ X N ,",
+        "This also implies",
+        "Thus, (122) clearly holds for every x ∈ X N .",
+        "3) i = 3: We have",
+        "Similarly, we deduce that showing (62) is equivalent to showing the equality below:",
+        "From (124), we have",
+        "Then (128) follows from the direct calculation."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "B. Derivation of (66) in Proposition 11",
+      "paragraphs": [
+        "By continuity, it suffices to show (66) for α ∈ (0, 1). Hence, we assume α ∈ (0, 1) from now on.",
+        "Let X ∼ P and Y ∼ Q(•|X). Since P is unbiased, we have",
+        "By the definition of the proposed estimator and the law of total expectation, we have",
+        "As we presented in (106) and (107), ∥Π i (η P (α) ,Q (y))∥ 2 depends on y only by (i) whether y ∈ Y P or Y I , and (ii) the value of |y|. By the regularity of block designs, the conditional distributions of ∥Π i (η P (α) ,Q (Y ))∥ 2 given X = x are the same for all x ∈ X S . Also, by the definition of extremal ULDP mechanisms, the conditional distributions of ∥Π i (η P (α) ,Q (Y ))∥ 2 given X = x are the same for all x ∈ X N . Thus, we can write",
+        "where ν 1 , ν 2 ≥ 0 are given by",
+        "for any of x ∈ X S and x ′ ∈ X N . Thus, E∥ P1 (Y ) -P (α) ∥ 2 is a constant among all P ∈ P(X ) such that P (X S ) = β. Moreover, we have",
+        "By the Cauchy-Schwarz inequality, we have",
+        "and the equality holds if P = P (β) . From this, we conclude that among all P ∈ P(X ) such that P (X S ) = β, R 1 (Q, P ; P ) is maximized at P = P (β) , which shows (66)."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "C. Derivation of (68) in Proposition 11",
+      "paragraphs": [
+        "Note that except for the case of v ≥ 2 and t = δ (v;v) , M (α, t) is continuously differentiable with respect to α in a neighborhood of [0, 1]. Thus, again by continuity, it suffices to show (68) for α ∈ (0, 1). Hence, we assume α ∈ (0, 1) from now on.",
+        "From (134), we have",
+        "It is straightforward to see that",
+        "Hence, it remains to show that",
+        "Since both sides of the above equation are affine in β, it suffices to show that",
+        "a) Proof of (150): It is easy to see that t(Q) in (58) is equal to t. Hence, by (136), (100), and (58), we have",
+        "which shows (150).",
+        "b) Proof of (151): Each Q P (β) (y) is affine in β, and hence we can write",
+        "Also, from (150), we have",
+        "Since P is unbiased, y Q P (α) (y) P1 (y) = P (α) . Thus, combining with (156), we obtain (151).",
+        "This ends the derivation of (68)."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "APPENDIX E PROOF OF THEOREM 4",
+      "paragraphs": [
+        "Let (α * , t * ) be as specified in Theorem 4, with t * = δ (k * ;v) . Here, k * = 1 for Case (a), and",
+        "for Case (b). We separately show two equalities,",
+        "A. Proof of (159)",
+        "Case (a)-Condition (i): This case is trivial, since when v = 1, ∆ v is a singleton.",
+        "Case (a)-Condition (ii): In this case, we have",
+        "and thus α * = v(e ϵ -1-w+v)",
+        ". First, observe that by a calculation, we have",
+        "). Motivated from this, we apply the arithmetic mean-harmonic mean inequality, obtaining the following.",
+        "This becomes an equality when t = t * = δ (1;v) . Also, we can see that",
+        ", where g k ≥ 0 are given by",
+        "Now, we claim that",
+        "because this claim deduces (159) as",
+        "To show (167), we calculate g 1 -g k , and the result is",
+        "where ζ := e ϵ + v -1. Note that k-1 k increases in k. Hence, to show g 1 -g k ≥ 0 for all k ∈ [2 : v], it suffices to show that , that is, e ϵ ≥ w-v+ (w-1)(w-2)"
+      ],
+      "subsections": []
+    },
+    {
+      "title": "2",
+      "paragraphs": [
+        ". This shows (167), and hence ends the proof.",
+        "Case (a)-Condition (iii): In this case, we have",
+        "and thus α * = 0. By a direct calculation, with t 2 = 1 -t 1 , we obtain",
+        ":= e ϵ + 1 (e ϵ -1) 2 1 t 1 + e ϵ (e ϵ + 1) (w -2)(e ϵ -1)",
+        "Since f (t 1 ) is convex in t 1 , to show the optimality of t * = δ (1;v) , it suffices to show that f ′ (1) ≤ 0. A straightforward calculation shows that f ′ (1) = w -1 e ϵ (e ϵ -1) 2 (w -2) e 2ϵ -2e ϵw -3 w -1 .",
+        "Here, e 2ϵ -2e ϵw-3 w-1 is a quadratic polynomial in e ϵ with roots 1 ± 2(w-2)",
+        "w-1 . Thus, f ′ (1) ≤ 0 for e ϵ ≤ 1 + 2(w-2) w-1 , which ends the proof. (v -1) 2 v(e ϵ -1) 2",
+        "where R BD is in (18), and optimal k in (179) and optimal t in (176) are related by t = δ (k;v) . Thus, by the definition of K * , t * = δ (k * ;v) is an optimal solution to (176)."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "B. Proof of (160)",
+      "paragraphs": [
+        "Let (Q, P ) be a (w, v, ϵ, k * )-simple uBD scheme. By Proposition 13, Equation (68) with t = t * = δ (k * ;v) holds for all α ∈ [0, 1]. Setting α = β in (68) gives R 1 (Q, P ; P (β) ) = M (β, δ (k * ;v) ), ∀β ∈ [0, 1].",
+        "(180) Thus, it suffices to show that sup β∈[0,1] R 1 (Q, P ; P (β) ) is attained at β = α * . For Case (a), it directly follows from the worst-case analysis of uRR [15,Propositions 16,17]. For Case (b), we claim that",
+        "Then, by setting α = 1 in (68), we obtain the desired result.",
+        "To show (181), we calculate F (1, δ (k;v) ), and the result is",
+        "Hence, it suffices to show that",
+        "Since the LHS of the above inequality is increasing in k, it suffices to show only for k = 2, that is,",
+        "As a quadratic polynomial in v, above equation has the discriminant 3 2 -4 • 4 < 0, and therefore it is non-negative for every v. Thus, we show (181), and hence we end the proof of (160)."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "APPENDIX F PROOF OF COROLLARY 6",
+      "paragraphs": [
+        "Referring [27,Equation (35)], the estimation error of uSS is n • R n (Q uSS,k , PuSS,k ; P ) (186) =L 1 (k) + P (X S )L 2 (k)",
+        "Especially, letting P be the uniform distribution on X S , we have",
+        "Recall from Remark 3 that M * (w, v, ϵ) = M * (v, v, ϵ) = min k∈[v-1] R BD (v, k, ϵ). By a straightforward calculation, we obtain",
+        "Using this, we argue that R(Q uSS,k , PuSS,k ) > M * (w, v, ϵ) for every k ∈ [v -1], as follows.",
+        "1) If k = 1, then since ϵ < ln (v-1)(v-2) 2 = E(v, 1), we have 1 / ∈ K * (v, ϵ), and hence R BD (v, k, ϵ) > M * (w, v, ϵ). Thus, R(Q uSS,k , PuSS,k ) > M * (w, v, ϵ).",
+        "2) If k ≥ 2, then R BD (v, k, ϵ) ≥ M * (w, v, ϵ) and 2(k-1)  v-k > 0. Thus, R(Q uSS,k , PuSS,k ) > M * (w, v, ϵ). This ends the proof of Corollary 6. Remark 8. Originally, [27] formulated the estimator error in terms of the MSE between the empirical frequency of X n and the estimated distribution. That is, letting",
+        "(198) However, provided that the scheme is unbiased, the MSE for the frequency estimation can be translated into the MSE for the distribution estimation, by using the law of total variance. Specifically, for given P ∈ ∆ w and an unbiased scheme (Q, P ), let X n ∼ P n and Y n ∼ n i=1 Q(•|X i ) given X n . Then R n (Q, P ; P ) = VAR Pn (Y n ) (199)",
+        "Here, each of T (n)",
+        "x (X n ) is a binomial random variable with n trials and probability of success P x , divided by n. Hence",
+        "In conclusion, we have R n (Q, P ; P ) (204)",
+        "From this, we deduce (187) as follows. In [27,Equation (35)], it is provided that",
+        "Under X n ∼ P n , it is straightforward that E[T (n)",
+        "x ′ (X n )] = P x ′ for every x ′ ∈ X . Hence",
+        ") =L 1 (k) + P (X S )L 2 (k) + P (X N )L 3 (k).",
+        "Applying (205), we obtain (187)."
+      ],
+      "subsections": []
+    }
+  ],
+  "body_paragraphs": [
+    "Local differential privacy (LDP) [1]- [3] has already been deployed at scale in industry [4]- [8]. Under LDP, each individual perturbs their data locally before transmission so that the reported value reveals provably little about the true record, thereby removing the need for a trusted curator [1], [2]. Formally, LDP bounds how much the distribution of a user's reported value can differ as their true data vary, thereby embedding privacy directly at the source. This user-level privacy guarantee-quantified through information-theoretic bounds [9, Thm. 14]-has propelled LDP into a wide spectrum of statistical inference and machine-learning tasks involving sensitive data [7], [10]- [14].",
+    "However, LDP offers blanket protection: for any pair of input values, the distribution of reported data must remain nearly indistinguishable [9]. Although such protection is reassuring, it can be inefficient in scenarios where only certain S.-M. Yoon, H.-Y. Park, and S.-H. Lee are with the School of Electrical Engineering, Korea Advanced Institute of Science and Technology (KAIST), Daejeon, South Korea (e-mail: ysm4078@kaist.ac.kr, phy811@kaist.ac.kr, sihyeon@kaist.ac.kr). S.-H. Nam is with the Information & Electronics Research Institute, KAIST, Daejeon, South Korea (e-mail: shnam@kaist.ac.kr). S.-M. Yoon and H.-Y. Park contributed equally to this work. (Corresponding author: Si-Hyeon Lee)",
+    "The appendix of this paper is provided in the supplementary material.",
+    "inputs are truly sensitive. Consider the survey, \"Have you violated a policy?\", with X ∈ {\"Yes\", \"No\"} as the truthful answer, adapted from the illustrative example in [15]. Under Warner's randomized response (RR) [10] shown in Fig. 1 (a), respondents flip a biased coin and potentially report the opposite answer. Consequently, the reported value Y conveys only limited information about X, restricting the analyst's ability to infer the true outcome. Notably, however, only the affirmative response (\"Yes\") is genuinely sensitive, while the negative response (\"No\") is not. Mangat's randomized response [16] in Fig. 1 (b), exploits this asymmetry: those who answered \"Yes\" always report truthfully, while those who answered \"No\" randomize their answer. This ensures privacy when Y = \"Yes\", while enabling reliable inference when Y = \"No\". Utility-optimized local differential privacy (ULDP) [15] formalizes this idea. A ULDP mechanism partitions outputs into protected symbols-subject to the full LDP guarantee-and invertible symbols that faithfully reveal non-sensitive inputs. Thus, ULDP preserves LDPlevel privacy exactly where needed, while permitting enhanced inference elsewhere. This approach has motivated extensions such as high-low LDP [17], (ϵ, δ)-ULDP [18], [19], inputdiscriminative LDP [20], [21], and utility-optimized key-value data LDP [22]. Furthermore, ULDP has already seen adoption in domains including clinical analytics [23], federated learning [24], and natural language processing [25].",
+    "For the representative statistical inference task of discrete distribution estimation, which is the focus of this paper, several ULDP schemes have been proposed [15], [17], [26], [27]. As will be elaborated in Section III, prior ULDP schemes have been analyzed only with respect to order-optimality in specific regimes [15], [17], [27], while the exact leading constant that characterizes the fundamental limit of the PUT under ULDP has not been identified. This unresolved gap motivates our work, which establishes the exact attainable performance.",
+    "Our main contribution is to establish the exact optimal PUT-including the leading constant-for discrete distribution estimation under ULDP. We characterize the optimal PUT in terms of a finite-dimensional concave-convex saddlepoint optimization problem that can be solved using convex optimization solvers and give a closed-form solution to this optimization problem for some regime.",
+    "For converse, we develop two general analytical frameworks which extend previous works: (i) a uniform asymptotic Cramér-Rao lower bound, a versatile concept applicable beyond ULDP to general private estimation problems, and (ii) a reduction showing that optimal ULDP mechanisms can be restricted to a newly defined class of extremal ULDP mechanisms, analogous to extremal LDP mechanisms [28], thereby confining the minimax analysis to this smaller class. After that, we complete the converse proof by exploiting a novel way to decompose the data distribution into several parts based on the structure of the ULDP constraint.",
+    "For achievability, we propose a class of utility-optimized block design (uBD) schemes. The development of uBD schemes builds on several key ideas: (i) nontrivially modifying block design schemes [29] for discrete distribution estimation under LDP, (ii) exploiting the idea of score-based linear estimator in [30], and (iii) decomposing the data distribution as in the converse proof. Notably, the class of uBD schemes subsumes one of the existing schemes, uRR [15], and our closed-form characterization implies that uRR is optimal in some regime. To the best of our knowledge, this is the first work to prove the optimality of uRR in a certain regime. Furthermore, we show that there exists a regime in which previously proposed ULDP schemes cannot achieve the optimal PUT, thereby establishing the strict superiority of our uBD scheme.",
+    "The rest of this paper is organized as follows. Section II formalizes the discrete distribution estimation problem under the ULDP constraint. Section III provides the necessary background and a review of the related works. Our main result-the characterization of the optimal PUT-is stated in Section IV. To establish the optimal PUT, Section V presents the converse proof, and Section VI establishes achievability through the proposed uBD scheme. Section VII provides the numerical evaluations of the proposed scheme and baselines on a realworld dataset, demonstrating that our scheme outperforms existing alternatives. Finally, Section VIII concludes the paper with some discussion on future works.",
+    "For natural numbers a ≤ b, we denote [a : b] := [a, b] ∩ N and [a] := [1 : a]. For a finite set X , P(X ) denotes the set of all probability mass functions on X . For x ∈ X and P ∈ P(X ), we write either P (x) or P x for P ({x}). When",
+    "for w ∈ N ≥2 , we identify P(X ) with the probability simplex,",
+    "The relative interior of ∆ w is",
+    "and its direction space is",
+    "For x ∈ [w], we write δ (x;w) ∈ ∆ w for the point mass at x, i.e., δ",
+    "For a conditional distribution Q : X → P(Y) between finite sets X , Y, we denote supp(Q) := {y ∈ Y : Q(y|x) > 0 for some x ∈ X }. For simplicity, we often regard Q as the row stochastic matrix (Q x,y ) (x,y)∈X ×Y with entries Q x,y = Q(y|x). Given an input distribution, P ∈ P(X ), we write",
+    "We write 0 m , 1 m ∈ R m as the all-zeros and all-ones vectors (and 0 m×n , 1 m×n for their matrix analogues), and I m as the m × m identity matrix. For γ ∈ R m , we write diag(γ) as the m × m diagonal matrix whose i-th diagonal element is γ i . For A ∈ R n×m , S 1 ⊂ [n], and S 2 ⊂ [m], we write A S1,S2 for the submatrix of A with rows indexed by S 1 and columns indexed by S 2 .",
+    "For a positive definite matrix A, we define tr -1 (A) := tr A -1 , and for a non-invertible positive semidefinite matrix A, we define tr -1 (A) := ∞.",
+    "We consider the private discrete distribution estimation system with n ∈ N clients and a single server, as depicted in Fig. 2. For each i ∈ [n], the i-th client has its own categorical data X i ∈ X = [w], w ∈ N ≥2 , generated in an i.i.d. manner from an unknown distribution P ∈ P(X ). To mitigate privacy leakage, the i-th client perturbs its data X i into Y i through a conditional distribution Q : X → P(Y) for some finite set Y, called a privacy mechanism, and transmits Y i to the server. After collecting Y n = (Y 1 , . . . , Y n ), the server computes the estimate Pn : Y n → R w of P . Let P denote a sequence of estimators ( Pn ) ∞ n=1 and we call the pair (Q, P ) a private estimation scheme. The estimation error of a private estimation scheme (Q, P ) with n clients is measured by the worst-case mean squared error (MSE),",
+    "In this paper, we consider the utility-optimized local differential privacy (ULDP) constraint assuming a partially sensitive domain: sensitive categories are privatized under an ϵ-LDP whereas non-sensitive categories may be disclosed via invertible outputs to enhance utility. Specifically, we suppose that X is partitioned into two sets: the set of sensitive elements X S ⊂ X and the set of non-sensitive elements X N = X \\X S . This partition is common knowledge to all clients and the server. The ULDP is defined as follows.",
+    "Definition 1 (ULDP [15]). For X S ⊂ X and ϵ > 0, a privacy mechanism Q : X → P(Y) is called an (X S , ϵ)-ULDP mechanism if there exists a partition {Y P , Y I } of Y (called the sets of protected data and invertible data, respectively), such that 1) For all x, x ′ ∈ X and y ∈ Y P ,",
+    "2) For all y ∈ Y I , there exists x ∈ X N such that",
+    "Without loss of generality, we assume that the set of sensitive elements is given as X S = [v], v ≤ w, and we simply call an (X S , ϵ)-ULDP mechanism as a (v, ϵ)-ULDP mechanism. We denote the class of all (v, ϵ)-ULDP mechanisms by Q w,v,ϵ . Also, a private estimation scheme (Q, P ) which satisfies Q ∈ Q w,v,ϵ is called a (v, ϵ)-ULDP scheme. Note that (w, ϵ)-ULDP is equivalent to ϵ-LDP. Also, (7) indicates that whenever the event {Y ∈ Y I } occurs, the server can perfectly infer the input x ∈ X N of a ULDP mechanism. Thus, roughly speaking, an (v, ϵ)-ULDP mechanism provides partly more accurate data than an ϵ-LDP mechanism.",
+    "The optimal privacy-utility tradeoff (or, in short, optimal PUT) for a discrete distribution estimation system with nclients under (v, ϵ)-ULDP constraint is defined as",
+    "In [15], it was shown that M * n (w, v, ϵ) = Θ(1/n). Accordingly, the asymptotically optimal PUT is defined as",
+    "and the asymptotic error of a private estimation scheme (Q, P ) is defined as",
+    "We say that a (v, ϵ)-ULDP scheme (Q, P ) is asymptotically optimal if",
+    "In this paper, we focus on characterizing the asymptotically optimal PUT M * (w, v, ϵ) and simply refer to the asymptotically optimal PUT as the optimal PUT from now on. Note that M * (w, w, ϵ) is the optimal PUT under the ϵ-LDP constraint, which has already been established in [11]. Hence, from now on, we assume v < w.",
+    "Remark 1. The following inequalities follow directly from the relation between LDP and ULDP:",
+    "In Remark 3, we show that the above bound is, in fact, tight under specific conditions.",
+    "Discrete distribution estimation under local differential privacy (LDP) has been extensively studied, and a variety of LDP schemes have been proposed such as randomized response (RR) [10], randomized aggregatable privacy-preserving ordinal response (RAPPOR) [7], subset selection (SS) [11], Hadamard response (HR) [12], projective geometry response (PGR) [13], optimized unary encoding (OUE) protocol [14], and optimized local hasing (OLH) protocol [14]. Among these, the SS is known to attain the optimal PUT M * (w, w, ϵ) [31]. Recently, Park et al. [29] introduced a class of block design schemes that subsumes RR, SS, HR, and PGR while also enabling the construction of new mechanisms that achieve optimal PUT with reduced communication costs.",
+    "Turning to the utility-optimized LDP (ULDP) setting, proposed ULDP schemes are typically derived by modifying classical LDP schemes to satisfy the ULDP requirements in Definition 1. Concretely, uRR and uRAP [15] are derived from RR [10] and RAPPOR [7], respectively; uSS [27] is based on SS [11]; uOUE and uOLH [26], [27] are based on OUE and OLH [14]; and a variant of the Hadamard response [17]-referred to here as uHR-extends HR [12] to the ULDP constraint. To characterize the optimal PUT under ULDP, Murakami et al. [15] utilized Remark 1 and known results in PUT over LDP in [2] to show that for ϵ ∈",
+    "Then, they stated that uRAP attains an estimation error of 4v nϵ 2 as ϵ → 0; hence, it is order-optimal for ϵ ∈ [0, 1]. Subsequently, Acharya et al. [12] refined the optimal PUT as M * n (w, v, ϵ) = Θ v 2 nϵ 2 + w nϵ for the high privacy regime ϵ = O(1), and introduced the uHR scheme whose estimation error matches this rate up to constant factors. 1Recently, [27] showed that M * n (w, v, ϵ) = Θ ve ϵ n(e ϵ -1) 2 for ϵ ≤ log v, and uSS, uOUE, and uOLH are order-optimal in the regime ϵ ≤ log v, which was also proved from Remark 1 and results in PUT over LDP in [11]. Furthermore, it was experimentally shown that uSS [27] achieves the lowest estimation error among previous schemes.",
+    "Despite these advances, the exact optimal PUT under ULDP, in particular the determination of the leading constant, had remained an open problem until our work, where we establish a complete characterization.",
+    "A well-known result in asymptotic statistics [32]- [34] is an asymptotic variant of the Cramér-Rao lower bound (CRLB), which we refer to as the asymptotic Cramér-Rao lower bound (asymptotic CRLB). In [31], a key step in establishing the converse of the optimal PUT under LDP is to derive a certain uniform version of the asymptotic CRLB, suitable for distribution estimation under LDP. This subsection revisits the classical asymptotic CRLB and sketches the key ideas behind the uniform refinement of [31]. In Section V-A, we extend the uniform version of [31] substantially, laying the groundwork for showing the converse of the optimal PUT under ULDP.",
+    "The standard asymptotic CRLB [32,Theorem 29.4] implies that for a fixed conditional distribution Q from [w], we have",
+    "where J P,Q is the Fisher information matrix of Q at P (defined in Definition 5). However, this cannot be directly applied to derive a lower bound on the optimal PUT under LDP, which involves the infimum over the privacy mechanisms Q inside the limit over n. To circumvent this challenge, the authors of [31] first reduced the optimization over all ϵ-LDP mechanisms to the optimization over a specific class of ϵ-LDP mechanisms, called the extremal ϵ-LDP mechanisms introduced in [28]. Then, by refining the classical proof of asymptotic CRLB in [33], [34], commonly referred to as the local asymptotic normality (LAN) argument, they derived a certain universal lower bound on inf P R n (Q, P ), holding for all extremal ϵ-LDP mechanisms Q. This gives",
+    "where Q E w,ϵ is the set of all extremal ϵ-LDP mechanisms [28]. We note that the proof exploits the special structures of (extremal) LDP mechanisms, and therefore it is not straightforward to adopt the arguments of [31] in the ULDP setup.",
+    "Our proposed ULDP mechanism builds on the block design (BD)-based LDP mechanism in [29], referred to as the BD mechanism. This subsection reviews the BD mechanism with emphasis on elements relevant to the development of the proposed ULDP scheme in Section VI.",
+    "Definition 2 (Block design [35]). Let v, b, r, k ∈ N and λ ∈ Z ≥0 . A hypergraph (V, E), that consists of a set of vertices V and a set of edges (or blocks) E ⊆ 2 V , is called a (v, b, r, k, λ)block design if |V| = v, |E| = b, and it satisfies the following symmetries:",
+    "1) r-regular: every vertex in V is contained in r edges.",
+    "2) k-uniform: ∀e ∈ E, |e| = k.",
+    "3) λ-pairwise balanced: every pair of vertices in V is contained in λ edges.",
+    "Without loss of generality, we assume V = [|V|]. The parameters (v, b, r, k, λ) of a block design should satisfy the following relations. Lemma 1. [35] For any (v, b, r, k, λ)-block design, we have",
+    "-block design called the (v, k)-complete block design [35] (here, if k = 1, we regard v-2 k-2 = 0). This is formed by letting E be the set of all size k subsets of V.",
+    "Given (v, b, r, k, λ)-block design, a BD mechanism regards input data as a vertex and outputs an edge, enforcing ϵ-LDP by biasing towards edges that contain the input vertex.",
+    "Definition 3 (Block design mechanism [29]). For given ϵ > 0 and a (v, b, r, k, λ)-block design (X , Y), the corresponding (v, b, r, k, λ, ϵ)-block design mechanism is the conditional distribution Q : X → P(Y) such that",
+    "Park et al. also proposed the corresponding sequence of unbiased estimators P for the BD mechanism [29,Thm. 3], and called such a pair (Q, P ) a (v, b, r, k, λ, ϵ)-BD scheme. For any (v, ϵ), it was shown that the estimation error of the BD scheme only depends on the uniformity parameter k. In [29, Prop. 1 and Thm. 5], an explicit characterization of optimal k that minimizes the estimation error is provided and the BD scheme with optimal k is shown to achieve the optimal PUT. Theorem 2 ([29, Prop. 1 and Thm. 5]). Let v ≥ 2 and let (Q, P ) be a (v, b, r, k, λ, ϵ)-block design scheme. Its asymptotic error is",
+    "Moreover, we have",
+    "By Theorem 2, it suffices to find a block design with k = k * ∈ K * (v, ϵ) to construct an optimal ϵ-LDP scheme. Remark 2 guarantees the existence of such a (v, k * , ϵ)-block design yielding a scheme equivalent to the optimal SS [11].",
+    "Our main contribution is to completely characterize the optimal PUT for the discrete distribution estimation under the ULDP constraint, i.e., the characterization of M * (w, v, ϵ) for all possible (w, v, ϵ).",
+    "Here, M (α, t) is concave-convex and has a saddle point (α * , t * ), which gives sup α inf t M (α, t) = M (α * , t * ). 3For Theorem 3, the converse and the achievability parts are shown in Sections V and VI, respectively. The concave-convex property of M (α, t) and the existence of a saddle point is proved in Appendix B.",
+    "For converse, we first extend two previous results: (i) generalize the uniform asymptotic Cramér-Rao lower bound [31] introduced in Section III-B, and (ii) show that it suffices to consider only a newly defined class of extremal ULDP mechanisms as optimal, in a manner analogous to the extremal LDP mechanisms in [28]. Then, we introduce a novel argument of decomposing the data distribution P into three components: (i) the relative values of P x 's over sensitive x, (ii) the relative values of P x 's over non-sensitive x, and (iii) the total probability of sensitive data P (X S ). Using this, we derive a lower bound on M * (w, v, ϵ) which can be interpreted as the sum of CRLBs for estimating each component. Each M i in Theorem 3 can be intuitively interpreted as the CRLB for estimating the i-th component of the data distribution P .",
+    "For achievability, we propose a class of utility-optimized block design schemes (uBD schemes). Each uBD scheme is associated with parameters (α, t) appearing in Theorem 3, and we show that if (α * , t * ) is a saddle point of M , then every uBD scheme with parameter (α, t) = (α * , t * ) is asymptotically optimal. The privacy mechanism Q of a uBD scheme builds upon the block design mechanisms [29] in Definition 3, with nontrivial modifications. The distinguishing idea is to exploit a mixture of multiple BD mechanisms, rather than restricting to a single BD mechanism. The parameter t represents the mixture proportions, where t k denotes the proportion of a k-uniform BD mechanism. The estimator sequence is constructed based on two ideas. First, we adopt the idea, also utilized in the converse proof, of decomposing the data distribution P into three components, and estimate each component separately. Second, we propose a set of estimator sequences { P (α) } α∈[0,1] , each of which attains the Cramér-Rao lower bound at a specific data distribution P (α) ∈ ∆ w . The supremum over α in Theorem 3 reflects the intuition that for the worst-case optimality, we use the estimator sequence that attains the worst-case CRLB. To attain the CRLB, the idea of 'score-based linear estimator' in [30] is utilized.",
+    "Theorem 3 characterizes the optimal PUT in terms of a finite-dimensional concave-convex saddle-point optimization problem, which can be efficiently solved using existing optimization solvers. Moreover, the following theorem gives a closed-form solution to this optimization problem for some regime, which is proved in Appendix E.",
+    "Case (a): Suppose that (w, v, ϵ) satisfies at least one of the following three conditions:",
+    "Then, the following (α * , t * ) is a saddle point of M , i.e., M * (w, v, ϵ) = M (α * , t * ):",
+    "Here, K * (v, ϵ) is defined in (20). 4   The closed-form expression in Theorem 4 allows us to verify the optimality or suboptimality of existing schemes, as presented in the following corollary.",
+    "Corollary 5. If (w, v, ϵ) corresponds to Case (a) of Theorem 4, uRR [15] is asymptotically optimal. 4 Note that ln",
+    ", where E is in (22). Hence",
+    "Corollary 6. If (w, v, ϵ) corresponds to Case (b) of Theorem 4 with strict inequality with respect to ϵ, i.e., v ≥ 4 and ϵ <",
+    ", the uSS scheme is suboptimal. In other words, for the uSS scheme",
+    "Corollary 5 is a special case of Corollary 14 and Corollary 6 is proved in Appendix F. Corollary 5 follows from the observation that our uBD scheme with the optimal parameter coincides with uRR in the corresponding regime, resembling the fact that the optimal BD scheme in the low-privacy regime reduces to RR [10]. Since the proposal of uRR in [15], this is the first proof of its optimality in a certain regime. Corollary 6 shows that uSS scheme, which is the best known previous scheme, is suboptimal, thereby demonstrating a strict gap between uBD and the previously known ULDP schemes.",
+    "We conclude this section with the following remark on the relation with the trivial converse bound in Remark 1.",
+    "Remark 3. In the regime of Case (b) in Theorem 4, it can be easily seen that",
+    "where R BD is in (18). Thus, the converse bound in Remark 1 is tight for v ≥ 4 and ϵ ≤ ln (v-1)(v-2) 2 .",
+    "The goal of this section is to prove the converse part of Theorem 3, that is, to show",
+    "This section consists of three subsections. Section V-A provides a generalized uniform version of asymptotic CRLB [31], and Section V-B provides the notion of extremal ULDP mechanisms analogous to extremal LDP mechanisms [28]. Finally, Section V-C finishes the converse proof by using a distribution decomposition argument, which also plays an important role in the construction of proposed schemes.",
+    "As a first step for the converse proof, we show the generalization of the uniform result in [31], which we call the uniform asymptotic Cramér-Rao lower bound (uniform asymptotic CRLB). Our version of uniform asymptotic CRLB covers the general private discrete distribution estimation, not only private estimation under LDP or ULDP constraint, and thus we expect that it has possible applications to other private estimation problems. Moreover, we provide a much shorter proof for the uniform asymptotic CRLB compared to [31].",
+    "First, we present the necessary definitions for CRLB.",
+    "= ⟨η P,Q (y), h⟩.",
+    "Here, η P,Q : supp(Q) → R w is the score vector, given by",
+    "Definition 5. The Fisher information of Q at P is a symmetric positive semidefinite bilinear map J P,Q : ⃗ ∆ 2 w → R, defined as",
+    "If an orthonormal basis B = (h (1)",
+    "∆ w is given, the Fisher information matrix with respect to such basis is the (w -1) × (w -1) matrix J P,Q;B such that (J P,Q;B ) i,j = J P,Q (h (i) , h (j) ). We omit B from the subscript if it is clear from the context. Remark 4. Fisher information matrices with respect to different orthonormal bases are conjugate via an orthogonal matrix. Therefore, many expressions involving trace of a function of Fisher information matrix (such as tr -1 (J P,Q ) in (13)) are invariant under the choice of basis. If so, we may omit the subscript B without ambiguity.",
+    "Next, we present the notion of degradedness [37], which gives a systematic way of reducing the space of privacy mechanisms to be optimized, as [31] reduced the optimization over all LDP mechanisms to that over extremal LDP mechanisms. Intuitively speaking, we say that Q degrades Q if Q can be simulated by applying some post-processing to the output of Q. The formal definitions are as follows. Definition 6. For finite sets X , Y, Ỹ and two conditional distributions Q : X → P(Y) and Q : X → P( Ỹ), we say Q degrades Q, and denote Q ⊒ Q, if there exists a conditional distribution T : Y → P( Ỹ) such that Q(ỹ|x) = y∈Y Q(y|x)T (ỹ|y) for every x ∈ X and ỹ ∈ Ỹ. Definition 7. For a finite set X and two classes Q, Q of conditional distributions from X to some finite set, we say",
+    "Now, we state the uniform asymptotic CRLB.",
+    "Theorem 7 (Uniform Asymptotic Cramér-Rao Lower Bound). Let w ∈ N ≥2 be given, and let X = [w]. Let Q be a class of conditional distributions from X to some finite set. Suppose that there exist a fixed finite set Y and a compact subset Q of conditional distributions from X to Y, which degrades Q. Then, we have",
+    "We prove Theorem 7 by refining the proof of asymptotic CRLB in [32].",
+    "Proof of Theorem 7. It suffices to show that for each fixed",
+    "Hence, from now on, we fix P ∈ ∆ • w . a) Instantiation of Proof in [32]: The first half of the proof is the same as the proof of asymptotic CRLB in [32]. For the detailed reason for each step, refer to [32, Section 29.1].",
+    "Since P ∈ ∆ • w , there exists D > 0 such that whenever h ∈ ⃗ ∆ w , ∥h∥ ≤ D, we have P + h ∈ ∆ • w . Let us choose an orthonormal basis B = (h (1)",
+    "w . Then, whenever n ≥ (w -1) 2 /D 4 , we can bound the worstcase MSE by the average MSE,",
+    "and following the PDF f (z) = n 1/4 cos 2 n 1/4 πz 2",
+    ". 5 Then, we apply another variant of CRLB, called Bayesian CRLB, resulting that whenever Q ⊒ Q and n ≥ (w -1) 2 /D 4 , we have",
+    "b) New Techniques for the Uniform Result: After that, to derive the uniform result, we establish a technical proposition which shows that {P → J P,Q } Q is equicontinuous in some sense. The formal statement is in Proposition 15 in Appendix C-A. Using this proposition and the n -1/4 order of the diameter of the support of Θ, we derive in Appendix C-B that there exist constants C > 0 and N ∈ N (which only depend on (w, P )) such that for every n ≥ N and every conditional distribution Q from [w], we have",
+    "Using a standard fact [39] that A ⪯ B implies A -1 ⪰ B -1 for positive definite matrices A, B, we obtain that",
+    "for every Q ⊒ Q, where",
+    "Note that R n (Q) ↑ tr -1 (J P,Q ) as n → ∞. Using compactness of Q and Dini's theorem [40,Thm. 7.13], we show in Appendix C-C that",
+    "This finishes the proof of Theorem 7.",
+    "As a next step, to utilize the uniform asymptotic CRLB in the ULDP setup, we find a certain compact set of conditional distributions which degrades the class of all ULDP mechanisms. In short, we find such a set analogous to the set of extremal LDP mechanisms [28], which we call the set of extremal ULDP mechanisms. Definition 8. Let 1 ≤ v < w, ϵ > 0 be given, and",
+    "We define Q E w,v,ϵ to be the set of all extremal (v, ϵ)-ULDP mechanisms.",
+    "We can equivalently describe an extremal ULDP mechanism Q by its stochastic matrix as follows. The visualization of the stochastic matrix is in Figure 3. We identify",
+    "First, we bring the staircase pattern matrix in [28]:",
+    "where 1) is the matrix whose y'th column corresponds to the binary representation of y. Then, we set Q XS,YP = S (v) diag(γ), which is precisely an extremal ϵ-LDP mechanism [28]. Next, we set",
+    "Intuitively, for given Q XS,YP , we set each element of Q XN,YP to be the minimum possible value while satisfying the ULDP constraint, so that the probability of returning invertible data given non-sensitive data is maximized. Finally, we set Q XN,YI to be a constant multiple of an identity matrix, where the constant f (γ) = 1y ′ ∈YP γ(y ′ ) is determined by γ so that for each x ∈ X N , the x'th row of Q is summed up to one. Also, we set Q XS,YI to be the all-zero matrix.",
+    "Clearly, every extremal (v, ϵ)-ULDP mechanism is a (v, ϵ)-ULDP mechanism. Also, note that among previously proposed mechanisms, uRR [15] and uHR [17] are equivalent to some extremal ULDP mechanisms. 6 It turns out that the set of all extremal ULDP mechanisms degrades the class of all ULDP mechanisms. Theorem 8. For every 1 ≤ v < w and ϵ > 0, we have",
+    "e ϵ 1 e ϵ 1 e ϵ 1 e ϵ 1 e ϵ e ϵ 1 1 e ϵ e ϵ 1 1 1 e ϵ e ϵ e ϵ e ϵ The proof is similar to the proof of degradation of LDP mechanisms by extremal LDP mechanisms in [41], [42], and we present the proof in Appendix C-D.",
+    "To combine Theorems 7 and 8, it remains to show that",
+    "Clearly, the set of all γ satisfying (48) is compact, and hence Q E w,v,ϵ is compact. Thus, by Theorems 7 and 8, we obtain",
+    "Up to this point, we have established the converse bound by generalizing existing results. Now, we present our prominent idea of decomposing the data distribution, which not only lies behind the converse proof, but also plays an important role in the construction of our proposed schemes in Section VI. Based on this idea, we present the complete converse proof at the end of this subsection.",
+    "To formalize this idea, we introduce the following three mutually orthogonal subspaces of R w which span the direction space ⃗ ∆ w in (3),",
+    "Also, let Π i : R w → H i be the orthogonal projection onto H i . Then, intuitively, Π 1 (P ) and Π 2 (P ) represent the relative values of P x 's over sensitive x and that over non-sensitive x, respectively. Also, Π 3 (P ) designates the probability of sensitive data P (X S ), as it is easy to see that",
+    "Additionally, we define the class of distributions P (α) ∈ ∆ w , α ∈ [0, 1], by the mixture of the uniform distribution on X S and the uniform distribution on X N , with a rate α : 1 -α.",
+    "More precisely, we have",
+    "The key idea for the converse proof is to give a lower bound on the optimal PUT, which can be intuitively interpreted as the sum of CRLBs for estimating Π i (P ) over i = 1, 2, 3. Building on this idea, we now present the formal converse proof.",
+    "Proposition 9. For every w > v ≥ 1 and ϵ > 0, we have",
+    "Proof. First, we further bound (49) by replacing the supremum over all P ∈ ∆ • w with the supremum over P (α) , α ∈ (0, 1), obtaining",
+    "We choose an orthonormal basis B = {h (1) , • • • , h (w-1) } of H, such that the first (v -1) vectors form a basis of H 1 , the next (w -v -1) vectors form a basis of H 2 , and the last vector h (w-1) is the unit vector in H 3 . Now, let Q ∈ Q E w,v,ϵ and α ∈ (0, 1) be given. Let B 1 , B 2 , B 3 be the principal submatrices of J P (α) ,Q;B , where B 1 is formed by selecting the first (v -1) rows and columns, B 2 by selecting the next w -v -1 rows and columns, and B 3 by selecting the last row and column. Using the block matrix inversion formula [36], we derive in Appendix C-E that",
+    "By the arithmetic mean-harmonic mean inequality, we have",
+    ". Also, we derive in Appendix C-F that",
+    "Thus, we obtain",
+    "Since this holds for every Q ∈ Q E w,v,ϵ and α ∈ (0, 1), we have",
+    "By continuity of M and compactness of ∆ v , we can replace sup α∈(0,1) by sup",
+    ". This ends the converse proof.",
+    "VI. ACHIEVABILITY: UTILITY-OPTIMIZED BLOCK DESIGN SCHEME In this section, we propose a new class of ULDP schemes called utility-optimized block design (uBD) schemes. After that, we show that an optimized uBD scheme is asymptotically optimal.",
+    ", where each of Q (k) has the uniformity parameter k. This guarantees that the output spaces of Q (k) 's are disjoint. Also, we prepare a mixture proportion t ∈ ∆ v . Then, a uBD mechanism Q is constructed as follows. The visualization of Q is in Figure 4. If a sensitive data x ∈ X S is given as the input of a uBD mechanism Q, then a uBD mechanism randomly chooses a block design mechanism Q (k) , each with probability t k , respectively, and simulates the chosen Q (k) to generate its output. Hence, in terms of a stochastic matrix, Q XS,YP is the horizontal stack of the stochastic matrices of Q (k) multiplied by t k . After that, we set Q XN,Y so that the resultant Q becomes an extremal (v, ϵ)-ULDP mechanism, which is defined in Definition 8. That is, for given x ∈ X N , Q either outputs one of the edges from the support of some Q (k) , or directly outputs its input x in the form of an edge {x}. Here, the output distribution Q(•|x) is suitably determined to maximize the probability that a mechanism outputs {x} while satisfying the (v, ϵ)-ULDP constraint. The precise definition of a uBD mechanism is as follows.",
+    "Suppose that the following are given:",
+    "Then, the corresponding (w, v, ϵ, t)-uBD mechanism is defined as an extremal (v, ϵ)-ULDP mechanism as in Definition 8, which is induced from the following γ : Y P → R ≥0 :",
+    "By the regularity of block design, it is straightforward to check that this γ satisfies the necessary and sufficient condition to induce an extremal ULDP mechanism in (48). Note that for every (w, v, ϵ, t), there exists a (w, v, ϵ, t)-uBD mechanism, by setting each of (X S , E k ) to be the complete block design in Remark 2. Also, to specify a uBD mechanism, it suffices to designate",
+    "b) Estimator: Now, we propose a class of estimators for a uBD mechanism. The main ideas for our proposed estimators are as follows.",
+    "(i) First, as we derive the lower bound based on a version of CRLB, we target to construct an estimator which saturates CRLB. For this purpose, we exploit the score vector in (34). (ii) Second, by exploiting the decomposition ⃗ ∆ w = H 1 ⊕ H 2 ⊕ H 3 introduced in Section V-C, we construct an estimator based on the relationship between the projections of the unknown distribution P and the score vector onto each of H i . Based on these ideas, we observe that by the symmetries of block designs, for any given α ∈ (0, 1), the expectation of the projection of the score vector of a uBD mechanism at P (α) (defined in (54)) is a linear function of the projection of P -P (α) , where the linear coefficient is related with M i apperaing in Theorem 3 and d i := dim(H i ).",
+    "Proposition 10. Let Q be a (w, v, ϵ, t)-uBD mechanism, and α ∈ (0, 1). Then, for each i = 1, 2, 3, we have",
+    "Recall that Π i : R w → H i is the orthogonal projection onto H i defined in (50)-(52), and",
+    "The proof of Proposition 10 is in Appendix D-A. Using this, we can obtain an unbiased estimator for each of α by inverting the linear relationship for each i = 1, 2, 3 to estimate each Π i (P -P (α) ), and aggregating the results for i's. An exception is the case of v ≥ 2, t = δ (v;v) , where the linear relationship is non-invertible due to M 1 (α, t) = ∞. We note that the idea of score-based linear estimator was used in [30] for private estimation under LDP and a 1-bit communication constraint.",
+    "Definition 10. Let Q be a (w, v, ϵ, t)-uBD mechanism. Suppose that t ̸ = δ (v;v) when v ≥ 2. For each α ∈ [0, 1], we define a sequence of unbiased estimators P (α) corresponding to Q, by",
+    "(ii) For α ∈ {0, 1}, P",
+    "1 is given by the continuous extension of (63). We call such a pair (Q, P (α) ) a (w, v, ϵ, α, t)-uBD scheme.",
+    "To facilitate its implementation, we provide the table of each component of Π i (η P (α) ,Q (y)) for a uBD mechanism (or for a general extremal ULDP mechanism) in Table I in the beginning of the appendix.",
+    "The estimation error of a uBD scheme can be represented using the objective function M (α, t) in Theorem 3 and its derivative with respect to α. Note that similar to block design schemes [29], given (w, v, ϵ), the estimation error of a uBD scheme only depends on (α, t), and does not depend on specific choices of block designs (X S , E k ). Proposition 11. Let (Q, P ) be a (w, v, ϵ, α, t)-uBD scheme.",
+    "+ (β -α)F (α, t) + M (α, t) , (65) 7 Here, if d i = 0, we regard",
+    "where F (α, t) = ∂ ∂α M (α, t). Proof. Since the estimator is unbiased and Y 1 , • • • , Y n are i.i.d. given P , (64) is straightforward. Next, by the symmetry of a uBD scheme, the similar argument as [29] shows that whenever P (X S ) = β, we have R 1 (Q, P ; P ) ≤ R 1 (Q, P ; P (β) ).",
+    "The detailed proof of (66) is in Appendix D-B. Hence, we have",
+    "In Appendix D-C, we show that",
+    "which proves (65).",
+    "From this, we derive the asymptotic optimality of an optimized uBD scheme and finish the proof of Theorem 3.",
+    "Corollary 12. Let (α * , t * ) be a saddle point of M (α, t), and let (Q, P ) be a (w, v, ϵ, α * , t * )-uBD scheme. Then, (Q, P ) is asymptotically optimal, and M * (w, v, ϵ) = M (α * , t * ).",
+    "Proof. From the concavity of M (α, t) on α, we have",
+    "From this, it is clear that when (α, t) = (α * , t * ), the supremum in ( 65) is attained at β = α * , and thus R(Q, P ) = M (α * , t * ). This implies that M (α * , t * ) ≥ M * (w, v, ϵ). Since we have proved in Section V that M (α * , t * ) ≤ M * (w, v, ϵ), we conclude that M (α * , t * ) = M * (w, v, ϵ), and thus R(Q, P ) = M * (w, v, ϵ).",
+    "Remark 5. Corollary 12 means that an optimized uBD scheme achieves the minimum possible asymptotic error among all (v, ϵ)-ULDP schemes, which are not necessarily unbiased. Moreover, by the same argument as in [29], we can also show that for each of fixed n, an optimized uBD scheme attains the minimum possible estimation error among all unbiased (v, ϵ)-ULDP schemes.",
+    "Note that in all regimes where we find the closed-form solution as in Theorem 4, t * is a point mass. There is a special behavior of uBD schemes such that t is a point mass, which not only derives a simpler description of such schemes, but also plays an important role in the proof of Theorem 4. In short, the estimator P (α) does not depend on α.",
+    "Then, the estimators P (α) in Definition 10 satisfy P (α) = P (α ′ ) for every α, α ′ ∈ [0, 1]. More precisely, the following holds for all α ∈ [0, 1]:",
+    "Proposition 13 can be shown by a direct calculation of (63) to verify that it is equal to the above expression, hence we omit the proof. Due to this proposition, we say a (w, v, ϵ, k)-simple uBD scheme to mean a (w, v, ϵ, α, δ (k;v) )-scheme, without ambiguity on specifying α. Proposition 13 can be used to implement the estimator for a simple uBD scheme in a simpler way than using (63). As a remark, the (w, v, ϵ, 1)-simple uBD scheme is equivalent to uRR [15].",
+    "Granting Theorem 4 about the closed-form solution in some regimes, which is proved in Appendix E, we deduce a closed-form characterization of optimal uBD schemes in the corresponding regimes. Interestingly, for Case (a), we deduce the optimality of uRR [15], which has not been shown before.",
+    "(a) Suppose that at least one of the following three conditions holds:",
+    "(ii) v ≥ 2 and ϵ ≥ ln w -v + (w -1)(w -2) 2 ;",
+    "(iii) v = 2 and ϵ ≤ ln 1 + 2(w -2) w -1 ;",
+    "Then, uRR [15] (equivalently, the (w, v, ϵ, 1)-simple uBD scheme) is asymptotically optimal.",
+    "(b) Suppose that v ≥ 4 and ϵ ≤ ln (v-1)(v-2)",
+    ". Then, for each k * ∈ K * (v, ϵ) ∩ [2 : v -1], any (w, v, ϵ, k * )-simple uBD schemes are asymptotically optimal. Remark 6. If (X S , E k ) is the complete block design in Remark 2, the corresponding (w, v, ϵ, k)-simple scheme can be seen as a modification of the SS scheme [11]. However, this uBD scheme is not equivalent to the uSS scheme [27], especially because the uBD scheme matches precisely one invertible element to each non-sensitive element, whereas the uSS scheme matches more than one invertible element, thereby introducing additional variance in the estimation.",
+    "Remark 7. The main advantage of considering the class of uBD schemes is that we can find an optimal and \"communication-efficient\" ULDP scheme, similar to the class of block design schemes [29]. Here, the communication cost is defined as log 2 |supp(Q)| bits per client. Specifically, a straightforward generalization of the argument in [29, Section IV-B] shows that in the regime of Case (b) in Theorem 4, if there exists a block design with b = v and k ∈ K * (v, ϵ) ∩ [2 : v -1], then there exists a simple uBD scheme which is not only optimal, but also has communication cost of log 2 w. This amount of communication is the smallest possible communication cost required for a consistent estimation [29], [43]. Note that in the regime of Case (a), uRR [15] achieves optimal PUT and the communication cost of log 2 w.",
+    "The region where a closed-form solution cannot be obtained through Theorem 4 is v ≥ 2 and ϵ ∈ (ϵ L , ϵ H ), where",
+    "In the next section, while performing experiments on a real dataset, we find the optimal parameters (α, t) by MATLAB Optimization Toolbox in the region above and analyze the result.",
+    "We empirically evaluate the PUTs of uBD and baseline schemes [15], [17], [26], [27]. We use the American Community Survey (ACS) 2023 1-year public use microdata sample (PUMS) [44], which contains records for n = 1, 732, 343 individuals. Six attributes are retained: age, educational attainment, marital status, disability record, employment status, and income-to-poverty ratio, whose category counts are (4, 2, 2, 3, 2, 3), giving 288 in total; excluding empty nominal categories yields w = 277 unique input alphabets.",
+    "We applied two alternative criteria: (i) Stringent criterion (v = 35): A value is sensitive only if all three conditions hold simultaneously:",
+    "• educationally disadvantaged, widowed/divorced, or disabled, • absence from the labor force,",
+    "• income below the poverty threshold. (ii) Permissive criterion (v = 253): A value is sensitive if it satisfies any one of the above conditions. The stringent rule labels 79,141 records as sensitive, while the permissive rule identifies 1,022,617.",
+    "For each criterion, we randomly sample 50, 000 users twenty times and report the average PUT across these subsamples. Guided by Theorem 4, we partition the privacy budget into three intervals: 10], where (ϵ L , ϵ H ) are in (72)-(73). Figs. 5 and6 show that our scheme consistently outperforms all baselines, regardless of privacy regimes and sensitive-set sizes. In the intermediate regime ϵ ∈ (ϵ L , ϵ H ), where a closed-form expression of the optimal parameter (α * , t * ) is unknown, we plot the empirical values of t * in Fig. 7. Remarkably, t * collapses to the two-point form t * = (t 1 , t 2 , 0, . . . , 0). 8 This observation leads us to carefully conjecture that utilizing a single block design is not sufficient, but utilizing just two block designs-those with k = 1 and k = 2-is sufficient to attain the optimal PUT   VIII. CONCLUSION In this paper, we characterized the optimal PUT for discrete distribution estimation under the ULDP constraint. We proved the converse by leveraging a uniform asymptotic Cramér-Rao lower bound, a reduction to extremal ULDP mechanisms, and a distribution decomposition argument. Also, we proposed a class of PUT-optimal uBD schemes, obtained through nontrivial modifications of block design mechanisms and by employing a score-based estimator together with a distribution decomposition argument.",
+    "An interesting direction for future research is to derive closed-form solutions to our optimization problem in the intermediate privacy regime, thereby specifying the optimal parameters for the estimator α * and the mixture proportion t * . Also, we could consider other formulations of PUT, such as instance-optimality setup [45] rather than worst-case setup, and considering general ℓ p loss or f -divergence loss (such as relative entropy) other than MSE loss (ℓ 2 ). It is also of interest to extend the analysis to a broader class of privacy metrics beyond LDP and ULDP. We believe that the analytical tools developed in this paper-particularly the uniform asymptotic Cramér-Rao lower bound-will provide a valuable foundation for pursuing these directions.",
+    "Proposition 15. Let P, P ′ ∈ ∆ • w . Then, for any conditional distribution Q from [w] to a finite set Y, we have",
+    ". We need to show that: for any h ∈ ⃗ ∆ w , we have",
+    "Thus, we obtain",
+    "B. Derivation of (40) in Theorem 7",
+    "First, observe that P x P (θ)",
+    "Since ∥h (i) ∥ = 1, we have",
+    "x Px ≤ (w-1) maxi |θi| Px . Also, note that 1 1-z ≤ 1 + z for z ∈ (0, 1). Thus, letting",
+    "we derive that whenever n ≥ N and Θ ∼ ϕ n , we have (w-1) maxi |Θi| Px ≤ Cn -1/4 < 1 almost surely, and thus",
+    "Combining this with Proposition 15, we derive (40).",
+    "C. Derivation of ( 44) in Theorem 7",
+    "We first remark that J P,Q is continuous in Q but it can be singular, and hence tr -1 (J P,Q ) is extended real-valued continuous function on Q. To address this issue, we note that there is an order-preserving homeomorphism σ : R ∪ {-∞, ∞} → [0, 1], e.g., a logistic function σ(x) = 1 1+e -x . Then, by Dini's theorem, σ(R n (P, Q)) ↑ σ (tr -1 (J P,Q )) uniformly as n → ∞, and thus",
+    "By taking σ -1 on both sides, we obtain (44).",
+    "Let an (v, ϵ)-ULDP mechanism Q : X → P( Ỹ) be given, whose sets of protected and invertible data are ỸP and ỸI , respectively. Also, let Y = Y P ⊔ Y I , Y P = 2 [v] \\{∅}, and",
+    "and T : Y → P( Ỹ) such that",
+    "Suppose that Q ∈ Q E w,v,ϵ is induced from γ : Y P → R ≥0 as in Definition 8. Then, (87) is equivalent to that the following holds for every ỹ ∈ Ỹ:",
+    "where Qỹ := ( Q(ỹ|1), • • • , (ỹ|w)), δ (x) := δ (x;w) , and for each z ⊂ X , s (z) ∈ {1, e ϵ } w is defined by",
+    "Therefore, it suffices to find γ and T which satisfy (88). By [11,Lemma 12] and the definition of protected data, for each ỹ ∈ ỸP , Qỹ is in a conic hull of {s (z) : z ⊂ X }. Moreover, for each z ⊂ X , s (z) is in a conic hull of S := {s (y) : y ∈ Y P } ∪ {δ (x) : x ∈ X N }, as follows:",
+    "Thus, for each ỹ ∈ ỸP , Qỹ is in a conic hull of S. Moreover, for each ỹ ∈ ỸI , Qỹ is a constant multiple of δ (x) for some",
+    "x ∈ X N , which is also in a conic hull of S. Thus, for each ỹ ∈ Ỹ, we can write",
+    "for some γ(y, ỹ), u(x, ỹ) ≥ 0. Using this, we can observe that (88) is achieved by the following γ and T :",
+    "Here, if y ∈ Y P satisfies γ(y) = 0, then we set T (•|y) to be an arbitrary PMF. From (92) and ỹ∈ Ỹ Qỹ = 1 w , it is straightforward to see that above γ satisfies (48) to induce a valid extremal (v, ϵ)-ULDP mechanism, and above T is a valid conditional distribution satisfying ỹ∈ Ỹ T (ỹ|y) = 1. This finishes the proof.",
+    "The block matrix inversion formula [36] implies that for a positive definite matrix A with A = B C T C D , where both B and D are square submatrices, A -1 has the following block form",
+    "where both B -C T D -1 C and D -CB -1 C T are positive definite by the Schur complement lemma [36]. This result, together with A ⪯ B ⇒ A -1 ⪰ B -1 [39], we obtain",
+    "(96) also holds when A is non-invertible positive semidefinite, by the definition that tr -1 (A) = ∞. Now, (57) follows directly from applying (96) twice.",
+    "For each i = 1, 2, 3, we have",
+    "for an orthonormal basis {h (j;i) } di j=1 of H i . By definition of Fisher information and the standard fact [32] that the score has zero mean, we have",
+    "Now, suppose that Q is induced from γ : Y P → R ≥0 as in Definition 8. Also, for simplicity, let t := t(Q). It is straightforward to see that for each k ∈ [v], we have",
+    "Furthermore, referring Table I, we obtain that",
+    "(107) Thus, we have",
+    "The desired result (58) follows from the direct calculation.",
+    "We show (62) separately for each of i = 1, 2, 3.",
+    "Hence, from Table I, we deduce that showing (62) is equivalent to showing the equality below for all x ∈ X S :",
+    "Using symmetries of block designs and Lemma 1, we can see that for every x, x ′ ∈ X S and x ′′ ∈ X N such that x ̸ = x ′ , we have",
+    "By direct calculation, we can see that for every x ∈ X S and x ′ ∈ X , (112) holds for P = δ (x ′ ;v) . Since both sides of (112) are linear in P , we conclude that (112) holds for every x ∈ X S and P ∈ P(X ).",
+    "2) i = 2: We have",
+    "Similarly to the i = 1 case, we deduce that showing (62) is equivalent to showing the equality below for all x ∈ X N :",
+    "We can see that for each x ∈ X N ,",
+    "This also implies",
+    "Thus, (122) clearly holds for every x ∈ X N .",
+    "3) i = 3: We have",
+    "Similarly, we deduce that showing (62) is equivalent to showing the equality below:",
+    "From (124), we have",
+    "Then (128) follows from the direct calculation.",
+    "By continuity, it suffices to show (66) for α ∈ (0, 1). Hence, we assume α ∈ (0, 1) from now on.",
+    "Let X ∼ P and Y ∼ Q(•|X). Since P is unbiased, we have",
+    "By the definition of the proposed estimator and the law of total expectation, we have",
+    "As we presented in (106) and (107), ∥Π i (η P (α) ,Q (y))∥ 2 depends on y only by (i) whether y ∈ Y P or Y I , and (ii) the value of |y|. By the regularity of block designs, the conditional distributions of ∥Π i (η P (α) ,Q (Y ))∥ 2 given X = x are the same for all x ∈ X S . Also, by the definition of extremal ULDP mechanisms, the conditional distributions of ∥Π i (η P (α) ,Q (Y ))∥ 2 given X = x are the same for all x ∈ X N . Thus, we can write",
+    "where ν 1 , ν 2 ≥ 0 are given by",
+    "for any of x ∈ X S and x ′ ∈ X N . Thus, E∥ P1 (Y ) -P (α) ∥ 2 is a constant among all P ∈ P(X ) such that P (X S ) = β. Moreover, we have",
+    "By the Cauchy-Schwarz inequality, we have",
+    "and the equality holds if P = P (β) . From this, we conclude that among all P ∈ P(X ) such that P (X S ) = β, R 1 (Q, P ; P ) is maximized at P = P (β) , which shows (66).",
+    "Note that except for the case of v ≥ 2 and t = δ (v;v) , M (α, t) is continuously differentiable with respect to α in a neighborhood of [0, 1]. Thus, again by continuity, it suffices to show (68) for α ∈ (0, 1). Hence, we assume α ∈ (0, 1) from now on.",
+    "From (134), we have",
+    "It is straightforward to see that",
+    "Hence, it remains to show that",
+    "Since both sides of the above equation are affine in β, it suffices to show that",
+    "a) Proof of (150): It is easy to see that t(Q) in (58) is equal to t. Hence, by (136), (100), and (58), we have",
+    "which shows (150).",
+    "b) Proof of (151): Each Q P (β) (y) is affine in β, and hence we can write",
+    "Also, from (150), we have",
+    "Since P is unbiased, y Q P (α) (y) P1 (y) = P (α) . Thus, combining with (156), we obtain (151).",
+    "This ends the derivation of (68).",
+    "Let (α * , t * ) be as specified in Theorem 4, with t * = δ (k * ;v) . Here, k * = 1 for Case (a), and",
+    "for Case (b). We separately show two equalities,",
+    "A. Proof of (159)",
+    "Case (a)-Condition (i): This case is trivial, since when v = 1, ∆ v is a singleton.",
+    "Case (a)-Condition (ii): In this case, we have",
+    "and thus α * = v(e ϵ -1-w+v)",
+    ". First, observe that by a calculation, we have",
+    "). Motivated from this, we apply the arithmetic mean-harmonic mean inequality, obtaining the following.",
+    "This becomes an equality when t = t * = δ (1;v) . Also, we can see that",
+    ", where g k ≥ 0 are given by",
+    "Now, we claim that",
+    "because this claim deduces (159) as",
+    "To show (167), we calculate g 1 -g k , and the result is",
+    "where ζ := e ϵ + v -1. Note that k-1 k increases in k. Hence, to show g 1 -g k ≥ 0 for all k ∈ [2 : v], it suffices to show that , that is, e ϵ ≥ w-v+ (w-1)(w-2)",
+    ". This shows (167), and hence ends the proof.",
+    "Case (a)-Condition (iii): In this case, we have",
+    "and thus α * = 0. By a direct calculation, with t 2 = 1 -t 1 , we obtain",
+    ":= e ϵ + 1 (e ϵ -1) 2 1 t 1 + e ϵ (e ϵ + 1) (w -2)(e ϵ -1)",
+    "Since f (t 1 ) is convex in t 1 , to show the optimality of t * = δ (1;v) , it suffices to show that f ′ (1) ≤ 0. A straightforward calculation shows that f ′ (1) = w -1 e ϵ (e ϵ -1) 2 (w -2) e 2ϵ -2e ϵw -3 w -1 .",
+    "Here, e 2ϵ -2e ϵw-3 w-1 is a quadratic polynomial in e ϵ with roots 1 ± 2(w-2)",
+    "w-1 . Thus, f ′ (1) ≤ 0 for e ϵ ≤ 1 + 2(w-2) w-1 , which ends the proof. (v -1) 2 v(e ϵ -1) 2",
+    "where R BD is in (18), and optimal k in (179) and optimal t in (176) are related by t = δ (k;v) . Thus, by the definition of K * , t * = δ (k * ;v) is an optimal solution to (176).",
+    "Let (Q, P ) be a (w, v, ϵ, k * )-simple uBD scheme. By Proposition 13, Equation (68) with t = t * = δ (k * ;v) holds for all α ∈ [0, 1]. Setting α = β in (68) gives R 1 (Q, P ; P (β) ) = M (β, δ (k * ;v) ), ∀β ∈ [0, 1].",
+    "(180) Thus, it suffices to show that sup β∈[0,1] R 1 (Q, P ; P (β) ) is attained at β = α * . For Case (a), it directly follows from the worst-case analysis of uRR [15,Propositions 16,17]. For Case (b), we claim that",
+    "Then, by setting α = 1 in (68), we obtain the desired result.",
+    "To show (181), we calculate F (1, δ (k;v) ), and the result is",
+    "Hence, it suffices to show that",
+    "Since the LHS of the above inequality is increasing in k, it suffices to show only for k = 2, that is,",
+    "As a quadratic polynomial in v, above equation has the discriminant 3 2 -4 • 4 < 0, and therefore it is non-negative for every v. Thus, we show (181), and hence we end the proof of (160).",
+    "Referring [27,Equation (35)], the estimation error of uSS is n • R n (Q uSS,k , PuSS,k ; P ) (186) =L 1 (k) + P (X S )L 2 (k)",
+    "Especially, letting P be the uniform distribution on X S , we have",
+    "Recall from Remark 3 that M * (w, v, ϵ) = M * (v, v, ϵ) = min k∈[v-1] R BD (v, k, ϵ). By a straightforward calculation, we obtain",
+    "Using this, we argue that R(Q uSS,k , PuSS,k ) > M * (w, v, ϵ) for every k ∈ [v -1], as follows.",
+    "1) If k = 1, then since ϵ < ln (v-1)(v-2) 2 = E(v, 1), we have 1 / ∈ K * (v, ϵ), and hence R BD (v, k, ϵ) > M * (w, v, ϵ). Thus, R(Q uSS,k , PuSS,k ) > M * (w, v, ϵ).",
+    "2) If k ≥ 2, then R BD (v, k, ϵ) ≥ M * (w, v, ϵ) and 2(k-1)  v-k > 0. Thus, R(Q uSS,k , PuSS,k ) > M * (w, v, ϵ). This ends the proof of Corollary 6. Remark 8. Originally, [27] formulated the estimator error in terms of the MSE between the empirical frequency of X n and the estimated distribution. That is, letting",
+    "(198) However, provided that the scheme is unbiased, the MSE for the frequency estimation can be translated into the MSE for the distribution estimation, by using the law of total variance. Specifically, for given P ∈ ∆ w and an unbiased scheme (Q, P ), let X n ∼ P n and Y n ∼ n i=1 Q(•|X i ) given X n . Then R n (Q, P ; P ) = VAR Pn (Y n ) (199)",
+    "Here, each of T (n)",
+    "x (X n ) is a binomial random variable with n trials and probability of success P x , divided by n. Hence",
+    "In conclusion, we have R n (Q, P ; P ) (204)",
+    "From this, we deduce (187) as follows. In [27,Equation (35)], it is provided that",
+    "Under X n ∼ P n , it is straightforward that E[T (n)",
+    "x ′ (X n )] = P x ′ for every x ′ ∈ X . Hence",
+    ") =L 1 (k) + P (X S )L 2 (k) + P (X N )L 3 (k).",
+    "Applying (205), we obtain (187).",
+    "They stated the sample complexity under the total variation loss (see[17,  Theorem 3]). We adapt the argument to obtain the corresponding MSE.",
+    "If v = 1, we regard M 1 (α, t) = 0. If v ≥ 2 and t = δ (v;v) , we regard M 1 (α, t) = ∞.",
+    "(α * , t * ) ∈ [0, 1] × ∆v is a saddle point of M if M (α * , t * ) = sup α∈[0,1] M (α, t * ) = inf t∈∆v M (α * , t)[36].",
+    "This PDF is shown[32],[38] to minimize the 'prior Fisher information' over all PDFs supported on [-n -1/4 , n -1/4 ].",
+    "Here, the equivalence is up to relabeling Y and the removal / addition of all zero columns of Q.",
+    "Components below 10 -8 are treated as numerical noise and forced to zero; after which the vector is renormalized."
+  ],
+  "references": [
+    {
+      "id": 1,
+      "text": "What Can We Learn Privately?\n\t\t\n\t\t\tShivaPrasadKasiviswanathan\n\t\t\n\t\t\n\t\t\tHominKLee\n\t\t\n\t\t\n\t\t\tKobbiNissim\n\t\t\n\t\t\n\t\t\tSofyaRaskhodnikova\n\t\t\n\t\t\n\t\t\tAdamSmith\n\t\t\n\t\t10.1137/090756090\n\t\n\t\n\t\tSIAM Journal on Computing\n\t\tSIAM J. Comput.\n\t\t0097-5397\n\t\t1095-7111\n\t\t\n\t\t\t40\n\t\t\t3\n\t\t\t\n\t\t\t2011\n\t\t\tSociety for Industrial & Applied Mathematics (SIAM)"
+    },
+    {
+      "id": 2,
+      "text": "Local Privacy and Statistical Minimax Rates\n\t\t\n\t\t\tJohnCDuchi\n\t\t\n\t\t\n\t\t\tMichaelIJordan\n\t\t\n\t\t\n\t\t\tMartinJWainwright\n\t\t\n\t\t10.1109/focs.2013.53\n\t\n\t\n\t\t2013 IEEE 54th Annual Symposium on Foundations of Computer Science\n\t\t\n\t\t\tIEEE\n\t\t\t2013"
+    },
+    {
+      "id": 3,
+      "text": "The algorithmic foundations of differential privacy\n\t\t\n\t\t\tCDwork\n\t\t\n\t\t\n\t\t\tARoth\n\t\t\n\t\n\t\n\t\tFoundations and Trends® Theoretical Comput. Sci\n\t\t\n\t\t\t9\n\t\t\t3-4\n\t\t\t\n\t\t\t2014"
+    },
+    {
+      "id": 4,
+      "text": "DTG Big Data Analysis for Fuel Consumption Estimation\n\t\t\n\t\t\tBDing\n\t\t\n\t\t\n\t\t\tJKulkarni\n\t\t\n\t\t\n\t\t\tSYekhanin\n\t\t\n\t\t10.3745/jips.04.0031\n\t\n\t\n\t\tJournal of Information Processing Systems\n\t\tJ Inf Process Syst\n\t\t2092-805X\n\t\t\n\t\t\t30\n\t\t\t2017\n\t\t\tKorea Information Processing Society"
+    },
+    {
+      "id": 5,
+      "text": "Machine Learning Meets iOS Malware: Identifying Malicious Applications on Apple Environment\n\t\t\n\t\t\tAnielloCimitile\n\t\t\n\t\t\n\t\t\tFabioMartinelli\n\t\t\n\t\t\n\t\t\tFrancescoMercaldo\n\t\t\n\t\t10.5220/0006217304870492\n\t\n\t\n\t\tProceedings of the 3rd International Conference on Information Systems Security and Privacy\n\t\tthe 3rd International Conference on Information Systems Security and Privacy\n\t\t\n\t\t\tSCITEPRESS - Science and Technology Publications\n\t\t\tDec. 2017\n\t\t\t\n\t\t\n\t\n\tLearning with privacy at scale"
+    },
+    {
+      "id": 6,
+      "text": "Understanding aggregate trends for apple intelligence using differential privacy\n\t\n\t\n\t\tApple Machine Learning Research blog\n\t\t\n\t\t\tApr. 2025\n\t\t\n\t\n\tApple Machine Learning Research"
+    },
+    {
+      "id": 7,
+      "text": "RAPPOR: Randomized aggregatable privacy-preserving ordinal response\n\t\t\n\t\t\tÚErlingsson\n\t\t\n\t\t\n\t\t\tVPihur\n\t\t\n\t\t\n\t\t\tAKorolova\n\t\t\n\t\n\t\n\t\tProc\n\t\tnull\n\t\t\n\t\t\t2014. 2014"
+    },
+    {
+      "id": 8,
+      "text": "Prochlo: Strong privacy for analytics in the crowd\n\t\t\n\t\t\tABittau\n\t\t\n\t\t\n\t\t\tÚErlingsson\n\t\t\n\t\t\n\t\t\tPManiatis\n\t\t\n\t\t\n\t\t\tIMironov\n\t\t\n\t\t\n\t\t\tARaghunathan\n\t\t\n\t\t\n\t\t\tDLie\n\t\t\n\t\t\n\t\t\tMRudominer\n\t\t\n\t\t\n\t\t\tUKode\n\t\t\n\t\t\n\t\t\tJTinnes\n\t\t\n\t\t\n\t\t\tBSeefeld\n\t\t\n\t\n\t\n\t\tProc. 26th Symp. Operating Syst\n\t\t26th Symp. Operating Syst\n\t\t\n\t\t\t2017"
+    },
+    {
+      "id": 9,
+      "text": "An Operational Approach to Information Leakage\n\t\t\n\t\t\tIbrahimIssa\n\t\t\t0000-0002-2865-9339\n\t\t\n\t\t\n\t\t\tAaronBWagner\n\t\t\t0000-0001-9127-0089\n\t\t\n\t\t\n\t\t\tSudeepKamath\n\t\t\t0000-0002-9907-6632\n\t\t\n\t\t10.1109/tit.2019.2962804\n\t\n\t\n\t\tIEEE Transactions on Information Theory\n\t\tIEEE Trans. Inform. Theory\n\t\t0018-9448\n\t\t1557-9654\n\t\t\n\t\t\t66\n\t\t\t3\n\t\t\t\n\t\t\t2020\n\t\t\tInstitute of Electrical and Electronics Engineers (IEEE)"
+    },
+    {
+      "id": 10,
+      "text": "Randomized Response: A Survey Technique for Eliminating Evasive Answer Bias\n\t\t\n\t\t\tStanleyLWarner\n\t\t\n\t\t10.1080/01621459.1965.10480775\n\t\n\t\n\t\tJournal of the American Statistical Association\n\t\tJournal of the American Statistical Association\n\t\t0162-1459\n\t\t1537-274X\n\t\t\n\t\t\t60\n\t\t\t309\n\t\t\t\n\t\t\t1965\n\t\t\tInforma UK Limited"
+    },
+    {
+      "id": 11,
+      "text": "Optimal Schemes for Discrete Distribution Estimation Under Locally Differential Privacy\n\t\t\n\t\t\tMinYe\n\t\t\t0000-0003-1351-8880\n\t\t\n\t\t\n\t\t\tAlexanderBarg\n\t\t\t0000-0002-8972-4413\n\t\t\n\t\t10.1109/tit.2018.2809790\n\t\n\t\n\t\tIEEE Transactions on Information Theory\n\t\tIEEE Trans. Inform. Theory\n\t\t0018-9448\n\t\t1557-9654\n\t\t\n\t\t\t64\n\t\t\t8\n\t\t\t\n\t\t\t2018\n\t\t\tInstitute of Electrical and Electronics Engineers (IEEE)"
+    },
+    {
+      "id": 12,
+      "text": "Hadamard response: Estimating distributions privately, efficiently, and with little communication\n\t\t\n\t\t\tJAcharya\n\t\t\n\t\t\n\t\t\tZSun\n\t\t\n\t\t\n\t\t\tHZhang\n\t\t\n\t\n\t\n\t\tProc. 22nd Int. Conf\n\t\t22nd Int. Conf\n\t\t\n\t\t\t2019"
+    },
+    {
+      "id": 13,
+      "text": "Private and Personalized Frequency Estimation in a Federated Setting\n\t\t\n\t\t\tVitalyFeldman\n\t\t\n\t\t\n\t\t\tAmrithSetlur\n\t\t\n\t\t\n\t\t\tKunalTalwar\n\t\t\n\t\t10.52202/079017-1473\n\t\n\t\n\t\tAdvances in Neural Information Processing Systems 37\n\t\t\n\t\t\tNeural Information Processing Systems Foundation, Inc. (NeurIPS)\n\t\t\t2022"
+    },
+    {
+      "id": 14,
+      "text": "Locally differentially private protocols for frequency estimation\n\t\t\n\t\t\tTWang\n\t\t\n\t\t\n\t\t\tJBlocki\n\t\t\n\t\t\n\t\t\tNLi\n\t\t\n\t\t\n\t\t\tSJha\n\t\t\n\t\n\t\n\t\tProc. 26th USENIX Secur. Symp. (USENIX Secur. 17)\n\t\t26th USENIX Secur. Symp. (USENIX Secur. 17)\n\t\t\n\t\t\t2017"
+    },
+    {
+      "id": 15,
+      "text": "Utility-optimized local differential privacy mechanisms for distribution estimation\n\t\t\n\t\t\tTMurakami\n\t\t\n\t\t\n\t\t\tYKawamoto\n\t\t\n\t\n\t\n\t\tProc. 28th USENIX Secur. Symp. (USENIX Secur. 19)\n\t\t28th USENIX Secur. Symp. (USENIX Secur. 19)\n\t\t\n\t\t\t2019"
+    },
+    {
+      "id": 16,
+      "text": "An alternative randomized response procedure\n\t\t\n\t\t\tNSMangat\n\t\t\n\t\t\n\t\t\tRavindraSingh\n\t\t\n\t\t10.1093/biomet/77.2.439\n\t\n\t\n\t\tBiometrika\n\t\tBiometrika\n\t\t0006-3444\n\t\t1464-3510\n\t\t\n\t\t\t77\n\t\t\t2\n\t\t\t\n\t\t\t1990\n\t\t\tOxford University Press (OUP)"
+    },
+    {
+      "id": 17,
+      "text": "Context aware local differential privacy\n\t\t\n\t\t\tJAcharya\n\t\t\n\t\t\n\t\t\tKBonawitz\n\t\t\n\t\t\n\t\t\tPKairouz\n\t\t\n\t\t\n\t\t\tDRamage\n\t\t\n\t\t\n\t\t\tZSun\n\t\t\n\t\n\t\n\t\tProc. 37th Int. Conf. Mach. Learn\n\t\t37th Int. Conf. Mach. Learn\n\t\t\n\t\t\t2020"
+    },
+    {
+      "id": 18,
+      "text": "Frequency estimation mechanisms under (ϵ, δ)-utility-optimized local differential privacy\n\t\t\n\t\t\tYZhang\n\t\t\n\t\t\n\t\t\tYZhu\n\t\t\n\t\t\n\t\t\tYZhou\n\t\t\n\t\t\n\t\t\tJYuan\n\t\t\n\t\n\t\n\t\tIEEE Trans. Emerg. Topics Comput\n\t\t\n\t\t\t12\n\t\t\t1\n\t\t\t\n\t\t\t2024"
+    },
+    {
+      "id": 19,
+      "text": "Mean Estimation of Numerical Data Under (ϵ,δ) -Utility-Optimized Local Differential Privacy\n\t\t\n\t\t\tYueZhang\n\t\t\t0000-0002-7207-6456\n\t\t\n\t\t\n\t\t\tYouwenZhu\n\t\t\t0000-0003-4365-9713\n\t\t\n\t\t\n\t\t\tShaoweiWang\n\t\t\t0000-0001-5595-5099\n\t\t\n\t\t\n\t\t\tXiaohuaHuang\n\t\t\t0000-0001-8897-3517\n\t\t\n\t\t10.1109/tifs.2024.3478823\n\t\n\t\n\t\tIEEE Transactions on Information Forensics and Security\n\t\tIEEE Trans.Inform.Forensic Secur.\n\t\t1556-6013\n\t\t1556-6021\n\t\t\n\t\t\t19\n\t\t\t\n\t\t\t2024\n\t\t\tInstitute of Electrical and Electronics Engineers (IEEE)"
+    },
+    {
+      "id": 20,
+      "text": "Providing Input-Discriminative Protection for Local Differential Privacy\n\t\t\n\t\t\tXiaolanGu\n\t\t\n\t\t\n\t\t\tMingLi\n\t\t\n\t\t\n\t\t\tLiXiong\n\t\t\n\t\t\n\t\t\tYangCao\n\t\t\n\t\t10.1109/icde48307.2020.00050\n\t\n\t\n\t\t2020 IEEE 36th International Conference on Data Engineering (ICDE)\n\t\t\n\t\t\tIEEE\n\t\t\t2020"
+    },
+    {
+      "id": 21,
+      "text": "Automatic Tuning of Privacy Budgets in Input-Discriminative Local Differential Privacy\n\t\t\n\t\t\tTakaoMurakami\n\t\t\t0000-0002-5110-1261\n\t\t\n\t\t\n\t\t\tYuichiSei\n\t\t\n\t\t10.1109/jiot.2023.3267082\n\t\n\t\n\t\tIEEE Internet of Things Journal\n\t\tIEEE Internet Things J.\n\t\t2372-2541\n\t\t\n\t\t\t10\n\t\t\t18\n\t\t\t\n\t\t\t2023\n\t\t\tInstitute of Electrical and Electronics Engineers (IEEE)"
+    },
+    {
+      "id": 22,
+      "text": "UKVLDP: Utility-optimized local differential privacy mechanism for key-value IoT data collection\n\t\t\n\t\t\tBWang\n\t\t\n\t\t\n\t\t\tCYang\n\t\t\n\t\t\n\t\t\tJMa\n\t\t\n\t\n\t\n\t\tIEEE Internet Things J\n\t\t\n\t\t\t2025"
+    },
+    {
+      "id": 23,
+      "text": "Enabling Health Data Sharing with Fine-Grained Privacy\n\t\t\n\t\t\tLucaBonomi\n\t\t\t0000-0002-5751-1341\n\t\t\n\t\t\n\t\t\tSepandGousheh\n\t\t\t0009-0009-3585-3592\n\t\t\n\t\t\n\t\t\tLiyueFan\n\t\t\t0000-0002-3819-1098\n\t\t\n\t\t10.1145/3583780.3614864\n\t\n\t\n\t\tProceedings of the 32nd ACM International Conference on Information and Knowledge Management\n\t\tthe 32nd ACM International Conference on Information and Knowledge Management\n\t\t\n\t\t\tACM\n\t\t\t2023"
+    },
+    {
+      "id": 24,
+      "text": "An Intelligent Privacy Preservation Scheme for EV Charging Infrastructure\n\t\t\n\t\t\tShafkatIslam\n\t\t\t0000-0002-8524-2855\n\t\t\n\t\t\n\t\t\tShahriarBadsha\n\t\t\t0000-0001-6663-2164\n\t\t\n\t\t\n\t\t\tShamikSengupta\n\t\t\n\t\t\n\t\t\tIbrahimKhalil\n\t\t\n\t\t\n\t\t\tMohammedAtiquzzaman\n\t\t\t0000-0001-9440-7669\n\t\t\n\t\t10.1109/tii.2022.3203707\n\t\n\t\n\t\tIEEE Transactions on Industrial Informatics\n\t\tIEEE Trans. Ind. Inf.\n\t\t1551-3203\n\t\t1941-0050\n\t\t\n\t\t\t19\n\t\t\t2\n\t\t\t\n\t\t\t2023\n\t\t\tInstitute of Electrical and Electronics Engineers (IEEE)"
+    },
+    {
+      "id": 25,
+      "text": "Differential privacy for text analytics via natural text sanitization\n\t\t\n\t\t\tXYue\n\t\t\n\t\t\n\t\t\tMDu\n\t\t\n\t\t\n\t\t\tTWang\n\t\t\n\t\t\n\t\t\tYLi\n\t\t\n\t\t\n\t\t\tHSun\n\t\t\n\t\t\n\t\t\tSSChow\n\t\t\n\t\n\t\n\t\tFindings Assoc. Comput. Linguistics: ACL-IJCNLP 2021\n\t\t\n\t\t\t2021"
+    },
+    {
+      "id": 26,
+      "text": "Multidimensional Epidemiological Survey Data Aggregation Scheme Based on Personalized Local Differential Privacy\n\t\t\n\t\t\tXueyanLiu\n\t\t\t0000-0001-8918-0148\n\t\t\n\t\t\n\t\t\tQiongLiu\n\t\t\n\t\t\n\t\t\tJiaWang\n\t\t\n\t\t\n\t\t\tHaoSun\n\t\t\n\t\t10.3390/sym16030294\n\t\n\t\n\t\tSymmetry\n\t\tSymmetry\n\t\t2073-8994\n\t\t\n\t\t\t16\n\t\t\t3\n\t\t\t294\n\t\t\t2024\n\t\t\tMDPI AG"
+    },
+    {
+      "id": 27,
+      "text": "Usenix House Advertisement\n\t\t\n\t\t\tXHe\n\t\t\n\t\t\n\t\t\tYZhu\n\t\t\n\t\t\n\t\t\tRLiu\n\t\t\n\t\t\n\t\t\tGPan\n\t\t\n\t\t\n\t\t\tCDong\n\t\t\n\t\t10.1109/msp.2013.156\n\t\n\t\n\t\tIEEE Security & Privacy\n\t\tIEEE Secur. Privacy\n\t\t1540-7993\n\t\t\n\t\t\t11\n\t\t\t6\n\t\t\t\n\t\t\t2025\n\t\t\tInstitute of Electrical and Electronics Engineers (IEEE)"
+    },
+    {
+      "id": 28,
+      "text": "The Composition Theorem for Differential Privacy\n\t\t\n\t\t\tPeterKairouz\n\t\t\n\t\t\n\t\t\tSewoongOh\n\t\t\t0000-0002-8975-8306\n\t\t\n\t\t\n\t\t\tPramodViswanath\n\t\t\t0000-0003-3171-8667\n\t\t\n\t\t10.1109/tit.2017.2685505\n\t\n\t\n\t\tIEEE Transactions on Information Theory\n\t\tIEEE Trans. Inform. Theory\n\t\t0018-9448\n\t\t1557-9654\n\t\t\n\t\t\t63\n\t\t\t6\n\t\t\t\n\t\t\t2016\n\t\t\tInstitute of Electrical and Electronics Engineers (IEEE)"
+    },
+    {
+      "id": 29,
+      "text": "Exactly Optimal and Communication-Efficient Private Estimation via Block Designs\n\t\t\n\t\t\tHyun-YoungPark\n\t\t\t0009-0006-2377-2574\n\t\t\n\t\t\n\t\t\tSeung-HyunNam\n\t\t\t0000-0002-2363-1134\n\t\t\n\t\t\n\t\t\tSi-HyeonLee\n\t\t\t0000-0002-4362-5970\n\t\t\n\t\t10.1109/jsait.2024.3381195\n\t\n\t\n\t\tIEEE Journal on Selected Areas in Information Theory\n\t\tIEEE J. Sel. Areas Inf. Theory\n\t\t2641-8770\n\t\t\n\t\t\t5\n\t\t\t\n\t\t\t2024\n\t\t\tInstitute of Electrical and Electronics Engineers (IEEE)"
+    },
+    {
+      "id": 30,
+      "text": "Optimal Private Discrete Distribution Estimation With 1-bit Communication\n\t\t\n\t\t\tSeung-HyunNam\n\t\t\t0000-0002-2363-1134\n\t\t\n\t\t\n\t\t\tVincentY FTan\n\t\t\t0000-0002-5008-4527\n\t\t\n\t\t\n\t\t\tSi-HyeonLee\n\t\t\t0000-0002-4362-5970\n\t\t\n\t\t10.1109/tifs.2024.3419721\n\t\n\t\n\t\tIEEE Transactions on Information Forensics and Security\n\t\tIEEE Trans.Inform.Forensic Secur.\n\t\t1556-6013\n\t\t1556-6021\n\t\t\n\t\t\t19\n\t\t\t\n\t\t\t2024\n\t\t\tInstitute of Electrical and Electronics Engineers (IEEE)"
+    },
+    {
+      "id": 31,
+      "text": "Optimal locally private estimation under $\\ell_{p}$ loss for $1\\le p\\le 2$\n\t\t\n\t\t\tMinYe\n\t\t\n\t\t\n\t\t\tAlexanderBarg\n\t\t\n\t\t10.1214/19-ejs1625\n\t\tarXiv:1708.00059\n\t\n\t\n\t\tElectronic Journal of Statistics\n\t\tElectron. J. Statist.\n\t\t1935-7524\n\t\t\n\t\t\t13\n\t\t\t2\n\t\t\t2017\n\t\t\tInstitute of Mathematical Statistics"
+    },
+    {
+      "id": 32,
+      "text": "YPolyanskiy\n\t\t\n\t\t\n\t\t\tYWu\n\t\t\n\t\tInformation Theory: From Coding to Learning\n\t\t\n\t\t\tCambridge University Press\n\t\t\tDec. 2024\n\t\t\t1\n\t\t\n\t\n\tst ed."
+    },
+    {
+      "id": 33,
+      "text": "AWVan Der\n\t\t\n\t\t\n\t\t\tVaart\n\t\t\n\t\tAsymptotic Statistics. Cambridge Series in Statistical and Probabilistic Mathematics\n\t\tCambridge\n\t\t\n\t\t\tCambridge University Press\n\t\t\t1998"
+    },
+    {
+      "id": 34,
+      "text": "L\n\t\t\n\t\t\n\t\t\tLeCam\n\t\t\n\t\t\n\t\t\tGLoYang\n\t\t\n\t\n\t\n\t\tAsymptotics in Statistics. Springer Series in Statistics\n\t\t\n\t\t\t2000\n\t\t\tSpringer\n\t\t\tNew York, NY; New York"
+    },
+    {
+      "id": 35,
+      "text": "YJIonin\n\t\t\n\t\t\n\t\t\tMSShrikhande\n\t\t\n\t\n\t\n\t\tCombinatorics of symmetric designs\n\t\t\n\t\t\t5\n\t\t\t2006\n\t\t\tCambridge University Press\n\t\t\tCambridge, U.K."
+    },
+    {
+      "id": 36,
+      "text": "Convex Optimization\n\t\t\n\t\t\tStephenBoyd\n\t\t\n\t\t\n\t\t\tLievenVandenberghe\n\t\t\n\t\t10.1017/cbo9780511804441\n\t\n\t\n\t\tConvex optimization\n\t\tCambridge, UK; New York\n\t\t\n\t\t\tCambridge University Press\n\t\t\t2004"
+    },
+    {
+      "id": 37,
+      "text": "Equivalent Comparisons of Experiments\n\t\t\n\t\t\tDavidBlackwell\n\t\t\n\t\t10.1214/aoms/1177729032\n\t\n\t\n\t\tThe Annals of Mathematical Statistics\n\t\tAnn. Math. Statist.\n\t\t0003-4851\n\t\t\n\t\t\t24\n\t\t\t2\n\t\t\t\n\t\t\t1953\n\t\t\tInstitute of Mathematical Statistics"
+    },
+    {
+      "id": 38,
+      "text": "Fisher Information Under Local Differential Privacy\n\t\t\n\t\t\tLeightonPateBarnes\n\t\t\t0000-0002-9472-2770\n\t\t\n\t\t\n\t\t\tWei-NingChen\n\t\t\n\t\t\n\t\t\tAyferOzgur\n\t\t\n\t\t10.1109/jsait.2020.3039461\n\t\n\t\n\t\tIEEE Journal on Selected Areas in Information Theory\n\t\tIEEE J. Sel. Areas Inf. Theory\n\t\t2641-8770\n\t\t\n\t\t\t1\n\t\t\t3\n\t\t\t\n\t\t\tJan. 2020\n\t\t\tInstitute of Electrical and Electronics Engineers (IEEE)"
+    },
+    {
+      "id": 39,
+      "text": "Trace Inequalities\n\t\t\n\t\t\tAiratMBikchentaev\n\t\t\n\t\t\n\t\t\tFuadKittaneh\n\t\t\n\t\t\n\t\t\tMohammadSalMoslehian\n\t\t\n\t\t\n\t\t\tYukiSeo\n\t\t\n\t\t10.1007/978-981-97-6520-1\n\t\n\t\n\t\tTrace Inequalities: For Matrices and Hilbert Space Operators. Forum for Interdisciplinary Mathematics\n\t\tSingapore; Singapore\n\t\t\n\t\t\tSpringer Nature Singapore\n\t\t\t2024"
+    },
+    {
+      "id": 40,
+      "text": "WRudin\n\t\t\n\t\n\t\n\t\tPrinciples of Mathematical Analysis. International Series in Pure and Applied Mathematics\n\t\t\n\t\t\t1976\n\t\t\tMcGraw-Hill"
+    },
+    {
+      "id": 41,
+      "text": "Quantum advantage in locally differentially private hypothesis testing\n\t\t\n\t\t\tS.-HNam\n\t\t\n\t\t\n\t\t\tH.-YPark\n\t\t\n\t\t\n\t\t\tS.-HLee\n\t\t\n\t\t\n\t\t\tJBae\n\t\t\n\t\tarXiv:2501.10152\n\t\t\n\t\t\tAug. 2025"
+    },
+    {
+      "id": 42,
+      "text": "Minimax rate for multivariate data under componentwise local differential privacy constraints\n\t\t\n\t\t\tChiaraAmorino\n\t\t\n\t\t\n\t\t\tArnaudGloter\n\t\t\n\t\t10.1214/25-aos2497\n\t\tarXiv:2507.21769\n\t\n\t\n\t\tThe Annals of Statistics\n\t\tAnn. Statist.\n\t\t0090-5364\n\t\t\n\t\t\t53\n\t\t\t3\n\t\t\tJuly 2025\n\t\t\tInstitute of Mathematical Statistics"
+    },
+    {
+      "id": 43,
+      "text": "Communication complexity in locally private distribution estimation and heavy hitters\n\t\t\n\t\t\tJAcharya\n\t\t\n\t\t\n\t\t\tZSun\n\t\t\n\t\n\t\n\t\tProc. 36th Int. Conf. Mach. Learn\n\t\t36th Int. Conf. Mach. Learn\n\t\t\n\t\t\t2019"
+    },
+    {
+      "id": 44,
+      "text": "American Community Survey (ACS): Three-Year Public Use Microdata Sample (PUMS), 2005-2007\n\t\t10.3886/icpsr25042\n\t\t\n\t\t\n\t\t\tOct. 2024. Aug. 18, 2025\n\t\t\tInter-university Consortium for Political and Social Research (ICPSR)"
+    },
+    {
+      "id": 45,
+      "text": "Efficiency in local differential privacy\n\t\t\n\t\t\tLSteinberger\n\t\t\n\t\n\t\n\t\tAnn. Stat\n\t\t\n\t\t\t52\n\t\t\t\n\t\t\tOct. 2024"
+    },
+    {
+      "id": 46,
+      "text": "On general minimax theorems\n\t\t\n\t\t\tMSion\n\t\t\n\t\n\t\n\t\tPacific J. Math\n\t\t\n\t\t\t8\n\t\t\t\n\t\t\tJan. 1958"
+    }
+  ],
+  "formulas": [
+    {
+      "id": "FORMULA_1",
+      "raw": "X 1 X 2 X n . . . P Q Q Q Q Y 1 Y 2 Y n . . . server P (a) A discrete distribution estimation system under the ULDP constraint. ϵ-LDP X S X N Y P Y I (b) Illustration of a ULDP mechanism."
+    },
+    {
+      "id": "FORMULA_2",
+      "raw": "∆ w := P ∈ R w : w x=1 P x = 1 and ∀x ∈ [w], P x ≥ 0 .(1)"
+    },
+    {
+      "id": "FORMULA_3",
+      "raw": "∆ • w := {P ∈ ∆ w : P x > 0, ∀x ∈ [w]},(2)"
+    },
+    {
+      "id": "FORMULA_4",
+      "raw": "⃗ ∆ w := h ∈ R w : w x=1 h x = 0 .(3)"
+    },
+    {
+      "id": "FORMULA_5",
+      "raw": "(x;w) x ′ = 1(x = x ′ )."
+    },
+    {
+      "id": "FORMULA_6",
+      "raw": "Q P ∈ P(Y) for the marginal distribution of the output, that is, Q P (y) = x∈X Q(y|x)P x ."
+    },
+    {
+      "id": "FORMULA_7",
+      "raw": "R n (Q, P ) := sup P ∈∆w R n (Q, P ; P ),(4)"
+    },
+    {
+      "id": "FORMULA_8",
+      "raw": "R n (Q, P ; P ) = E Y n ∼Q n P ∥ Pn (Y n ) -P ∥ 2 2 .(5)"
+    },
+    {
+      "id": "FORMULA_9",
+      "raw": "Q(y|x) ≤ e ϵ Q(y|x ′ ).(6)"
+    },
+    {
+      "id": "FORMULA_10",
+      "raw": "Q(y|x) > 0, Q(y|x ′ ) = 0 for all x ′ ∈ X , x ′ ̸ = x.(7)"
+    },
+    {
+      "id": "FORMULA_11",
+      "raw": "M * n (w, v, ϵ) := inf Q∈Qw,v,ϵ inf P R n (Q, P ).(8)"
+    },
+    {
+      "id": "FORMULA_12",
+      "raw": "M * (w, v, ϵ) := lim inf n→∞ n • M * n (w, v, ϵ),(9)"
+    },
+    {
+      "id": "FORMULA_13",
+      "raw": "R(Q, P ) := lim sup n→∞ n • R n (Q, P ).(10)"
+    },
+    {
+      "id": "FORMULA_14",
+      "raw": "R(Q, P ) = M * (w, v, ϵ).(11)"
+    },
+    {
+      "id": "FORMULA_15",
+      "raw": "M * n (w, v, ϵ) ≥ M * n (v, v, ϵ), M * (w, v, ϵ) ≥ M * (v, v, ϵ). (12"
+    },
+    {
+      "id": "FORMULA_16",
+      "raw": ")"
+    },
+    {
+      "id": "FORMULA_17",
+      "raw": "[0, 1], M * n (w, v, ϵ) = Ω v nϵ 2 ."
+    },
+    {
+      "id": "FORMULA_18",
+      "raw": "lim n→∞ n • inf P R n (Q, P ) ≥ sup P ∈∆ • w tr -1 (J P,Q ) ,(13)"
+    },
+    {
+      "id": "FORMULA_19",
+      "raw": "M * (w, w, ϵ) ≥ sup P ∈∆ • w inf Q∈Q E w,ϵ tr -1 (J P,Q ) ,(14)"
+    },
+    {
+      "id": "FORMULA_20",
+      "raw": "b ≥ v ≥ k, b ≥ r ≥ λ, (15"
+    },
+    {
+      "id": "FORMULA_21",
+      "raw": ") bk = vr, r(k -1) = λ(v -1). (16"
+    },
+    {
+      "id": "FORMULA_22",
+      "raw": ")"
+    },
+    {
+      "id": "FORMULA_23",
+      "raw": "Also, if v = 1, then (b, r, k, λ) = (1, 1, 1, 0). Remark 2. For any given v, k ∈ N such that k ≤ v, there exists a v, v k , v-1 k-1 , k, v-2 k-2"
+    },
+    {
+      "id": "FORMULA_24",
+      "raw": "Q(y|x) = e ϵ re ϵ +b-r (if x ∈ y) 1 re ϵ +b-r (if x / ∈ y)(17)"
+    },
+    {
+      "id": "FORMULA_25",
+      "raw": "R(Q, P ) = R BD (v, k, ϵ) := (v -1) 2 (ke ϵ + v -k) 2 vk(v -k)(e ϵ -1) 2 . (18"
+    },
+    {
+      "id": "FORMULA_26",
+      "raw": ")"
+    },
+    {
+      "id": "FORMULA_27",
+      "raw": "M * (v, v, ϵ) = min k∈[v-1] R BD (v, k, ϵ),(19)"
+    },
+    {
+      "id": "FORMULA_28",
+      "raw": "K * (v, ϵ) := arg min k∈[v-1] R BD (v, k, ϵ)(20)"
+    },
+    {
+      "id": "FORMULA_29",
+      "raw": "= {k : E(v, k) ≤ ϵ ≤ E(v, k -1)} ,(21)"
+    },
+    {
+      "id": "FORMULA_30",
+      "raw": "E(v, k) = ln (v -k)(v -k -1) k(k + 1) , E(v, 0) := ∞. (22"
+    },
+    {
+      "id": "FORMULA_31",
+      "raw": ")"
+    },
+    {
+      "id": "FORMULA_32",
+      "raw": "Theorem 3. For w > v ≥ 1 and ϵ > 0, M * (w, v, ϵ) = sup α∈[0,1] inf t∈∆v M (α, t),(23)"
+    },
+    {
+      "id": "FORMULA_33",
+      "raw": "M (α, t) = 3 i=1 M i (α, t) such that 2 M 1 (α, t) = (v -1) 2 v(e ϵ -1) 2 v k=1 t k k(v-k) (αk(e ϵ -1)+v)(ke ϵ +v-k) ,(24)"
+    },
+    {
+      "id": "FORMULA_34",
+      "raw": "M 2 (α, t) = (w -v -1)(1 -α) (w -v)(e ϵ -1) v k=1 t k k ke ϵ +v-k ,(25)"
+    },
+    {
+      "id": "FORMULA_35",
+      "raw": "M 3 (α, t) = w(1 -α) v(w -v)(e ϵ -1) v k=1 t k k αk(e ϵ -1)+v . (26)"
+    },
+    {
+      "id": "FORMULA_36",
+      "raw": "(i) v = 1; (ii) v ≥ 2 and ϵ ≥ ln w -v + (w -1)(w -2) 2 ; (iii) v = 2 and ϵ ≤ ln 1 + 2(w -2) w -1 ;"
+    },
+    {
+      "id": "FORMULA_37",
+      "raw": "α * = v(e ϵ -1 -w + v) w(e ϵ -1) + , t * = δ (1;v) ,(27)"
+    },
+    {
+      "id": "FORMULA_38",
+      "raw": "[z] + := max(0, z). Case (b): Suppose that (w, v, ϵ) satisfies v ≥ 4 and ϵ ≤ ln (v-1)(v-2) 2 . Then, for each k * ∈ K * (v, ϵ)∩[2 : v -1], the following (α * , t * ) is a saddle point of M , i.e., M * (w, v, ϵ) = M (α * , t * ): α * = 1, t * = δ (k * ;v) . (28"
+    },
+    {
+      "id": "FORMULA_39",
+      "raw": ")"
+    },
+    {
+      "id": "FORMULA_40",
+      "raw": "(v-1)(v-2) 2 = E(v, 1)"
+    },
+    {
+      "id": "FORMULA_41",
+      "raw": "K * (v, ϵ) ∩ [2 : v -1] ̸ = ∅."
+    },
+    {
+      "id": "FORMULA_42",
+      "raw": "ln (v-1)(v-2) 2"
+    },
+    {
+      "id": "FORMULA_43",
+      "raw": "(Q uSS,k , PuSS,k ) with parameter k ∈ [v - 1], M * (w, v, ϵ) < min k∈[1:v-1] R(Q uSS,k , PuSS,k ). (29"
+    },
+    {
+      "id": "FORMULA_44",
+      "raw": ")"
+    },
+    {
+      "id": "FORMULA_45",
+      "raw": "M (α * , t * ) = R BD (v, k * , ϵ) = M * (v, v, ϵ),(30)"
+    },
+    {
+      "id": "FORMULA_46",
+      "raw": "M * (w, v, ϵ) ≥ sup α∈[0,1] inf t∈∆v M (α, t). (31"
+    },
+    {
+      "id": "FORMULA_47",
+      "raw": ")"
+    },
+    {
+      "id": "FORMULA_48",
+      "raw": "Definition 4. Let w ∈ N ≥2 be given. Let Q be a conditional distribution from [w] to a finite set Y, and P ∈ ∆ • w . For each h ∈ ⃗ ∆ w , the score of Q at P in direction h is a function η P,Q;h : supp(Q) → R, defined by η P,Q;h (y) = d dδ (log Q P +δh (y))| δ=0(32)"
+    },
+    {
+      "id": "FORMULA_49",
+      "raw": "(η P,Q (y)) x = Q(y|x) Q P (y) , ∀x ∈ [w].(34)"
+    },
+    {
+      "id": "FORMULA_50",
+      "raw": "J P,Q (h, h ′ ) = Cov Y ∼Q P (η P,Q;h (Y ), η P,Q;h ′ (Y )). (35)"
+    },
+    {
+      "id": "FORMULA_51",
+      "raw": ", • • • , h (w-1) ) of ⃗"
+    },
+    {
+      "id": "FORMULA_52",
+      "raw": "Q degrades Q, and denote Q ⊒ Q if for every Q ∈ Q, there exists Q ∈ Q which degrades Q."
+    },
+    {
+      "id": "FORMULA_53",
+      "raw": "lim n→∞ inf Q∈ Q inf P n • R n ( Q, P ) ≥ sup P ∈∆ • w inf Q∈Q tr -1 (J P,Q ) . (36"
+    },
+    {
+      "id": "FORMULA_54",
+      "raw": ")"
+    },
+    {
+      "id": "FORMULA_55",
+      "raw": "P ∈ ∆ • w , we have lim n→∞ inf Q∈ Q inf P n • R n ( Q, P ) ≥ inf Q∈Q tr -1 (J P,Q ) .(37)"
+    },
+    {
+      "id": "FORMULA_56",
+      "raw": ", • • • , h (w-1) ) of ⃗ ∆ w , and for each θ ∈ R w-1 , ∥θ∥ ≤ R, let P (θ) := P + w-1 i=1 θ i h (i) ∈ ∆ •"
+    },
+    {
+      "id": "FORMULA_57",
+      "raw": "R n ( Q, P ) ≥ E Θ∼ϕn R n ( Q, P ; P (Θ) ) ,(38)"
+    },
+    {
+      "id": "FORMULA_58",
+      "raw": "Θ ∼ ϕ n , each of Θ 1 , • • • , Θ w-1 is i.i.d., supported on [-n -1/4 , n -1/4 ],"
+    },
+    {
+      "id": "FORMULA_59",
+      "raw": "inf P E Θ∼ϕn R n ( Q, P ; P (Θ) ) ≥ tr -1 (n • E Θ∼ϕn [J P (Θ) ,Q ] + π 2 n 1/2 I w-1 ).(39)"
+    },
+    {
+      "id": "FORMULA_60",
+      "raw": "E Θ∼ϕn [J P (Θ) ,Q ] ⪯ (1 + Cn -1/4 )J P,Q .(40)"
+    },
+    {
+      "id": "FORMULA_61",
+      "raw": "inf P R n ( Q, P ) ≥ 1 n R n (Q)(41)"
+    },
+    {
+      "id": "FORMULA_62",
+      "raw": "R n (Q) = tr -1 ((1 + Cn -1/4 )J P,Q + π 2 n -1/2 I w-1 ). (42"
+    },
+    {
+      "id": "FORMULA_63",
+      "raw": ")"
+    },
+    {
+      "id": "FORMULA_64",
+      "raw": "lim n→∞ inf Q∈ Q inf P n • R n ( Q, P ) ≥ lim n→∞ inf Q∈Q R n (Q).(43)"
+    },
+    {
+      "id": "FORMULA_65",
+      "raw": "lim n→∞ inf Q∈Q R n (P, Q) = inf Q∈Q tr -1 (J P,Q ) . (44"
+    },
+    {
+      "id": "FORMULA_66",
+      "raw": ")"
+    },
+    {
+      "id": "FORMULA_67",
+      "raw": "X = [w], X S = [v]. A conditional distribution Q is called an extremal (v, ϵ)-ULDP mechanism if the following holds: • Q : X → P(Y P ⊔ Y I ), where Y P = 2 [v] \\{∅} and Y I = {{x} : x ∈ [v + 1 : w]}. • There exists γ : Y P → R ≥0 such that if y ∈ Y P , Q(y|x) = γ(y)e ϵ (if x ∈ y) γ(y) (if x / ∈ y) . (45"
+    },
+    {
+      "id": "FORMULA_68",
+      "raw": ") • If y ∈ Y I , Q(y|x) =   1 - y ′ ∈YP γ(y ′ )   1(x ∈ y). (46"
+    },
+    {
+      "id": "FORMULA_69",
+      "raw": ")"
+    },
+    {
+      "id": "FORMULA_70",
+      "raw": "Y P ≃ [1 : 2 v -1] via a bijection y ↔ v i=1 2 i-1 y i , and identify Y I ≃ [2 v : 2 v + w -v -1] via {x} ↔ 2 v + x -v -1."
+    },
+    {
+      "id": "FORMULA_71",
+      "raw": "S (v) := 1 v×2 v -1 + (e ϵ -1)BIN (v) ,(47)"
+    },
+    {
+      "id": "FORMULA_72",
+      "raw": "BIN (v) ∈ {0, 1} v×(2 v -"
+    },
+    {
+      "id": "FORMULA_73",
+      "raw": "Q XN,YP = 1 (w-v)×(2 v -1) diag(γ)."
+    },
+    {
+      "id": "FORMULA_74",
+      "raw": "Q E w,v,ϵ ⊒ Q w,v,ϵ . S (3) =  "
+    },
+    {
+      "id": "FORMULA_75",
+      "raw": "  Q = Y P Y I X S S (v) diag(γ) 0 v×(w-v) X N 1 (w-v)×(2 v -1) diag(γ) f (γ)I w-v"
+    },
+    {
+      "id": "FORMULA_76",
+      "raw": "Q E w,v,ϵ is compact. It is straightforward to see that the given γ : Y P = 2 [v] \\{∅} → R ≥0 induces a valid extremal (v, ϵ)- ULDP mechanism (satisfying y Q(y|x) = 1 for all x ∈ X ) if and only if y∈YP γ(y)(1 + (e ϵ -1)1(x ∈ y)) = 1, ∀x ∈ [v]. (48)"
+    },
+    {
+      "id": "FORMULA_77",
+      "raw": "M (w, v, ϵ) ≥ sup P ∈∆ • w inf Q∈Q E w,v,ϵ tr -1 (J P,Q ) .(49)"
+    },
+    {
+      "id": "FORMULA_78",
+      "raw": "H 1 := {h : h x = 0 for x ∈ [v + 1 : w], v x=1 h x = 0},(50)"
+    },
+    {
+      "id": "FORMULA_79",
+      "raw": "H 2 := {h : h x = 0 for x ∈ [v], w x=v+1 h x = 0},(51)"
+    },
+    {
+      "id": "FORMULA_80",
+      "raw": "H 3 := span (w -v)1 v -v1 w-v . (52"
+    },
+    {
+      "id": "FORMULA_81",
+      "raw": ")"
+    },
+    {
+      "id": "FORMULA_82",
+      "raw": "d i := dim(H i ), that is, (d 1 , d 2 , d 3 ) = (v -1, w -v -1, 1)."
+    },
+    {
+      "id": "FORMULA_83",
+      "raw": "Π 3 (P ) = wP (X S ) -v vw(w -v) (w -v)1 v -v1 w-v . (53"
+    },
+    {
+      "id": "FORMULA_84",
+      "raw": ")"
+    },
+    {
+      "id": "FORMULA_85",
+      "raw": "P (α) x = α v (if x ∈ X S ) 1-α w-v (if x ∈ X N ) . (54"
+    },
+    {
+      "id": "FORMULA_86",
+      "raw": ")"
+    },
+    {
+      "id": "FORMULA_87",
+      "raw": "M * (w, v, ϵ) ≥ sup α∈[0,1] inf t∈∆v M (α, t). (55"
+    },
+    {
+      "id": "FORMULA_88",
+      "raw": ")"
+    },
+    {
+      "id": "FORMULA_89",
+      "raw": "M * (w, v, ϵ) ≥ sup α∈(0,1) inf Q∈Q E w,v,ϵ tr -1 J P (α) ,Q . (56"
+    },
+    {
+      "id": "FORMULA_90",
+      "raw": ")"
+    },
+    {
+      "id": "FORMULA_91",
+      "raw": "tr -1 J P (α) ,Q ≥ 3 i=1 tr -1 (B i ) . (57"
+    },
+    {
+      "id": "FORMULA_92",
+      "raw": ")"
+    },
+    {
+      "id": "FORMULA_93",
+      "raw": "tr -1 (B i ) ≥ d 2 i tr(Bi)"
+    },
+    {
+      "id": "FORMULA_94",
+      "raw": "tr(B i ) = d 2 i M i (α, t(Q)) , ∀i ∈ {1, 2, 3},(58)"
+    },
+    {
+      "id": "FORMULA_95",
+      "raw": "t(Q) ∈ ∆ v is the PMF of |Y ′ | when Y ′ ∼ Q P (1) (recall that in an extremal ULDP mechanism, Y is a subset of X )."
+    },
+    {
+      "id": "FORMULA_96",
+      "raw": "tr -1 J P (α) ,Q ≥ 3 i=1 M i (α, t(Q)) = M (α, t(Q)). (59"
+    },
+    {
+      "id": "FORMULA_97",
+      "raw": ")"
+    },
+    {
+      "id": "FORMULA_98",
+      "raw": "M * (w, v, ϵ) ≥ sup α∈(0,1) inf t∈∆v M (α, t). (60"
+    },
+    {
+      "id": "FORMULA_99",
+      "raw": ")"
+    },
+    {
+      "id": "FORMULA_100",
+      "raw": "α∈[0,1]"
+    },
+    {
+      "id": "FORMULA_101",
+      "raw": "(Q (k) : [v] → P(2 [v] )) k∈[v]"
+    },
+    {
+      "id": "FORMULA_102",
+      "raw": "Definition 9. Let w > v ≥ 1, X = [w], X S = [v], ϵ > 0."
+    },
+    {
+      "id": "FORMULA_103",
+      "raw": "• t ∈ ∆ v , • A collection of sets (E k ) k∈[v] , E k ⊂ 2 XS , such that for each k, (X S , E k ) is a (v, b k , r k , k, λ k )-block design for some (b k , r k , λ k )."
+    },
+    {
+      "id": "FORMULA_104",
+      "raw": "γ(y) = t k • 1(y ∈ E k ) r k (e ϵ -1) + b k , ∀y such that |y| = k. (61)"
+    },
+    {
+      "id": "FORMULA_105",
+      "raw": "E k only for k ∈ [v] such that t k > 0, not necessary for all k ∈ [v]."
+    },
+    {
+      "id": "FORMULA_106",
+      "raw": "E Y ∼Q P [Π i (η P (α) ,Q (Y ))] = Π i (P -P (α) ) d i M i (α, t) .(62)"
+    },
+    {
+      "id": "FORMULA_107",
+      "raw": "(d 1 , d 2 , d 3 ) = (v-1, w-v-1, 1)."
+    },
+    {
+      "id": "FORMULA_108",
+      "raw": "P (α) n (y n ) = 1 n n j=1 P (α) 1 (y j ), where (i) For α ∈ (0, 1), P(α) 1"
+    },
+    {
+      "id": "FORMULA_109",
+      "raw": "P (α) 1 (y) = P (α) + 3 i=1 M i (α, t) d i Π i (η P (α) ,Q (y)).(63)"
+    },
+    {
+      "id": "FORMULA_110",
+      "raw": "Suppose that t ̸ = δ (v;v) when v ≥ 2. Then R n (Q, P ) = 1 n R 1 (Q, P ), R(Q, P ) = R 1 (Q, P ), (64"
+    },
+    {
+      "id": "FORMULA_111",
+      "raw": ")"
+    },
+    {
+      "id": "FORMULA_112",
+      "raw": "R(Q, P ) = sup β∈[0,1] - w v(w -v) (β -α) 2"
+    },
+    {
+      "id": "FORMULA_113",
+      "raw": "M i (α,t) d i Π i (η P (α) ,Q (y)) = 0."
+    },
+    {
+      "id": "FORMULA_114",
+      "raw": "R(Q, P ) = R 1 (Q, P ) = sup β∈[0,1] R 1 (Q, P ; P (β) ).(67)"
+    },
+    {
+      "id": "FORMULA_115",
+      "raw": "R 1 (Q, P ; P (β) ) = - w v(w -v) (β -α) 2 + (β -α)F (α, t) + M (α, t), (68"
+    },
+    {
+      "id": "FORMULA_116",
+      "raw": ")"
+    },
+    {
+      "id": "FORMULA_117",
+      "raw": "F (α * , t * )      = 0 (if α * ∈ (0, 1)) ≤ 0 (if α * = 0) ≥ 0 (if α * = 1) . (69"
+    },
+    {
+      "id": "FORMULA_118",
+      "raw": ")"
+    },
+    {
+      "id": "FORMULA_119",
+      "raw": "Proposition 13. Let k ∈ [v]. Let Q be a (w, v, ϵ, δ (k;v) )- uBD mechanism. Assume that k ̸ = v when v ≥ 2."
+    },
+    {
+      "id": "FORMULA_120",
+      "raw": "(i) For x ∈ X S = [v], ( P (α) 1 (y)) x =      1 + v-1 k(e ϵ -1) (if x ∈ y) -(k-1)(e ϵ -1)+(v-1) (v-k)(e ϵ -1) (if x / ∈ y, y ∈ Y P ) -1 k(e ϵ -1) (if y ∈ Y I ) . (70) (ii) For x ∈ X N = [v + 1 : w], ( P (α) 1 (y)) x = (k(e ϵ -1) + v) k(e ϵ -1)"
+    },
+    {
+      "id": "FORMULA_121",
+      "raw": "(i) v = 1;"
+    },
+    {
+      "id": "FORMULA_122",
+      "raw": "ϵ L =      ln 1 + 2(w-2) w-1 (if v = 2) ln (v-1)(v-2) 2 (if v ≥ 3) ,(72)"
+    },
+    {
+      "id": "FORMULA_123",
+      "raw": "ϵ H = ln w -v + (w -1)(w -2) 2 .(73)"
+    },
+    {
+      "id": "FORMULA_124",
+      "raw": "[0.1, ϵ L ], [ϵ L , ϵ H ], and [ϵ H ,"
+    },
+    {
+      "id": "FORMULA_125",
+      "raw": "(a) ϵ ∈ [0.1, ϵL] (b) ϵ ∈ [ϵL, ϵH ] (c) ϵ ∈ [ϵH , 10]"
+    },
+    {
+      "id": "FORMULA_126",
+      "raw": "J P ′ ,Q ⪯ max x∈[w] P x P ′ x J P,Q . (74) Proof. Let r = max x∈[w] Px P ′ x"
+    },
+    {
+      "id": "FORMULA_127",
+      "raw": "J P ′ ,Q (h, h) ≤ rJ P,Q (h, h).(75)"
+    },
+    {
+      "id": "FORMULA_128",
+      "raw": "Q P ′ (y) = x∈[w] P ′ x Q(y|x)(76) ≥ x∈[w]"
+    },
+    {
+      "id": "FORMULA_129",
+      "raw": "(P x /r)Q(y|x) = Q P (y)/r.(77)"
+    },
+    {
+      "id": "FORMULA_130",
+      "raw": "J P ′ ,Q (h, h) = Var Y ∼Q P ′ (η P ′ ,Q;h (Y ))(78)"
+    },
+    {
+      "id": "FORMULA_131",
+      "raw": "= y∈supp(Q) x∈[w] h x Q(y|x) 2 Q P ′ (y) (79) ≤ r y∈supp(Q) x∈[w] h x Q(y|x) 2 Q P (y)(80)"
+    },
+    {
+      "id": "FORMULA_132",
+      "raw": "= rJ P,Q (h, h).(81)"
+    },
+    {
+      "id": "FORMULA_133",
+      "raw": "x = P x P x + w-1 i=1 θ i h (i) x = 1 1 + w-1 i=1 θih (i) x Px .(82)"
+    },
+    {
+      "id": "FORMULA_134",
+      "raw": "w-1 i=1 θih (i)"
+    },
+    {
+      "id": "FORMULA_135",
+      "raw": "N = max (w -1) 2 D 4 , (w -1) min x P x 4 + 1,(83)"
+    },
+    {
+      "id": "FORMULA_136",
+      "raw": "C = (w -1) min x P x ,(84)"
+    },
+    {
+      "id": "FORMULA_137",
+      "raw": "max x P x P (Θ) x ≤ 1 1 -Cn -1/4 ≤ 1 + Cn -1/4 .(85)"
+    },
+    {
+      "id": "FORMULA_138",
+      "raw": "lim n→∞ inf Q∈Q σ(R n (P, Q)) = inf Q∈Q σ (tr -1 (J P,Q )) .(86)"
+    },
+    {
+      "id": "FORMULA_139",
+      "raw": "Y I = {{x} : x ∈ [v + 1 : w]}. We need to find Q ∈ Q E w,v,ϵ"
+    },
+    {
+      "id": "FORMULA_140",
+      "raw": "Q(ỹ|x) = y∈Y Q(y|x)T (ỹ|y), ∀x ∈ X , ỹ ∈ Ỹ. (87"
+    },
+    {
+      "id": "FORMULA_141",
+      "raw": ")"
+    },
+    {
+      "id": "FORMULA_142",
+      "raw": "Qỹ = y∈YP T (ỹ|y)γ(y)s (y) + x∈XN T (ỹ|{x})   1 - y ′ ∈YP γ(y ′ )   δ (x) ,(88)"
+    },
+    {
+      "id": "FORMULA_143",
+      "raw": "s (z) x = e ϵ (if x ∈ z) 1 (if x / ∈ z) .(89)"
+    },
+    {
+      "id": "FORMULA_144",
+      "raw": "• If z ∩ X S ̸ = ∅, then s (z) = s (z∩XS) + (e ϵ -1) x∈XN∩z δ (x) ."
+    },
+    {
+      "id": "FORMULA_145",
+      "raw": "• If z ∩ X S = ∅, then s (z) = e -ϵ s (XS) + (e ϵ -e -ϵ ) x∈XN∩z δ (x) + (1 -e -ϵ ) x∈XN\\z δ (x) .(91)"
+    },
+    {
+      "id": "FORMULA_146",
+      "raw": "Qỹ = y∈YP γ(y, ỹ)s (y) + x∈XN u(x, ỹ)δ (x)(92)"
+    },
+    {
+      "id": "FORMULA_147",
+      "raw": "γ(y) = ỹ∈ Ỹ γ(y, ỹ),(93)"
+    },
+    {
+      "id": "FORMULA_148",
+      "raw": "T (ỹ|y) = γ(y, ỹ)/γ(y) (if y ∈ Y P ) u(x,ỹ) 1-y ′ ∈Y P γ(y ′ ) (if y ∈ Y I , y = {x}) .(94)"
+    },
+    {
+      "id": "FORMULA_149",
+      "raw": "A -1 = (B -C T D -1 C) -1 CT CT (D -CB -1 C T ) -1 ,(95)"
+    },
+    {
+      "id": "FORMULA_150",
+      "raw": "tr -1 (A) ≥ tr -1 (B) + tr -1 (D).(96)"
+    },
+    {
+      "id": "FORMULA_151",
+      "raw": "tr(B i ) = di j=1 J P (α),Q (h (j;i) , h (j;i) )(97)"
+    },
+    {
+      "id": "FORMULA_152",
+      "raw": "tr(B i ) = di j=1 Var Y ∼Q P (α) ⟨η P (α) ,Q (Y ), h (j;i) ⟩ (98) = di j=1 E Y ∼Q P (α) ⟨η P (α) ,Q (Y ), h (j;i) ⟩ 2 (99) = E Y ∼Q P (α) Π i η P (α) ,Q (Y ) 2 . (100"
+    },
+    {
+      "id": "FORMULA_153",
+      "raw": ")"
+    },
+    {
+      "id": "FORMULA_154",
+      "raw": "t k = y∈Y (k) P ke ϵ + v -k v γ(y).(101)"
+    },
+    {
+      "id": "FORMULA_155",
+      "raw": "Q P (α) (Y (k) P ) = y∈Y (k) P αk(e ϵ -1) + v v γ(y) (102) = αk(e ϵ -1) + v ke ϵ + v -k t k(103)"
+    },
+    {
+      "id": "FORMULA_156",
+      "raw": "Q P (α) (Y I ) = 1 - v k=1 Q P (α) (Y (k) P ) (104) = v k=1 (1 -α)(e ϵ -1)k ke ϵ + v -k t k .(105)"
+    },
+    {
+      "id": "FORMULA_157",
+      "raw": "• If y ∈ Y (k) P , then Π i η P (α) ,Q (y) 2 = A i,k"
+    },
+    {
+      "id": "FORMULA_158",
+      "raw": "(A 1,k , A 2,k , A 3,k ) = vk(v -k)(e ϵ -1) 2 (αk(e ϵ -1) + v) 2 , 0, k 2 (e ϵ -1) 2 v(w -v) w(αk(e ϵ -1) + v) 2 . (106"
+    },
+    {
+      "id": "FORMULA_159",
+      "raw": ") • If y ∈ Y I , then Π i η P (α) ,Q (y) 2 = A ′ i ,"
+    },
+    {
+      "id": "FORMULA_160",
+      "raw": "(A ′ 1 , A ′ 2 , A ′ 3 ) = 0, (w -v)(w -v -1) (1 -α) 2 , v(w -v) w(1 -α) 2 ."
+    },
+    {
+      "id": "FORMULA_161",
+      "raw": "tr(B i ) = v k=1 Q P (α) (Y (k) P )A i,k + Q P (α) (Y I )A ′ i . (108"
+    },
+    {
+      "id": "FORMULA_162",
+      "raw": ")"
+    },
+    {
+      "id": "FORMULA_163",
+      "raw": "1) i = 1: For each x ∈ X S and k ∈ [v], let Y (k,x) P := {y ∈ Y (k) P : x ∈ y},(109)"
+    },
+    {
+      "id": "FORMULA_164",
+      "raw": "Y (k,¬x) P := Y (k) P \\Y (k,x) P . (110"
+    },
+    {
+      "id": "FORMULA_165",
+      "raw": ")"
+    },
+    {
+      "id": "FORMULA_166",
+      "raw": "(Π 1 (P -P (α) )) x = P x -1 v P (X S ) (if x ∈ X S ) 0 (if x ∈ X N ) .(111)"
+    },
+    {
+      "id": "FORMULA_167",
+      "raw": "v k=1 (e ϵ -1) (v -k)Q P (Y (k,x) P ) -kQ P (Y (k,¬x) P ) αk(e ϵ -1) + v = P x - 1 v P (X S ) v -1 M 1 (α, t) . (112"
+    },
+    {
+      "id": "FORMULA_168",
+      "raw": ")"
+    },
+    {
+      "id": "FORMULA_169",
+      "raw": "Q(Y (k,x) P |x) = t k r k e ϵ r k (e ϵ -1) + b k = t k ke ϵ ke ϵ + v -k ,(113)"
+    },
+    {
+      "id": "FORMULA_170",
+      "raw": "Q(Y (k,x) P |x ′ ) = t k λ k e ϵ + r k -λ k r k (e ϵ -1) + b k (114) = t k k((k -1)e ϵ + v -k) (v -1)(ke ϵ + v -k) ,(115)"
+    },
+    {
+      "id": "FORMULA_171",
+      "raw": "Q(Y (k,x) P |x ′′ ) = t k r k r k (e ϵ -1) + b k = t k k ke ϵ + v -k ,(116)"
+    },
+    {
+      "id": "FORMULA_172",
+      "raw": "Q(Y (k,¬x) P |x) = t k -Q(Y (k,x) P |x),(117)"
+    },
+    {
+      "id": "FORMULA_173",
+      "raw": "Q(Y (k,¬x) P |x ′ ) = t k -Q(Y (k,x) P |x ′ ),(118)"
+    },
+    {
+      "id": "FORMULA_174",
+      "raw": "Q(Y (k,¬x) P |x ′′ ) = t k b k -r k r k (e ϵ -1) + b k (119) = t k v -k ke ϵ + v -k . (120"
+    },
+    {
+      "id": "FORMULA_175",
+      "raw": ")"
+    },
+    {
+      "id": "FORMULA_176",
+      "raw": "(Π 2 (P -P (α) )) x = 0 (if x ∈ X S ) P x -P (XN) w-v (if x ∈ X N ) .(121)"
+    },
+    {
+      "id": "FORMULA_177",
+      "raw": "(w -v -1)Q P ({x}) -Q P (Y I \\{{x}}) 1 -α = P x - 1 w -v P (X N ) w -v -1 M 2 (α, t) .(122)"
+    },
+    {
+      "id": "FORMULA_178",
+      "raw": "Q P ({x}) = P x 1 - v k=1 t k b k r k (e ϵ -1) + b k (123) = P x v k=1 t k k(e ϵ -1) ke ϵ + v -k (124) = P x • (1 -α)(w -v -1) (w -v)M 2 (α, t) . (125"
+    },
+    {
+      "id": "FORMULA_179",
+      "raw": ")"
+    },
+    {
+      "id": "FORMULA_180",
+      "raw": "Q P (Y I \\{{x}}) = (P (X N ) -P x ) • (1 -α)(w -v -1) (w -v)M 2 (α, t) .(126)"
+    },
+    {
+      "id": "FORMULA_181",
+      "raw": "(Π 3 (P -P (α) )) x = P (XS)-α v (if x ∈ X S ) -P (XS)-α w-v (if x ∈ X N ) .(127)"
+    },
+    {
+      "id": "FORMULA_182",
+      "raw": "v k=1 k(e ϵ -1)Q P (Y (k) P ) w(αk(e ϵ -1) + v) - Q P (Y I ) w(1 -α) = P (X S ) -α v(w -v)M 3 (α, t) .(128)"
+    },
+    {
+      "id": "FORMULA_183",
+      "raw": "Q P (Y I ) = (1 -P (X S )) v k=1 t k k(e ϵ -1) ke ϵ + v -k .(129)"
+    },
+    {
+      "id": "FORMULA_184",
+      "raw": "Q P (Y (k) P ) = t k P (X S ) + b k r k (e ϵ -1) + b k P (X N ) (130) = t k • k(e ϵ -1)P (X S ) + v ke ϵ + v -k .(131)"
+    },
+    {
+      "id": "FORMULA_185",
+      "raw": "R 1 (Q, P ; P ) = VAR( P1 (Y )) (132) = VAR( P1 (Y ) -P (α) ) (133) = E∥ P1 (Y ) -P (α) ∥ 2 -∥P -P (α) ∥ 2 . (134"
+    },
+    {
+      "id": "FORMULA_186",
+      "raw": ")"
+    },
+    {
+      "id": "FORMULA_187",
+      "raw": "E∥ P1 (Y ) -P (α) ∥ 2 (135) = 3 i=1 (M i (α, t)) 2 d 2 i E∥Π i (η P (α) ,Q (Y ))∥ 2 (136) = 3 i=1 x∈X (M i (α, t)) 2 d 2 i P x E[∥Π i (η P (α) ,Q (Y ))∥ 2 |X = x].(137)"
+    },
+    {
+      "id": "FORMULA_188",
+      "raw": "E∥ P1 (Y ) -P (α) ∥ 2 = ν 1 P (X S ) + ν 2 P (X N ) (138) = ν 1 β + ν 2 (1 -β),(139)"
+    },
+    {
+      "id": "FORMULA_189",
+      "raw": "ν 1 = 3 i=1 (M i (α, t)) 2 d 2 i E[∥Π i (η P (α) ,Q (Y ))∥ 2 |X = x],(140)"
+    },
+    {
+      "id": "FORMULA_190",
+      "raw": "ν 2 = 3 i=1 (M i (α, t)) 2 d 2 i E[∥Π i (η P (α) ,Q (Y ))∥ 2 |X = x ′ ],(141)"
+    },
+    {
+      "id": "FORMULA_191",
+      "raw": "∥P -P (α) ∥ 2 (142) = x∈XS P x - α v 2 + x∈XN P x - 1 -α w -v 2 (143) = α 2 v 2 + (1 -α) 2 (w -v) 2 - 2α v β - 2(1 -α) w -v (1 -β) + x∈XS P 2 x + x∈XN P 2 x .(144)"
+    },
+    {
+      "id": "FORMULA_192",
+      "raw": "x∈XS P 2 x ≥ β 2 v 2 , x∈XN P 2 x ≥ (1 -β) 2 (w -v) 2 ,(145)"
+    },
+    {
+      "id": "FORMULA_193",
+      "raw": "R 1 (Q, P ; P (β) ) (146) = E Y ∼Q P (β) ∥ P1 (Y ) -P (α) ∥ 2 -∥P (β) -P (α) ∥ 2 . (147"
+    },
+    {
+      "id": "FORMULA_194",
+      "raw": ")"
+    },
+    {
+      "id": "FORMULA_195",
+      "raw": "∥P (β) -P (α) ∥ 2 = w v(w -v) (β -α) 2 .(148)"
+    },
+    {
+      "id": "FORMULA_196",
+      "raw": "E Y ∼Q P (β) ∥ P1 (Y ) -P (α) ∥ 2 = (β -α)F (α, t) + M (α, t).(149)"
+    },
+    {
+      "id": "FORMULA_197",
+      "raw": "E Y ∼Q P (α) ∥ P1 (Y ) -P (α) ∥ 2 = M (α, t),(150)"
+    },
+    {
+      "id": "FORMULA_198",
+      "raw": "∂ ∂β E Y ∼Q P (β) ∥ P1 (Y ) -P (α) ∥ 2 = F (α, t).(151)"
+    },
+    {
+      "id": "FORMULA_199",
+      "raw": "E Y ∼Q P (α) ∥ P1 (Y ) -P (α) ∥ 2 (152) = 3 i=1 (M i (α, t)) 2 d 2 i E Y ∼Q P (α) ∥Π i (η P (α) ,Q (Y ))∥ 2 (153) = 3 i=1 M i (α, t) = M (α, t),(154)"
+    },
+    {
+      "id": "FORMULA_200",
+      "raw": "Q P (β) (y) = f 1 (y)β + f 2 (y) (155) for f 1 , f 2 : supp(Q) → R. Then, ∂ ∂β E Y ∼Q P (β) ∥ P1 (Y ) -P (α) ∥ 2 = y f 1 (y)∥ P1 (y) -P (α)∥ 2 . (156"
+    },
+    {
+      "id": "FORMULA_201",
+      "raw": ")"
+    },
+    {
+      "id": "FORMULA_202",
+      "raw": "F (α, t) = y ∂ ∂α Q P (α) (y)∥ P1 (y) -P (α) ∥ 2 (157) = y f 1 (y)∥ P1 (y) -P (α) ∥ 2 + y Q P (α) (y) P1 (y) -P (α) , ∂P (α) ∂α .(158)"
+    },
+    {
+      "id": "FORMULA_203",
+      "raw": "k * ∈ K * (v, ϵ) ∩ [2 : v -1]"
+    },
+    {
+      "id": "FORMULA_204",
+      "raw": "M (α * , t * ) = inf t∈∆v M (α * , t),(159)"
+    },
+    {
+      "id": "FORMULA_205",
+      "raw": "M (α * , t * ) = sup α∈[0,1] M (α, t * ).(160)"
+    },
+    {
+      "id": "FORMULA_206",
+      "raw": "e ϵ ≥ w -v + (w -1)(w -2) 2 ≥ 1 + w -v,(161)"
+    },
+    {
+      "id": "FORMULA_207",
+      "raw": "M i (α * , t * ) = d i (e ϵ + v -1) 2 w(e ϵ -1) 2 , ∀i = 1, 2, 3. (162) Recall that (d 1 , d 2 , d 3 ) = (v -1, w -v -1,1"
+    },
+    {
+      "id": "FORMULA_208",
+      "raw": "M (α * , t)(163)"
+    },
+    {
+      "id": "FORMULA_209",
+      "raw": "=(d 1 + d 2 + d 3 ) 3 i=1 d i d 1 + d 2 + d 3 (M i (α * , t)/d i ) (164) ≥ (d 1 + d 2 + d 3 ) 2 3 i=1 d 2 i /M i (α * , t) . (165"
+    },
+    {
+      "id": "FORMULA_210",
+      "raw": ")"
+    },
+    {
+      "id": "FORMULA_211",
+      "raw": "3 i=1 d 2 i /M i (α * , t) = v k=1 g k t k"
+    },
+    {
+      "id": "FORMULA_212",
+      "raw": "g k = kv(v -k)(e ϵ -1) 2 (α * k(e ϵ -1) + v)(ke ϵ + v -k) + k(w -v)(w -v -1)(e ϵ -1) (1 -α * )(ke ϵ + v -k) + vk(w -v)(e ϵ -1) w(1 -α * )(α * k(e ϵ -1) + v) .(166)"
+    },
+    {
+      "id": "FORMULA_213",
+      "raw": "g 1 ≥ g k , ∀k ∈ [2 : v],(167)"
+    },
+    {
+      "id": "FORMULA_214",
+      "raw": "inf t∈∆v M (α * , t) = M (α * , t * ) = (d 1 + d 2 + d 3 ) 2 g 1 . (168"
+    },
+    {
+      "id": "FORMULA_215",
+      "raw": ")"
+    },
+    {
+      "id": "FORMULA_216",
+      "raw": "g 1 -g k = (169) vk(k -1)w(e ϵ -1) 2 ζ 2 (ke ϵ + v -k)(k(e ϵ -1 -w + v) + w) × ζ 2 -2(w -1)ζ + w(w -1) k -1 k ,(170)"
+    },
+    {
+      "id": "FORMULA_217",
+      "raw": "e ϵ ≤ 1 + 2(w -2) w -1 ≤ 1 + w -v = w -1,(172)"
+    },
+    {
+      "id": "FORMULA_218",
+      "raw": "M (α * , t) = f (t 1 )(173)"
+    },
+    {
+      "id": "FORMULA_219",
+      "raw": "w -3 e ϵ + 1 -t 1 + w (w -2)(e ϵ -1) 1 2 -t 1 . (174"
+    },
+    {
+      "id": "FORMULA_220",
+      "raw": ")"
+    },
+    {
+      "id": "FORMULA_221",
+      "raw": "(ke ϵ + v -k) 2 k(v -k) (178) = min k∈[v-1] R BD (v, k, ϵ),(179)"
+    },
+    {
+      "id": "FORMULA_222",
+      "raw": "F (1, δ (k;v) ) ≥ 0, ∀k ∈ [2 : v -1].(181)"
+    },
+    {
+      "id": "FORMULA_223",
+      "raw": "F (1, δ (k;v) ) = ke ϵ + v -k v(e ϵ -1) (v -1) 2 v -k - v + 1 k .(182)"
+    },
+    {
+      "id": "FORMULA_224",
+      "raw": "(v -1) 2 k -(v + 1)(v -k) ≥ 0, ∀k ∈ [2 : v -1]. (183"
+    },
+    {
+      "id": "FORMULA_225",
+      "raw": ")"
+    },
+    {
+      "id": "FORMULA_226",
+      "raw": "2(v -1) 2 -(v + 1)(v -2) ≥ 0.(184)"
+    },
+    {
+      "id": "FORMULA_227",
+      "raw": "2(v -1) 2 -(v + 1)(v -2) = v 2 -3v + 4. (185"
+    },
+    {
+      "id": "FORMULA_228",
+      "raw": ")"
+    },
+    {
+      "id": "FORMULA_229",
+      "raw": "+ P (X N )L 3 (k) + 1 - x∈X P 2 x ,(187)"
+    },
+    {
+      "id": "FORMULA_230",
+      "raw": "L 1 (k) = v(ke ϵ -e ϵ + v -k)(ke ϵ -k + v -1) k(v -k)(e ϵ -1) 2 , (188"
+    },
+    {
+      "id": "FORMULA_231",
+      "raw": ") L 2 (k) = k(1 -k)(e ϵ -1) + (v -1)(v -2k) k(v -k)(e ϵ -1) ,(189)"
+    },
+    {
+      "id": "FORMULA_232",
+      "raw": "L 3 (k) = v k(e ϵ -1) .(190)"
+    },
+    {
+      "id": "FORMULA_233",
+      "raw": "n • R n (Q uSS,k , PuSS,k ) (191) ≥n • R n (Q uSS,k , PuSS,k ; P ) (192) =L 1 (k) + L 2 (k) + 1 - 1 v ,(193)"
+    },
+    {
+      "id": "FORMULA_234",
+      "raw": "R(Q uSS,k , PuSS,k ) ≥ L 1 (k) + L 2 (k) + 1 - 1 v . (194"
+    },
+    {
+      "id": "FORMULA_235",
+      "raw": ")"
+    },
+    {
+      "id": "FORMULA_236",
+      "raw": "L 1 (k) + L 2 (k) + 1 - 1 v -R BD (v, k, ϵ) (195) = 2(k -1) v -k .(196)"
+    },
+    {
+      "id": "FORMULA_237",
+      "raw": "R(Q uSS,k , PuSS,k ) ≥ R BD (v, k, ϵ) + 2(k -1) v -k .(197)"
+    },
+    {
+      "id": "FORMULA_238",
+      "raw": "T (n) : [w] n → ∆ w , T (n) x ′ (x n ) = 1 n n i=1 1(x i = x ′ ), they formulated R ′ n (Q, P ; x n ) := E Y n ∼ n i=1 Q(•|xi) ∥ Pn (Y n ) -T (n) (x n )∥ 2 ."
+    },
+    {
+      "id": "FORMULA_239",
+      "raw": "=E[VAR[ Pn (Y n )|X n ]] + VAR[E[ Pn (Y n )|X n ]](200)"
+    },
+    {
+      "id": "FORMULA_240",
+      "raw": "=E[R ′ n (Q, P ; X n )] + VAR[T (n) (X n )].(201)"
+    },
+    {
+      "id": "FORMULA_241",
+      "raw": "VAR[T (n) (X n )] (202) = 1 n x∈X (P x -P 2 x ) = 1 n 1 - x∈X P 2 x .(203)"
+    },
+    {
+      "id": "FORMULA_242",
+      "raw": "=E X n ∼P n [R ′ n (Q, P ; X n )] + 1 n 1 - x∈X P 2 x . (205"
+    },
+    {
+      "id": "FORMULA_243",
+      "raw": ")"
+    },
+    {
+      "id": "FORMULA_244",
+      "raw": "n • R ′ n (Q uSS,k , PuSS,k ; x n ) (206) =L 1 (k) + x ′ ∈XS T (n) x ′ (x n )L 2 (k) + x ′ ∈XN T (n) x ′ (x n )L 3 (k). (207"
+    },
+    {
+      "id": "FORMULA_245",
+      "raw": ")"
+    },
+    {
+      "id": "FORMULA_246",
+      "raw": "n • E X n ∼P n [R ′ n (Q uSS,k , PuSS,k ; X n )](208"
+    }
+  ]
+}

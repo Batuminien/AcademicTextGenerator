@@ -1,0 +1,200 @@
+{
+  "title": "Quantum est in Libris: Navigating Archives with GenAI, Uncovering Tension Between Preservation and Innovation",
+  "authors": [
+    {
+      "firstname": "Mar",
+      "surname": "Sola",
+      "email": ""
+    },
+    {
+      "firstname": "Varvara",
+      "surname": "Guljajeva",
+      "email": "varvarag@gmail.com"
+    },
+    {
+      "firstname": "Vcuarts",
+      "surname": "Qatar",
+      "email": ""
+    },
+    {
+      "firstname": "",
+      "surname": "",
+      "email": ""
+    },
+    {
+      "firstname": "",
+      "surname": "",
+      "email": ""
+    },
+    {
+      "firstname": "",
+      "surname": "",
+      "email": ""
+    }
+  ],
+  "abstract": "\"Quantum est in libris\" explores the intersection of the archaic and the modern. On one side, there are manuscript materials from the Estonian National Museum's (ERM) more than century-old archive describing the life experiences of Estonian people; on the other side, there is technology that transforms these materials into a dynamic and interactive experience. Connecting technology and cultural heritage is the visitor, who turns texts into inputs for a screen sculpture. Historical narratives are visually brought to life through the contemporary technological language. Because the video AI models we employed, Runway Gen-3 and Gen-4, have not previously interacted with Estonian heritage, we can observe how machines today \"read the world\" and create future heritage. \"Quantum est * Both authors contributed equally in libris\" introduces an exciting yet unsettling new dimension to the concept of cultural heritage: in a world where data are fluid and interpretations unstable, heritage status becomes fragile. In the digital environment, heritage issues are no longer just about preservation and transmission, but also about representation of the media, machine creativity, and interpretive error. Who or what shapes memory processes and memory spaces, and how? CCS Concepts • Applied computing → Media arts; • Computing methodologies → Artificial intelligence.",
+  "sections": [
+    {
+      "title": "INTRODUCTION 2 Introduction",
+      "paragraphs": [
+        "In 2025, Estonia marks the 500th anniversary of the earliest known Estonian-language book, underscoring the enduring relationship between textual heritage and national identity such as singing [17]. Over centuries, the technologies of writing, reading, and preserving collective memory have evolved from manuscripts and printed volumes to the digital archives of today [3]. Contemporary museums and archives now face the challenge and opportunity not only of protecting artifacts but also of reimagining public engagement with heritage through emerging technologies [5,6].",
+        "The intersection of cultural heritage and artificial intelligence (AI) has rapidly become a focus of critical scholarship [6]. AI techniques, particularly those that exploit large-scale generative models, are opening new avenues to interpret, visualize, and interact with historical materials [16]. Such technologies can augment curatorial work, enable creative reinterpretations, and bring new audiences into conversation with the past. However, these same systems often have biases that reflect their training data, leading to gaps in cultural representation, especially for smaller languages and communities [1]. This tension between technological innovation and the preservation of authentic memory is at the heart of contemporary debates in digital heritage and media art [5].",
+        "Our own work has engaged with the idea of future heritage since 2012, beginning with the NeuroKnitting project, which augmented traditional craft with EEG data by translating brainwave patterns into textile structures [7]. In 2022, NeuroKnitting Beethoven extended this approach by mapping the brainwaves of a pianist interpreting Beethoven into knitting machine processes [9]. Beyond their innovative practice, both projects re-engaged with cultural heritage while simultaneously creating new forms of heritage-patterns shaped by neural activity that may hold future cultural significance [10]. In a similar way, the current project Quantum est in Libris explores how current tools, such as generative AI, can enter into dialogue with past cultural heritage to create new modes of future heritage for generations to come.",
+        "Engaging with these debates requires considering heritage not only as preservation of the past but also as projection into possible futures. Future heritage can be understood as a testing ground for imagining what future generations might value and wish to experience. As Holtorf and Högberg emphasize in their book Contemporary Heritage and the Future, \"Heritage management is a futuristic activity because to a large extent it is motivated by the present-day desire to preserve the remains of the past for the benefit of future generations\" [13]."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "ARTWORK DESCRIPTION",
+      "paragraphs": [
+        "This interactive artwork invites participants to explore a curated selection of 84 historical handwritten pages from the ethnographical diaries. This archival material, carefully chosen by the research personnel of ERM and the artists, offers insight into Estonian life in earlier times. This piece creates a new method for public engagement with heritage materials such as old diaries using AI videos and interactivity, bringing archival material with significant historical and cultural value into an engaging, interactive experience for the public."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "ABOUT THE ARTWORK 4.1 PROJECT CONCEPT",
+      "paragraphs": [
+        "In 2025, the 500th anniversary of the written Estonian marks the 500th anniversary of the writing. Over centuries, the ways we write, read, work, and live have changed significantly. Technology is evolving rapidly and offers new possibilities for the preservation and new artistic innovative ways to present culture such as archive materials.",
+        "\"Quantum est in Libris\" explores the meeting point between the archaic and the contemporary. On the one hand are handwritten materials from the archive of the Estonian National Museum, more than a century old, describing the life experiences of Estonians. The other side is technology, turning these materials into a dynamic and interactive experience.",
+        "At the heart of the installation is a sculpture consisting of a totem of six screens along with an interactive station. Visitors read aloud randomly selected excerpts from historical texts, which the installation records and transforms into visual imagery traveling across the screen sculpture. The images displayed on the screens are generated based on interactions with the five most recent visitors. The installation bridges past and present, transforming centuries-old descriptions of daily life into digital art through visitor engagement.",
+        "\"Quantum est in Libris\" reflects how contemporary machines perceive the world and how humans navigate information in the age of artificial intelligence. It is a visual spectacle in which historical narratives come alive through the language of contemporary technology. ing a new AI-generated video emerging from the diary page in the bottom screen. The Figure 3 shows an overview of the interaction flow. In Figure 2 illustrates steps 1-3. The rest of the steps are illustrated in Figure 4. After 1 minute, the system, having moved to step 6, starts again at step 1, waiting for new interaction. Meanwhile, the screen tower shows six videos in a perfectly seamless loop, where the transition between the last and first frame is imperceptible, with the newer ones at the bottom and the older ones at the top."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "TECHNICAL DESCRIPTION",
+      "paragraphs": [
+        "The installation is operated by a system of two computers and three main applications, each with a specific role.",
+        "Display Computer. This computer with an openFrameworks C++ app renders all visual content, including AI videos and text animations, which are displayed on six synchronized full-HD screens.",
+        "Interaction Station. This second computer manages all user interaction. It is connected to a touch screen and a microphone and runs two applications:",
+        "• Backend Server: A custom application that manages all internal communication between the components of the three apps and serves the web-based front-end. • Front-end Interface: A web application running in Google Chrome's kiosk mode. This interface is displayed on the touch screen, allowing participants to interact with the exhibit. The speech-to-text rely on the Web Speech API in Estonian and English.",
+        "Web Interface and Archive Link. The user interface on the touch screen displays digitized diary pages. Alongside each page is a QR code that links directly to the object's official entry in ERM archive, hosted on MUIS1 (the Estonian National Archive Repository). This feature allows participants to explore the original source material and discover additional contextual information."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "From Archives to Moving Images",
+      "paragraphs": [
+        "The production of the AI-generated videos was the most timeconsuming aspect of the project. Although recent tools have made generating videos with AI easier and faster, producing longer sequences remains a labor-intensive process clips beyond ten seconds still demands significant time and effort. Each video in the installation attempts to visually represent the activity described in the handwritten text of a single diary page and is generated as a seamless, perfectly looping sequence. Achieving such loops is a distinctive feature of AI-generated content and is almost impossible with traditional camera-based video production. The durations of the videos vary between 20 seconds and 2 minutes 40 seconds. Each required multiple generations and careful selection to best capture the intended ideas. Our previous work with StyleGAN involved creating custom datasets, which took weeks to produce approximately 20 minutes of video material [8]. Later, we adopted Stable Diffusion for real-time visual generation, which streamlined certain aspects of experimentation [2]. For this project, we turned to Runway GEN3 and the more recent GEN4 models. Notably, the outputs of these two models differ in resolution, complicating their integration. For longer videos, several clips had to be joined together, since GEN3 allowed extensions up to 40 seconds, while GEN4 only generated fixed clips of 5 or 10 seconds without extensions. This made GEN3 more suitable for our creative task, although we still employed GEN4 for selected videos.",
+        "Although the videos are generated by AI, considerable human labor is involved in their creation. The composition and, especially, the selection from the many generated iterations were performed manually. One major difficulty encountered was the limited availability of Estonian and Baltic-specific material in AI models' training data, as Estonia is a relatively small country compared to others. This challenge required us to refine our prompts, often specifying in detail the objects and actions needed, and to conduct many generations to find a satisfactory representation. Because this process was arduous and the text-to-video models remain in development, we decided to intentionally retain certain errors in the final videos. These errors-such as, for example, a figure walking backwards-clearly indicate that the content was generated by AI, and contribute to a unique aesthetic. Moreover, since the diary texts are simple descriptions of actions and ways of living in historical Estonia, the resulting videos function as imperfect translations, in the sense described by semiotician Juri Lotman, for whom the translation between different semiotic spaces is a source of creativity [14].",
+        "Initially, we considered building a real-time pipeline for video generation. However, this approach proved problematic because, when representing Estonian heritage, the AI-generated results would frequently fail to be culturally accurate or meaningful. The prompts often do not directly correspond to the source text and require multiple attempts to yield outputs suitable for curation by a human expert. Thus, a fully autonomous system was not feasible for this project at the current state of technology; in fact, a humancurated approach is better suited to the complexities of working with heritage materials."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "DISCUSSION",
+      "paragraphs": [
+        "Quantum est in Libris responds to this context by bringing together handwritten archival materials from the ERM and cutting-edge text-to-video AI models-specifically, Runway Gen-3 and Gen-4 2 .",
+        "2 https://research.runwayml.com/ In the installation, museum visitors read excerpts from historic diaries aloud. Their speech is transcribed and transformed into AIgenerated video that visually interprets the archival content. This process foregrounds both the creative agency of the participant and the interpretive mediation of the machine, situating the visitor as an active link between centuries-old documents and digital reanimation.",
+        "This type of mediation is not without its complexities. AI models rarely possess deep knowledge of localized or minority cultures; their representations of Estonian heritage, for example, may contain inaccuracies or unexpected associations. As a result, the installation exposes both the potential and the limitations of generative AI in cultural contexts. Such errors or \"creative translations\" echo Lotman's theory of cultural semiotics, wherein the act of translating information from one sign system (such as text) to another (such as visual media) is inherently generative and may result in new, sometimes unforeseen meanings [15].",
+        "In our previous research, we have examined how artists deploy generative AI as both a creative tool and a critical lens [12] [11]. Quantum est in Libris extends this trajectory, serving as another case study that applies generative technologies within interactive scenarios while exploring and visualizing the national archive. In doing so, it highlights how artistic practice can simultaneously critique, expand, and reframe the role of AI in cultural heritage contexts.",
+        "Beyond technical considerations, the work raises broader questions about memory, authorship, and authenticity. In digital environments, the notion of heritage becomes fluid: archives are not static repositories but sites of ongoing negotiation between humans and machines [4]. While generative AI can expand access and foster new forms of creativity, scholars caution that it should not replace the interpretive expertise of human curators, art historians, and artists [5,6]. Instead, installations such as Quantum est in Libris demonstrate the need to position AI as a collaboratorone that highlights the evolving dialogue between cultural heritage, technological mediation, and future imaginaries."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "CONCLUSION",
+      "paragraphs": [
+        "This paper situates Quantum est in Libris as a case study for navigating the tensions and opportunities at the intersection of cultural heritage and generative AI. The installation demonstrates both the creative potential and the limitations of algorithmic systems in heritage contexts, particularly when engaging with underrepresented languages and communities. By staging a dialogue between archive, machine, and audience, the project not only reinterprets existing cultural memory but also contributes to the making of future heritage. In doing so, it invites us to reconsider what preservation, innovation, and participation might mean in an era where cultural heritage is increasingly shaped through generative technologies and interactive practices."
+      ],
+      "subsections": []
+    }
+  ],
+  "body_paragraphs": [
+    "In 2025, Estonia marks the 500th anniversary of the earliest known Estonian-language book, underscoring the enduring relationship between textual heritage and national identity such as singing [17]. Over centuries, the technologies of writing, reading, and preserving collective memory have evolved from manuscripts and printed volumes to the digital archives of today [3]. Contemporary museums and archives now face the challenge and opportunity not only of protecting artifacts but also of reimagining public engagement with heritage through emerging technologies [5,6].",
+    "The intersection of cultural heritage and artificial intelligence (AI) has rapidly become a focus of critical scholarship [6]. AI techniques, particularly those that exploit large-scale generative models, are opening new avenues to interpret, visualize, and interact with historical materials [16]. Such technologies can augment curatorial work, enable creative reinterpretations, and bring new audiences into conversation with the past. However, these same systems often have biases that reflect their training data, leading to gaps in cultural representation, especially for smaller languages and communities [1]. This tension between technological innovation and the preservation of authentic memory is at the heart of contemporary debates in digital heritage and media art [5].",
+    "Our own work has engaged with the idea of future heritage since 2012, beginning with the NeuroKnitting project, which augmented traditional craft with EEG data by translating brainwave patterns into textile structures [7]. In 2022, NeuroKnitting Beethoven extended this approach by mapping the brainwaves of a pianist interpreting Beethoven into knitting machine processes [9]. Beyond their innovative practice, both projects re-engaged with cultural heritage while simultaneously creating new forms of heritage-patterns shaped by neural activity that may hold future cultural significance [10]. In a similar way, the current project Quantum est in Libris explores how current tools, such as generative AI, can enter into dialogue with past cultural heritage to create new modes of future heritage for generations to come.",
+    "Engaging with these debates requires considering heritage not only as preservation of the past but also as projection into possible futures. Future heritage can be understood as a testing ground for imagining what future generations might value and wish to experience. As Holtorf and Högberg emphasize in their book Contemporary Heritage and the Future, \"Heritage management is a futuristic activity because to a large extent it is motivated by the present-day desire to preserve the remains of the past for the benefit of future generations\" [13].",
+    "This interactive artwork invites participants to explore a curated selection of 84 historical handwritten pages from the ethnographical diaries. This archival material, carefully chosen by the research personnel of ERM and the artists, offers insight into Estonian life in earlier times. This piece creates a new method for public engagement with heritage materials such as old diaries using AI videos and interactivity, bringing archival material with significant historical and cultural value into an engaging, interactive experience for the public.",
+    "In 2025, the 500th anniversary of the written Estonian marks the 500th anniversary of the writing. Over centuries, the ways we write, read, work, and live have changed significantly. Technology is evolving rapidly and offers new possibilities for the preservation and new artistic innovative ways to present culture such as archive materials.",
+    "\"Quantum est in Libris\" explores the meeting point between the archaic and the contemporary. On the one hand are handwritten materials from the archive of the Estonian National Museum, more than a century old, describing the life experiences of Estonians. The other side is technology, turning these materials into a dynamic and interactive experience.",
+    "At the heart of the installation is a sculpture consisting of a totem of six screens along with an interactive station. Visitors read aloud randomly selected excerpts from historical texts, which the installation records and transforms into visual imagery traveling across the screen sculpture. The images displayed on the screens are generated based on interactions with the five most recent visitors. The installation bridges past and present, transforming centuries-old descriptions of daily life into digital art through visitor engagement.",
+    "\"Quantum est in Libris\" reflects how contemporary machines perceive the world and how humans navigate information in the age of artificial intelligence. It is a visual spectacle in which historical narratives come alive through the language of contemporary technology. ing a new AI-generated video emerging from the diary page in the bottom screen. The Figure 3 shows an overview of the interaction flow. In Figure 2 illustrates steps 1-3. The rest of the steps are illustrated in Figure 4. After 1 minute, the system, having moved to step 6, starts again at step 1, waiting for new interaction. Meanwhile, the screen tower shows six videos in a perfectly seamless loop, where the transition between the last and first frame is imperceptible, with the newer ones at the bottom and the older ones at the top.",
+    "The installation is operated by a system of two computers and three main applications, each with a specific role.",
+    "Display Computer. This computer with an openFrameworks C++ app renders all visual content, including AI videos and text animations, which are displayed on six synchronized full-HD screens.",
+    "Interaction Station. This second computer manages all user interaction. It is connected to a touch screen and a microphone and runs two applications:",
+    "• Backend Server: A custom application that manages all internal communication between the components of the three apps and serves the web-based front-end. • Front-end Interface: A web application running in Google Chrome's kiosk mode. This interface is displayed on the touch screen, allowing participants to interact with the exhibit. The speech-to-text rely on the Web Speech API in Estonian and English.",
+    "Web Interface and Archive Link. The user interface on the touch screen displays digitized diary pages. Alongside each page is a QR code that links directly to the object's official entry in ERM archive, hosted on MUIS1 (the Estonian National Archive Repository). This feature allows participants to explore the original source material and discover additional contextual information.",
+    "The production of the AI-generated videos was the most timeconsuming aspect of the project. Although recent tools have made generating videos with AI easier and faster, producing longer sequences remains a labor-intensive process clips beyond ten seconds still demands significant time and effort. Each video in the installation attempts to visually represent the activity described in the handwritten text of a single diary page and is generated as a seamless, perfectly looping sequence. Achieving such loops is a distinctive feature of AI-generated content and is almost impossible with traditional camera-based video production. The durations of the videos vary between 20 seconds and 2 minutes 40 seconds. Each required multiple generations and careful selection to best capture the intended ideas. Our previous work with StyleGAN involved creating custom datasets, which took weeks to produce approximately 20 minutes of video material [8]. Later, we adopted Stable Diffusion for real-time visual generation, which streamlined certain aspects of experimentation [2]. For this project, we turned to Runway GEN3 and the more recent GEN4 models. Notably, the outputs of these two models differ in resolution, complicating their integration. For longer videos, several clips had to be joined together, since GEN3 allowed extensions up to 40 seconds, while GEN4 only generated fixed clips of 5 or 10 seconds without extensions. This made GEN3 more suitable for our creative task, although we still employed GEN4 for selected videos.",
+    "Although the videos are generated by AI, considerable human labor is involved in their creation. The composition and, especially, the selection from the many generated iterations were performed manually. One major difficulty encountered was the limited availability of Estonian and Baltic-specific material in AI models' training data, as Estonia is a relatively small country compared to others. This challenge required us to refine our prompts, often specifying in detail the objects and actions needed, and to conduct many generations to find a satisfactory representation. Because this process was arduous and the text-to-video models remain in development, we decided to intentionally retain certain errors in the final videos. These errors-such as, for example, a figure walking backwards-clearly indicate that the content was generated by AI, and contribute to a unique aesthetic. Moreover, since the diary texts are simple descriptions of actions and ways of living in historical Estonia, the resulting videos function as imperfect translations, in the sense described by semiotician Juri Lotman, for whom the translation between different semiotic spaces is a source of creativity [14].",
+    "Initially, we considered building a real-time pipeline for video generation. However, this approach proved problematic because, when representing Estonian heritage, the AI-generated results would frequently fail to be culturally accurate or meaningful. The prompts often do not directly correspond to the source text and require multiple attempts to yield outputs suitable for curation by a human expert. Thus, a fully autonomous system was not feasible for this project at the current state of technology; in fact, a humancurated approach is better suited to the complexities of working with heritage materials.",
+    "Quantum est in Libris responds to this context by bringing together handwritten archival materials from the ERM and cutting-edge text-to-video AI models-specifically, Runway Gen-3 and Gen-4 2 .",
+    "2 https://research.runwayml.com/ In the installation, museum visitors read excerpts from historic diaries aloud. Their speech is transcribed and transformed into AIgenerated video that visually interprets the archival content. This process foregrounds both the creative agency of the participant and the interpretive mediation of the machine, situating the visitor as an active link between centuries-old documents and digital reanimation.",
+    "This type of mediation is not without its complexities. AI models rarely possess deep knowledge of localized or minority cultures; their representations of Estonian heritage, for example, may contain inaccuracies or unexpected associations. As a result, the installation exposes both the potential and the limitations of generative AI in cultural contexts. Such errors or \"creative translations\" echo Lotman's theory of cultural semiotics, wherein the act of translating information from one sign system (such as text) to another (such as visual media) is inherently generative and may result in new, sometimes unforeseen meanings [15].",
+    "In our previous research, we have examined how artists deploy generative AI as both a creative tool and a critical lens [12] [11]. Quantum est in Libris extends this trajectory, serving as another case study that applies generative technologies within interactive scenarios while exploring and visualizing the national archive. In doing so, it highlights how artistic practice can simultaneously critique, expand, and reframe the role of AI in cultural heritage contexts.",
+    "Beyond technical considerations, the work raises broader questions about memory, authorship, and authenticity. In digital environments, the notion of heritage becomes fluid: archives are not static repositories but sites of ongoing negotiation between humans and machines [4]. While generative AI can expand access and foster new forms of creativity, scholars caution that it should not replace the interpretive expertise of human curators, art historians, and artists [5,6]. Instead, installations such as Quantum est in Libris demonstrate the need to position AI as a collaboratorone that highlights the evolving dialogue between cultural heritage, technological mediation, and future imaginaries.",
+    "This paper situates Quantum est in Libris as a case study for navigating the tensions and opportunities at the intersection of cultural heritage and generative AI. The installation demonstrates both the creative potential and the limitations of algorithmic systems in heritage contexts, particularly when engaging with underrepresented languages and communities. By staging a dialogue between archive, machine, and audience, the project not only reinterprets existing cultural memory but also contributes to the making of future heritage. In doing so, it invites us to reconsider what preservation, innovation, and participation might mean in an era where cultural heritage is increasingly shaped through generative technologies and interactive practices.",
+    "https://www.muis.ee/"
+  ],
+  "references": [
+    {
+      "id": 1,
+      "text": "On the Dangers of Stochastic Parrots\n\t\t\n\t\t\tEmilyMBender\n\t\t\n\t\t\n\t\t\tTimnitGebru\n\t\t\n\t\t\n\t\t\tAngelinaMcmillan-Major\n\t\t\n\t\t\n\t\t\tShmargaretShmitchell\n\t\t\n\t\t10.1145/3442188.3445922\n\t\n\t\n\t\tProceedings of the 2021 ACM Conference on Fairness, Accountability, and Transparency\n\t\tthe 2021 ACM Conference on Fairness, Accountability, and Transparency\n\t\t\n\t\t\tACM\n\t\t\t2021\n\t\t\t\n\t\t\n\t\n\tFAccT '21"
+    },
+    {
+      "id": 2,
+      "text": "Visions of Destruction: Exploring a Potential of Generative AI in Interactive Art\n\t\t\n\t\t\tCanetMar\n\t\t\n\t\t\n\t\t\tVarvaraSola\n\t\t\n\t\t\n\t\t\tGuljajeva\n\t\t\n\t\n\t\n\t\tProceedings of the 17th International Symposium on Visual Information Communication and Interaction\n\t\tthe 17th International Symposium on Visual Information Communication and Interaction\n\t\t\n\t\t\t2024"
+    },
+    {
+      "id": 3,
+      "text": "Digital Futures\n\t\t\n\t\t\tMarilynDeegan\n\t\t\n\t\t\n\t\t\tSimonTanner\n\t\t\n\t\t10.29085/9781856048644\n\t\t\n\t\t\t2006\n\t\t\tFacet"
+    },
+    {
+      "id": 4,
+      "text": "Media and Memory\n\t\t\n\t\t\tAstridErll\n\t\t\n\t\t10.1057/9780230321670_5\n\t\n\t\n\t\tMemory in Culture\n\t\t\n\t\t\tPalgrave Macmillan UK\n\t\t\t2011"
+    },
+    {
+      "id": 5,
+      "text": "Book Review\n\t\t\n\t\t\tDirkVom Lehn\n\t\t\n\t\t10.1007/s10606-012-9182-2\n\t\n\t\n\t\tComputer Supported Cooperative Work (CSCW)\n\t\tComput Supported Coop Work\n\t\t\n\t\t\tElisaGiaccardi\n\t\t\n\t\t0925-9724\n\t\t1573-7551\n\t\t\n\t\t\t23\n\t\t\t1\n\t\t\t\n\t\t\t\n\t\t\tSpringer Science and Business Media LLC"
+    },
+    {
+      "id": 6,
+      "text": "Navigating Artificial Intelligence for Cultural Heritage Organisations\n\t\t\n\t\t\tTulaGiannini\n\t\t\n\t\t\n\t\t\tJonathanPBowen\n\t\t\n\t\t10.14324/111.9781800088375\n\t\n\t\n\t\tProceedings of the 1st International Workshop on Artificial Intelligence for Cultural Heritage\n\t\tthe 1st International Workshop on Artificial Intelligence for Cultural Heritage\n\t\t\n\t\t\tUCL Press\n\t\t\t2019"
+    },
+    {
+      "id": 7,
+      "text": "NeuroKnitting. Varvara & Mar\n\t\t\n\t\t\tMVarvara Guljajeva\n\t\t\n\t\t\n\t\t\tSebastianCanet\n\t\t\n\t\t\n\t\t\tMealla\n\t\t\n\t\t\n\t\t\n\t\t\t2012. 2012"
+    },
+    {
+      "id": 8,
+      "text": "POSTcard Landscapes from Lanzarote\n\t\t\n\t\t\tVarvaraGuljajeva\n\t\t\n\t\t\n\t\t\tMarCanet Sola\n\t\t\n\t\t10.1145/3527927.3531191\n\t\n\t\n\t\tCreativity and Cognition\n\t\t\n\t\t\tACM\n\t\t\t2022"
+    },
+    {
+      "id": 9,
+      "text": "Interactive NeuroKnitting: Knitting with Your Brain\n\t\t\n\t\t\tVarvaraGuljajeva\n\t\t\t0000-0002-0261-3121\n\t\t\n\t\t\n\t\t\tMarCanet Sola\n\t\t\t0000-0001-5986-3239\n\t\t\n\t\t10.1145/3615522.3615573\n\t\n\t\n\t\tProceedings of the 16th International Symposium on Visual Information Communication and Interaction\n\t\tthe 16th International Symposium on Visual Information Communication and Interaction\n\t\t\n\t\t\tACM\n\t\t\t2023"
+    },
+    {
+      "id": 10,
+      "text": "Telematic performance enforced by the pandemic: neuroknitting beethoven\n\t\t\n\t\t\tMarVarvara Guljajeva\n\t\t\n\t\t\n\t\t\tIuriiCanet Sola\n\t\t\n\t\t\n\t\t\tKuzmin\n\t\t\n\t\n\t\n\t\tInternational Journal of Performance Arts and Digital Media\n\t\t\n\t\t\t19\n\t\t\t\n\t\t\t2023. 2023"
+    },
+    {
+      "id": 11,
+      "text": "Artist-Guided Neural Networks-Automated Creativity or Tools for Extending Minds?\n\t\t\n\t\t\tMarVarvara Guljajeva\n\t\t\n\t\t\n\t\t\tIsaacCanet Sola\n\t\t\n\t\t\n\t\t\tClarke\n\t\t\n\t\n\t\n\t\tDigital Society\n\t\t\n\t\t\t64\n\t\t\t59\n\t\t\t2024. 2024"
+    },
+    {
+      "id": 12,
+      "text": "MarVarvara Guljajeva\n\t\t\n\t\t\n\t\t\tIsaacCanet Sola\n\t\t\n\t\t\n\t\t\tClarkeJoseph\n\t\t\n\t\tarXiv:2307.07521\n\t\tArtistic strategies to guide neural networks\n\t\t\n\t\t\t2023. 2023\n\t\t\n\t\n\tarXiv preprint"
+    },
+    {
+      "id": 13,
+      "text": "Contemporary Heritage and the Future\n\t\t\n\t\t\tCorneliusHoltorf\n\t\t\n\t\t\n\t\t\tAndersHögberg\n\t\t\n\t\t10.1057/9781137293565_32\n\t\n\t\n\t\tThe Palgrave Handbook of Contemporary Heritage Research\n\t\t\n\t\t\tPalgrave Macmillan UK\n\t\t\t2015"
+    },
+    {
+      "id": 14,
+      "text": "IndrekIbrus\n\t\t\n\t\t\n\t\t\tMaarjaOjamaa\n\t\t\n\t\t10.1177/0263276420904260\n\t\n\t\n\t\tThe Creativity of Digital (Audiovisual) Archives: A Dialogue Between Media Archaeology and Cultural Semiotics. Theory\n\t\t\n\t\t\t2020. 2020\n\t\t\t37"
+    },
+    {
+      "id": 15,
+      "text": "A decade of vegetation development on two revegetated milled peatlands with different trophic status\n\t\t\n\t\t\tAnna-HelenaPurre\n\t\t\n\t\t\n\t\t\tLaimdotaTruus\n\t\t\n\t\t\n\t\t\tMatiIlomets\n\t\t\n\t\t10.19189/map.2019.bg.sta.1928\n\t\n\t\n\t\tMires and Peat\n\t\tmires peat\n\t\t1819-754X\n\t\t\n\t\t\t27\n\t\t\t02\n\t\t\t2013\n\t\t\tStiftung Moorbibliothek\n\t\t\tTallinn, Estonia"
+    },
+    {
+      "id": 16,
+      "text": "ArthurIMiller\n\t\t\n\t\n\t\n\t\tArtificial Intelligence and the Arts: Toward Computational Creativity. AI & Society\n\t\t\n\t\t\t37\n\t\t\t\n\t\t\t2022. 2022"
+    },
+    {
+      "id": 17,
+      "text": "9. Nonviolent National Singing Traditions\n\t\t\n\t\t\tGuntisSmidchens\n\t\t\n\t\t10.1515/9780295804897-011\n\t\n\t\n\t\tThe Power of Song\n\t\t\n\t\t\tUniversity of Washington Press\n\t\t\t2014"
+    }
+  ],
+  "formulas": []
+}

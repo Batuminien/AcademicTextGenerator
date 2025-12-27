@@ -1,0 +1,1188 @@
+{
+  "title": "T-TAMER: PROVABLY TAMING TRADE-OFFS IN ML SERVING",
+  "authors": [
+    {
+      "firstname": "Yuanyuan",
+      "surname": "Yang",
+      "email": ""
+    },
+    {
+      "firstname": "Ruimin",
+      "surname": "Zhang",
+      "email": ""
+    },
+    {
+      "firstname": "Jamie",
+      "surname": "Morgenstern",
+      "email": ""
+    },
+    {
+      "firstname": "Haifeng",
+      "surname": "Xu",
+      "email": ""
+    },
+    {
+      "firstname": "",
+      "surname": "",
+      "email": ""
+    },
+    {
+      "firstname": "",
+      "surname": "",
+      "email": ""
+    },
+    {
+      "firstname": "",
+      "surname": "",
+      "email": ""
+    },
+    {
+      "firstname": "",
+      "surname": "",
+      "email": ""
+    }
+  ],
+  "abstract": "As machine learning models continue to grow in size and complexity, efficient serving faces increasingly broad trade-offs spanning accuracy, latency, resource usage, and other objectives. Multi-model serving further complicates these tradeoffs; for example, in cascaded models, each early-exit decision balances latency reduction against potential accuracy loss. Despite the pervasiveness and importance of such trade-offs, current strategies remain largely heuristic and casespecific, limiting both their theoretical guarantees and general applicability. We present a general framework, T-Tamer, which formalizes this setting as a multi-stage decision process, where the objective is to determine both when to exit and which model to consult. Our main result shows that recall (i.e., the ability to revisit earlier models) is both necessary and sufficient for achieving provable performance guarantees. In particular, we prove that strategies without recall cannot obtain any constant-factor approximation to the optimal trade-off, whereas recall-based strategies provably attain the optimal trade-off in polynomial time. We validate our analysis through experiments on synthetic datasets and early-exit workloads for vision and NLP benchmarks. The results show that recall-based strategies consistently yield efficient accuracy-latency trade-offs. We hope this work provides a principled foundation for bridging heuristic practice with theoretical guarantees in the design of early-exit and cascaded models.",
+  "sections": [
+    {
+      "title": "INTRODUCTION",
+      "paragraphs": [
+        "As models continue to grow in scale, relying on a single model often fails to meet all service-level objectives (SLOs), such as accuracy, latency, and cost. Deploying only the largest model for every query is both impractical and suboptimal for inference platforms, as many queries can be effectively handled without resorting to the most resource-intensive option (Nie et al., 2024;Rahmath P et al., 2024;Matsubara et al., 2022).",
+        "Motivated by this observation, cascaded inference has emerged as a widely adopted paradigm for efficient large-scale model serving. The central idea is to maintain a collection of sub-models with varying complexity and to invoke them adaptively in sequence. In practice, the inference platform receives a stream of queries for a classification task together with specified SLOs, such as achieving high accuracy under an average latency budget. Cascaded inference routes simple queries to lightweight models, while reserving the most complex models for the hardest cases. By adaptively selecting sub-models based on query characteristics, the up-cascade framework provides a principled mechanism for efficient inference in modern machine learning systems.",
+        "Alternatively, the inference platform can be viewed as taming the trade-offs among conflicting SLOs. While the accuracy-latency trade-off is the most prominent, similar tensions arise in ac- curacy-cost (where more accurate models generally incur higher computational/monetary cost) and latency-throughput (where larger batch sizes improve throughput but increase per-sample latency).",
+        "However, there is no universally accepted policy for sub-model routing and termination that applies across different trade-offs and use cases. Existing policies are typically developed in an ad hoc manner and remain largely heuristic-driven.1 This gives rise to two fundamental issues: (1) limited generalizability, as a policy designed for one use case often fails to transfer to others, and (2) suboptimality, as the resulting strategy is either inefficient or lacks provable efficiency guarantees.",
+        "We propose T-Tamer, a general theoretical framework for taming bi-objective trade-offs in cascaded inference. At its core, the framework computes a theoretically optimal strategy and instantiates it as a data-driven learner that fits this solution using input-output pairs from all sub-models. At inference time, given a query, T-Tamer incrementally updates its belief over sub-model performance as models are inspected and computes the optimal routing and termination policy based on this belief. Notably, the training of the T-Tamer is agnostic to that of the sub-models, enabling it to operate as a plug-in component rather than a case-specific solution.",
+        "The key to T-Tamer strategy is a theoretical abstraction of routing and termination as a multi-stage costly exploration defined over a directed acyclic graph (DAG), where nodes represent sub-models and edges represent both precedence constraints (i.e., model A must precede model B) precedence and performance dependencies (i.e., the output of model B conditionally depends on the outputs of model A). The policies derived by T-Tamer are supported by our theoretical analysis and can be computed in polynomial time for DAG structures that commonly arise in practice (See Fig. 1): the directed line, its transitive closure (allowing any skip while preserving order), and the directed tree (decision-tree structure)."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "APPLICATIONS AND PRIOR WORK",
+      "paragraphs": [
+        "The DAG topologies studied here naturally arise in practical inference systems. We review models and prior work that instantiate these structures and connect them to research on multi-model inference, cascaded architectures, and adaptive computation. See App. A for a complete discussion.",
+        "Intra-Model Cascaded Inference. Existing intra-model inference methods manage trade-offs by adaptively determining whether to incorporate deeper layers of the network during inference (see surveys by (Han et al., 2021;Montello et al., 2025)). Since the layered architecture of neural networks naturally induces Markovian dependencies, these approaches can be regarded as special cases of the cascaded inference framework. Representative examples include early-exit models (Teerapittayanon et al., 2016;Xin et al., 2020;Matsubara et al., 2022;Rahmath P et al., 2024), skip networks (Wang et al., 2018), and dynamic recursive neural networks (Guo et al., 2019).",
+        "Inter-Model Cascaded Inference. More recently, inter-model cascaded inference has been adapted to large models (including LLMs), to mitigate their high inference cost. Existing works have explored how to jointly train the cascades (Varshney & Baral, 2022), how to design cascades with awareness of system-level constraints (Lebovitz et al., 2023) and how to leverage signals to route the model (Varshney & Baral, 2022). These efforts show the promise of cascaded inference for large-scale model serving, yet the absence of guarantees exposes a fundamental theoretical gap."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "OUR RESULTS",
+      "paragraphs": [
+        "We formulate the trade-off between the two objectives as a weighted sum of their proxy loss functions, with weights controlled by a tunable parameter λ. More concretely, probing and consulting exactly one model on input x corresponds to the objective",
+        "where λ ∈ [0, 1] and ℓ 1 , ℓ 2 are loss functions depending on x. This additive formulation is (i) flexible, as it can directly incorporate standard loss functions used in machine learning models, and (ii) stable, since θ λ (x) is always well-defined, whereas subtraction-based formulations may produce pathological behavior such as negative or unbounded objectives.",
+        "Building on this formulation, we note that because inputs are drawn from a distribution, the induced losses of sub-models follow a joint correlated distribution. Our T-Tamer captures this structure by assigning losses to edges and nodes, thereby reducing routing, stopping, and consulting in cascaded models to a costly exploration problem over a directed acyclic graph (DAG) that encodes both precedence constraints and inter-model correlations:",
+        "• Optimal Stopping Under Single Line Setting( §4): We classify strategies based on whether they allow recall, that is, whether previously explored sub-models can be revisited and selected after further exploration. Specifically, we develop separate theoretical frameworks for no-recall and with-recall strategies in the single-line setting. We show that no-recall strategies fail to achieve any constant-factor approximation to the optimal utility ( §3). This impossibility is informationtheoretic, rather than computational, and thus cannot be circumvented by increased computational resources. Notably, existing confidence-based cascaded models (Xin et al., 2020;Teerapittayanon et al., 2016;Laskaridis et al., 2021) can be viewed as no-recall strategies, and our results therefore reveal the fundamental limitations of such heuristics.",
+        "For the with-recall setting, we establish a provably optimal dynamic indexing strategy. At each step, the strategy computes the index of the next available model and decides whether to stop or continue based on this value. Upon stopping, it returns the best model among those inspected. Moreover, this strategy can be computed and implemented efficiently via dynamic programming. • General Costly Exploration for More General DAGs( §5): Our work generalizes the dynamic indexing strategy beyond the single-line setting, where at every iteration, the strategy computes the indices of all available models that remain uninspected. We prove that for both tree topologies (Fig. 1c) and the transitive closure of the directed-line case (Fig. 1b), this indexing strategy remains theoretically optimal and can be computed in polynomial time.",
+        "Finally, we evaluate our dynamic indexing strategy on synthetic datasets and early-exit workloads from standard vision and NLP benchmarks ( §6). The results show that recall-based strategies consistently deliver efficient accuracy-latency trade-offs. We now present our main results:",
+        "• General-Purpose Tradeoff Tamer for Up-Cascade Inference. We introduce T-Tamer, a principled framework for taming bi-objective trade-offs in cascaded inference. Unlike heuristic-driven methods, T-Tamer is model-agnostic and learns to compute the theoretically optimal routing and stopping policy across all sub-models. This makes it broadly applicable as a plug-in component for diverse cascaded inference systems without requiring case-specific tuning. • No Constant-Factor Approximation for No-Recall Policy. We prove an information-theoretic impossibility for no-recall strategies, showing that even in the directed-line case, such policies cannot achieve any constant-factor approximation to the optimal utility. This result shows that confidence-based heuristics (i.e., early-exit thresholds) for cascaded inference are inherently suboptimal, motivating recall-based strategies with stronger guarantees. • Provably Efficient Routing-and-Stopping Policy over DAGs. We develop a dynamic indexing strategy that provably achieves optimal exploration and stopping across canonical DAG structures arising in cascaded inference (directed lines, their transitive closures, and trees). Our approach is not only theoretically optimal but also computationally efficient, running in polynomial time. This bridges the gap between theory and practice by providing the first provable, efficient policies for real-world cascaded inference topologies."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "PROBLEM FORMULATION",
+      "paragraphs": [
+        "In this section, we establish the notation, assumptions, and formal framework of costly exploration over general DAGs, which serves as the theoretical model for cascaded inference.",
+        "Notations. Throughout, let n denote the number of sub-models in the cascade, and let X denote the input space with x ∈ X . We use T to denote the number of samples used to fit the costly inspection strategy. We use ℓ to denote the dominant loss function and c to denote the secondary loss function, occasionally abusing notation by referring to c as the (inspection) cost.",
+        "We impose two standard assumptions in supervised learning (Goodfellow et al., 2016). First, all losses are strictly positive2 . Second, inputs are drawn from a distribution. Assumption 2.1 (Loss). For any sub-model j ∈ [n] and input x ∈ X , the losses satisfy ℓ j (x) > 0 and c j > 0. Moreover, the cost loss c j is a constant independent of the input. Assumption 2.2 (Distributional Assumption). Each x t , for sample index t ∈ [T ], is assumed to be i.i.d. from a fixed distribution D over R d .",
+        "We distinguish between recall and no-recall strategies, depending on whether previously consulted models remain available as candidates. Definition 2.3 (Recall / No-Recall Strategy). Given a policy that terminates after consulting submodel i ∈ [n], the strategy is no-recall, if the final prediction must come from sub-model i; withrecall, if the policy may return the prediction of any sub-model j ≤ i.",
+        "We formalize the costly exploration problem over a DAG. Specifically, we introduce a dummy root node v 0 as the starting node of the policy, in addition to the nodes representing sub-models. Problem 2.4 (Markovian Costly Exploration). Consider a set of n nodes V = {v 1 , . . . , v n }. Each node v i is associated with a random loss ℓ i drawn from a known distribution D i . We also include a designated null node v 0 , which connects to v 1 but to no other node, with ℓ 0 = 0. The nodes are organized into a directed acyclic graph G = (V, E), where edges encode:",
+        "• Partial ordering. For any edge (v i , v j ) ∈ E, if node v j is probed, then v i must be probed strictly before v j . We denote this as v i ≺ v j . Note that v i itself need not be probed unless v j is selected. • Edge cost. For each edge (v i , v j ) ∈ E, probing v j right after v i incurs an edge cost c(i, j).",
+        "• Markov property. For any adjacent nodes v i ≺ v j ≺ v k along a directed path in G, the node losses satisfy the conditional independence",
+        "A policy π starts from v 0 and adaptively selects edges to probe subsequent nodes, deciding at each step whether to continue or stop. Let O(π) denote the set of probed nodes and E(π) the set of edges traversed by π. The goal is to minimize the sum of node and edge losses weighted by the tradeoff parameter λ:",
+        "For no-recall, f equals the loss of the last visited node; for with-recall, f equals min i∈O(π) ℓ 1,i .",
+        "Finally, we describe how a general policy routes through the sub-models in the cascade (Figure 2).",
+        "For each input x ∈ X x :",
+        "1. The policy observes the input x and sets i ← 1.",
+        "2. The policy queries sub-model i and observes its loss λℓ i (x).",
+        "3. The policy decides whether to stop or continue:",
+        "• Continue: Among the sub-models available after sub-model i, choose the next sub-model j to probe, incur edge cost (1 -λ)c(i, j) and return to Step 2. • Stop: Return the prediction of a selected sub-model."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "ON COSTLY EXPLORATION POLICIES WITH NO RECALLS",
+      "paragraphs": [
+        "In this section, we establish an information-theoretic bound showing that no-recall strategies cannot achieve a constant-factor approximation to the offline optimal loss, even in the single-line setting."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "CONNECTION TO SEQUENTIAL CASCADED INFERENCE",
+      "paragraphs": [
+        "The single line case corresponds to the sequential cascaded inference paradigm widely adopted in practice. In sequential CI, sub-models are arranged in a fixed order and must be inspected one by one (Xin et al., 2020;Dekoninck et al., 2024). A no-recall strategy in this setting amounts to always serving the most complex model inspected so far. A prominent approach is the confidencethreshold strategy, which stops and serves the current model once its prediction confidence exceeds a predefined threshold (Dai et al., 2024;Xin et al., 2020)."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "EXIT WITH NO RECALL: NO CONSTANT APPROXIMATION",
+      "paragraphs": [
+        "In the single-line case, the costly no-recall exploration problem can be formalized as an optimal stopping problem over a sequence of losses R i with Markovian dependencies. Specifically,",
+        "be non-negative random variables drawn from known distributions D 1 , . . . , D n , with a joint distribution exhibiting Markovian dependency, i.e., for all i ∈ [n], R i+1 is conditionally independent of the past given R i :",
+        "A decision maker sequentially observes R 1 to R n . After observing R i , they must either stop and pay the cost R i or irrevocably discard and continue. The goal is to design a stopping rule ALG that minimizes the expected loss.",
+        "Ideally, ALG is benchmarked against the optimal loss attainable with perfect knowledge of all R i . Definition 3.2 (Offline Optimal). The benchmark is an oracle who knows all realizations in advance and selects",
+        "As achieving the offline optimal loss is generally infeasible without full future information, the best attainable guarantee lies in bounding the approximation ratio. Definition 3.3 (Approximation Ratio). We say ALG is an α-approximation if for some α ≥ 1,",
+        "We concluded by showing that no algorithm can achieve a constant approximation ratio for no recall costly exploration problem, even when the underlying distribution is bounded. Theorem 3.4 (Impossibility of Constant Approximation, No-Recall Costly Exploration). For norecall costly exploration problem (Prob. 3.1), no algorithm achieves a bounded α-approximation ratio, even with n = 2 and bounded distributions.",
+        "Proof Sketch. Let n = 2 and α > 1 be an arbitrary large constant. Consider the following random variables:",
+        "Under this construction, any algorithm achieves an expected reward of exactly 1/α 2 , but a prophet achieves OPT = 1 /α 3 . This indicates an α-competitive ratio. This competitive ratio can be made arbitrarily large by increasing α.",
+        "This theorem establishes an information-theoretic impossibility: no no-recall costly exploration policy can achieve any non-trivial approximation to the offline optimum. Importantly, this limitation is not due to computational hardness (e.g., NP-hardness), but stems from the intrinsic information structure of the problem. One might ask whether it is possible to design an algorithm ALG that approximates a restricted class of benchmarks. However, such benchmarks can be trivial to approximate-for example, in the construction above, all strategies achieve the same expected utility."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "WARM-UP: INDEXING OVER A DIRECTED LINE",
+      "paragraphs": [
+        "While the no-recall approach is natural, it overlooks an important practical phenomenon: larger models are not always superior to smaller ones and may even \"over-think,\" producing worse predictions than intermediate models (Sui et al., 2025;Kaya et al., 2019). Such behavior has been observed in real systems, underscoring the practical need for recall-based strategies that can revisit earlier models and provide stronger guarantees. In this section, we introduce a theoretically optimal indexing strategy for with-recall costly exploration for single-line setting."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "WITH-RECALL COSTLY INSPECTION OVER SINGLE LINE",
+      "paragraphs": [
+        "Motivated by the theoretical limitations of no-recall policies discussed earlier, we now turn to analyzing the efficiency of with-recall policies. The with-recall setting admits a similar abstraction under costly exploration. The key distinction from the no-recall formulation is that the two losses cannot be collapsed into a single objective: one loss R i = λℓ i is incurred at the nodes, while a separate cost",
+        ") is incurred along the edges when moving to the current node.",
+        "Problem 4.1 (With-Recall Costly Exploration). Let the costs of the nodes R 1 , . . . , R n be nonnegative random variables drawn from known distributions D 1 , . . . , D n , with a joint distribution exhibiting Markovian dependency; i.e., R i+1 is conditionally independent of the past given R i .",
+        "A decision maker sequentially observes R 1 , . . . , R n , where each node i incurs a cost λc i . After observing R i , the decision maker must either stop-incurring a total cost of min k∈",
+        "The goal is to minimize the expected total cost.",
+        "Since Markovian-correlated distributions with continuous support cannot be directly represented without additional assumptions (Ethier & Kurtz, 2009), we quantize them into a discrete domain and base decisions on this discretization. Such discretization is standard in practice (e.g., grid search). Hence, without loss of generality, we assume D 1 , . . . , D n are discrete.",
+        "Note that the counterexample in Theorem 3.4 continues to yield arbitrarily large approximation gaps even when recall is allowed. We therefore benchmark against a more favorable comparator with tractable guarantees.",
+        "Definition 4.2 (Online Optimal). The benchmark is the optimal online algorithm, which has access to the joint distribution D 1 , . . . , D n and achieves the minimum possible expected loss without observing realizations in advance.",
+        "By Bellman's principle of optimality, we derive the optimal with-recall costly exploration strategy via dynamic programming, starting from the last node and progressively extending to the first. This yields a clean structural result: the optimal policy stops once the current minimum loss falls below a dynamic index σ determined by the current observation.",
+        "Algorithm 1 Costly Exploration via Indexing",
+        "▷ Update minimum loss.",
+        "▷ Update threshold."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "6:",
+      "paragraphs": [
+        "i ← i + 1. 7: end while 8: Return node v j that has been inspected with the minimum loss.",
+        "Algorithm 1 illustrates the structure of the optimal strategy. At each step, the algorithm updates the dynamic index of the next box and decides whether to stop given the current minimum loss. Thus, the stopping decision at step i can be represented as a stop/continue rule table dependent on (X, R i )."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "THE DYNAMIC INDEX",
+      "paragraphs": [
+        "We now introduce the dynamic index, which serves as the core of our provably efficient strategy. At a high level, the optimal policy stores, for every possible state (X, R i-1 , i), the corresponding index and the stop/continue decision. These indices can be computed efficiently via dynamic programming, proceeding backward from the last node.",
+        "be the transition matrix from D i to D i+1 , such that p i+1 = p i • P i+1 . The optimal policy π reduces to a stopping rule that selects the node with minimum loss, we use τ to denote it.",
+        "We now formally describe the dynamic programming procedure to compute the dynamic index function σ. Any stopping time τ depends only on the current minimum reward X, the most recent loss R i , and the next candidate index i + 1. We refer to the tuple (X, R i , i+1) as the algorithm's state, and proceed to derive the expected loss incurred at this state under a given stopping time τ . Definition 4.3 (Equivalent Loss). Given τ and (x, R i-1 , i), we define the expected loss of the state",
+        "to denote the expected future loss following the optimal strategy τ * starting at state (X, R i-1 , i).",
+        "Let Φ be the expected loss of a state, then Φ can be solved inductively using Bellman's principle of optimality:",
+        "where the first term corresponds to stopping immediately, and the second to continuing and applying the optimal stopping time τ * for the remaining boxes. Importantly, for fixed R i-1 and i, there exists a maximal X such that the decision maker is indifferent between stopping and opening the next box. This value defines the dynamic index σ that governs our algorithm (Alg. 1). More formally, Definition 4.4 (Dynamic Index). Given any state (X, R i-1 , i), we define the dynamic index at the current state, denoted by σ i (X, R i-1 , i), as the smallest solution to:",
+        "where τ * is the optimal strategy."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "PROVABLE EFFICIENCY",
+      "paragraphs": [
+        "Next, we establish that the dynamic index is both well-defined and optimal, thereby justifying the correctness of our algorithm (Alg. 1). Moreover, we show that the optimal strategy can be computed efficiently via dynamic programming. See Sec. B for more details. Theorem 4.5 (Optimality and Efficiency of Dynamic Indexing). Given the current state (X, R i , i+1), there exists a solution to (1). This solution is independent of the current minimum loss X and can be denoted by σ(R i , i+1). The indexing policy that stops when σ > X and continues otherwise (Alg. 1) achieves online optimality."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "EXTENSION: STRATEGIES OVER GENERAL DAGS",
+      "paragraphs": [
+        "In this section, we extend the dynamic index to general DAGs. The generalized indexing policy remains optimal, but it must additionally incorporate the routing decision, i.e., which model to inspect next. We show that this policy can still be implemented efficiently via dynamic programming."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "DIRECTED TREE",
+      "paragraphs": [
+        "We describe how to generalize the previous indexing strategy to the directed tree setting. One application of this setting is cost-aware binary search over domains, where the tree corresponds to a binary search tree and the loss represents the cost of acquiring feedback, as in human-in-the-loop settings such as RLHF (Xiong et al., 2023) or crowdsourcing. Illustrated by Fig. 3, the key idea of our generalized dynamic index is to define a tree contraction procedure that contracts a subtree into a single node while preserving the equivalent loss table and loss distribution of the subtree. Concretely, we first identify subtrees whose children consist only of single nodes or multi-lines, contract these into single nodes, and then repeat the process iteratively.",
+        "To carry out this indexing policy, we can still keep an if-stop matrix for each node, which only depends on the realized minimum loss and the loss of that node. The main difference is that now, when using dynamic programming, we need to combine information from all of the node's children.",
+        "Theorem 5.1 (Dynamic Indexing in Directed Trees: Optimality and Efficiency). There exist a generalization of the dynamic indexing policy (Alg. 3), which is theoretically optimal. Furthermore, preprocessing this policy takes O(n • |V | 2 T ) time and requires O(n|V | 2 ) space. At inference time, for each input x, the policy runs in O(1) per node and O(n) overall per input.",
+        "We defer the details to Lem. C.13 and Thm. C.14 in the Appendix C."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "TRANSITIVE CLOSURE OF A DIRECTED LINE",
+      "paragraphs": [
+        "We extend the dynamic index to the transitive closure of a directed line. Unlike the directed line setting, where models must be evaluated strictly sequentially, the transitive closure allows skipping while preserving order, enabling cost savings by reducing the number of evaluations.",
+        "Theorem 5.2 (Dynamic Indexing in Skipped Inference: Optimality and Efficiency). There exists a generalization of the dynamic indexing policy, which is theoretically optimal. Furthermore, preprocessing this policy takes O(n 2 • |V | 2 T ) time and requires O(n|V | 2 ) space. At inference time, for each input x, the policy runs in O(1) per node and O(n) overall per input.",
+        "We can still use dynamic programming to pre-compute the if-stop matrix and the equivalent-loss table . The key difference from the single-line case is that, when computing the equivalent loss, we must enumerate over all possible next nodes rather than just the immediate successor. This increases the preprocessing time by a factor of n. We defer the technical details to Section C.3."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "EXPERIMENTS",
+      "paragraphs": [
+        "In this section, we evaluate our dynamic indexing strategy RECALL over real-world CV/ NLP early exit (EE) classification workloads. Experiments of synthetic data and more details are in Appendix D Experimental Setup. Our testbed consists of a single server equipped with two Intel Xeon Gold 6438M processors (3.90 GHz), 512 GB of DDR5 memory, and one NVIDIA RTX 4000 Ada GPU. The server runs Ubuntu 22.04 with Linux kernel 5.15, CUDA version 13.0, and Python 3.10."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Metrics",
+      "paragraphs": [
+        "We use the error rate as a metric, defined as Err = 1 -Acc, where Acc is the empirical accuracy measured against the outputs of the backbone model, which we regard as an upper bound on achievable performance given the model's capacity. To demonstrate latency reduction, we normalize the achieved latency against the original latency.",
+        "Evaluations. In Figure 4, we evaluate our dynamic index strategy over vision classification tasks, using the video streaming dataset collected from (Agarwal & Netravali, 2023;Hsieh et al., 2018), with VGG-{11, 13} models (Simonyan & Zisserman, 2014) as the backbone models for EE.  where latency is significantly reduced with only limited accuracy degradation. For instance, Fig. 4a shows that latency is reduced to 45% of the original, while sacrificing less than 7% accuracy.",
+        "In Figure 5, we also evaluate the dynamic index strategy on NLP classification tasks using the IMDB (Pal et al., 2020)"
+      ],
+      "subsections": []
+    },
+    {
+      "title": "CONCLUSION",
+      "paragraphs": [
+        "We introduced T-Tamer, a principled framework for taming bi-objective trade-offs in cascaded inference. By formulating routing and stopping as a costly exploration problem over DAGs, we developed a dynamic indexing strategy that achieves provable optimality with polynomial-time complexity. Experiments on synthetic data and real-world CV/NLP benchmarks confirm that T-Tamer consistently delivers favorable accuracy-latency trade-offs, providing a general-purpose and efficient foundation for modern inference platforms."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "APPENDIX A MORE DETAILS FROM LITERATURE REVIEW",
+      "paragraphs": [
+        "Early Exit Models. Among intra-model cascaded inference methods, early-exit (EE) architectures have been widely adopted to accelerate inference in both computer vision and natural language processing, including ResNet (He et al., 2016), VGG (Simonyan & Zisserman, 2015), and BERTbased (Devlin et al., 2019b) models (see Rahmath P et al. (2024); Laskaridis et al. (2021) for a recent survey). The ramp architectures in these models are typically designed to align with the structural properties of the backbone. Existing exit strategies commonly rely on metrics such as label confidence (Xin et al., 2021), prediction entropy (Xin et al., 2020;Teerapittayanon et al., 2016), or more advanced mechanisms such as ramp-level counters (Zhou et al., 2020). However, these approaches do not allow for prediction with recall, where the system may return to the output of a previously visited exit-a setting where empirical evidence suggests that earlier exits can occasionally outperform later ones (Kaya et al., 2019).",
+        "Relation to Pandora's Box and Prophet Inequality. The Pandora's Box framework (Weitzman, 1979;Boodaghians et al., 2020;Chawla et al., 2020) and the Prophet Inequality framework (Krengel & Sucheston, 1977;1978;Livanos & Mehta, 2024) are two classical models for decision making under uncertainty. Specifically, our exit-with-recall model bears structural similarity to the Pandora's Box problem, while the no-recall variant aligns closely with the Prophet Inequality setting-both situated within a cost minimization framework. However, our setting imposes two key constraints: (i) a precedence constraint on the order in which boxes (or exits) may be inspected, and (ii) a Markovian correlation that the underlying distributions conform to. These constraints render existing algorithms for the aforementioned problems inapplicable.",
+        "Since Weitzman's classic formulation (Weitzman, 1979), Pandora's Box has been extended in numerous ways. Variants with order constraints (Boodaghians et al., 2020) and correlated rewards (Chawla et al., 2019;2020;2021;Gergatsouli & Tzamos, 2023) highlight the challenges of adaptivity, with the latter proving constant-factor approximation NP-hard in the fully adaptive case. Online variants connect to bandits and set cover, yielding competitive or regret-minimizing algorithms (Gergatsouli & Tzamos, 2022;Gatmiry et al., 2024). Nonobligatory inspection (Doval, 2018;Beyhaghi & Kleinberg, 2019;Beyhaghi & Cai, 2023;Fu et al., 2023) further departs from Weitzman's ranking-based solution, with NP-hardness results and PTAS guarantees. Other extensions address partial openings (Aouad et al., 2020), generalized objectives (Olszewski & Weber, 2015), deadlines (Berger et al., 2024), time-dependent costs (Amanatidis et al., 2024), and strategic information revelation (Ding et al., 2023).",
+        "Prophet inequalities, first studied by Krengel & Sucheston (1977;1978), compare the performance of an online stopping rule to a prophet with full foresight. Classical results (reward maximization) guarantee a 1/2-approximation in general settings, with improvements under additional structure. Recent work has extended this line to matroids and combinatorial constraints (Kleinberg & Krakovski, 2005;Bhattacharya & Khanna, 2012), correlated and non-i.i.d. distributions (Correa et al., 2019;Yan, 2011), and online matching and allocation problems (Esfandiari et al., 2017;Feldman et al., 2016). Further advances include connections to posted pricing in mechanism design (Chawla et al., 2010;Correa et al., 2022) and to multi-armed bandits (Gatmiry et al., 2024).",
+        "Data-Driven Algorithm Design. Our framework relates to data-driven algorithm design (Gupta & Roughgarden, 2016)  Gittin's Index In particular, in the single-line and multi-line cases our adaptive index reduces to the well-known non-discounted Gittins index (Gittins, 1979;1989;Weber, 1992). By contrast, for directed-tree and skip-graph structures, the indexing strategy developed here appears to be novel, as no analogous formulation has been established in prior work. Other recent studies have also leveraged Gittins indices to address efficiency challenges in machine learning, including applications such as hyperparameter tuning (Xie et al., 2024;2025).",
+        "Other Related Work. Another relevant direction is the stochastic probing problem, where one must decide both which elements to probe and when to probe them. Gupta & Nagarajan (2013) introduced this setting under matroid and knapsack intersection constraints, giving the first polynomialtime Ω(1/k)-approximate sequential posted price mechanism for k-matroid intersections. Adamczyk et al. (2016) extended the model to monotone submodular objectives, achieving a 1-1/e kin+kout+1approximation in general and a tighter 1 kin+kout bound for linear objectives. Subsequent work (Gupta et al., 2016;2017) investigated adaptivity gaps, quantifying the performance loss of non-adaptive strategies relative to optimal adaptive ones under prefix-closed constraints.",
+        "Beyond stochastic probing, other problems share similar information structures or solution concepts, including search (Armstrong, 2017;Kleinberg & Kleinberg, 2018), ranking (Derakhshan et al., 2022), Markov games (Li & Liu, 2022), sorting and selection (Gupta & Kumar, 2001), revenue maximization (Kleinberg et al., 2016;Chawla et al., 2019), and costly information acquisition (Charikar et al., 2000;Chen et al., 2015b;a;Li & Shi, 2017;Singla, 2018;Bergemann et al., 2018;Gupta et al., 2019;Chawla et al., 2024)."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "B MORE DETAILS FROM SINGLE LINE COSTLY EXPLORATION B.1 MORE DETAILS FOR THE DYNAMIC INDEX",
+      "paragraphs": [
+        "We introduce additional notation to facilitate the formal analysis of the dynamic index. Specifically, we use Φ and ϕ interchangeably to denote the equivalent loss. Lemma B.1 (Properties of Φ and H i ). Given any state (x, R i-1 , i),",
+        ") is nonnegative, 1-Lipschitz and monotone non-increasing. • For σ i as the index (Def. 4.4) of the i-th node of the hypernode, then Φ(x, R i-1 , i) = x for any",
+        "Proof. Given any a < b,",
+        "where in the first inequality, we used that τ * (a, R i-1 , i) is a suboptimal strategy for Φ τ (b, R i-1 , i).",
+        "Using the same reasoning, we have:",
+        "where we use that Φ(•, R i-1 , i) is 1-Lipschitz. The above inequality implies that H i (x, R i-1 ) is 1-Lipschitz and monotone non-increasing. Lastly, Φ(x, R i-1 , i) -x = 0 for all x ≥ σ i follows from the that fact that σ i is the smallest such that H i (σ i , R i-1 ) = 0 and H i is non-negative and monotone non-increasing.",
+        "Lemma B.2 (Properties of the Dynamic Index). Given a costly exploration problem with line precedence graph L = [b 1 , . . . , b n ], the dynamic index of every node i ∈ [n] satisfies the following property: Given any state R i-1 as the state of (i -1)-th node,",
+        ") is nonincreasing as additional nodes are appended to L.",
+        "• Let η be the (random) index of the first node that has dynamic index larger than",
+        "Proof. • The first property holds because the optimal policy stops at the additional nodes only if they yield a lower expected loss. Consequently, appending nodes at the end of L can only decrease the expected loss for any given state. As a result, this operation leads to a nonincreasing dynamic index.",
+        "• The second property is due to that the optimal stopping time will stop at (η -1)-th node, hence the dynamic index doesn't depend on any nodes starting from η.",
+        "Lemma B.3. The smallest solution to (1) exists, and hence Definition 4.4 is well defined. Given current state (x, R i-1 , i), if the dynamic index σ i = x, then there exists some optimal stopping time τ * (x, R i-1 , i) ≥ i.",
+        "Proof. Given any state (x, R i-1 , i), consider function",
+        "This proves the existence of σ i . Now, we show that if x = σ i is positive, then there exists an optimal stopping rule that proceeds to open b i . Fix any i such that σ i > 0. Let τ be the best strategy among all strategies that open b i . To show that τ is indeed optimal, we show that",
+        "Assume towards contradiction that δ > 0. We have",
+        "where we used Lipschitzness of Φ for the last inequality, and the first inequality comes from the fact that τ * (σ i -ϵ, R i-1 , i) is a sub-optimal policy that opens b i . We have",
+        "> 0 meaning the optimal policy will accumulate more reward than current best, thus it has to open b i . As ϵ → 0, we get a contradiction. On the other hand, H i (σ i , R i-1 ) = Φ(σ i , R i-1 , i) -σ i = 0 implies that the strategy that stops at b i-1 is also optimal. Thus, σ i is indeed the value for which we are indifferent between stopping and proceeding optimally. ). There is an efficient algorithm that computes ϕ(x, s, i) for all i, x and s."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "B.2 PAYOFF TABLE",
+      "paragraphs": [],
+      "subsections": []
+    },
+    {
+      "title": "Lemma B.4 (Efficient Computation of Payoff Table",
+      "paragraphs": [
+        "Proof. Now we give an efficient algorithm for computing the dynamic index. In fact, we will give an algorithm that uses dynamic programming to compute Φ(x, R i-1 , i) for all triples (x, R i-1 , i).",
+        "Then, given the current state of the algorithm (x, R i-1 , i), the dynamic index σ i for node i is the smallest x in the table where",
+        "Denote by T (x, R i-1 , i) our three dimensional dynamic programming table. Each entry T (x, R i-1 , i) will store the following information:",
+        "1. Expected future loss: Φ(x, R i-1 , i)",
+        "2. Indicator: 1(x, R i-1 , i) indicating whether the optimal policy will open b i in this state 3. The distribution of future random min reward3 : R FRM (x, R i-1 , i) := min",
+        "R j where R j 's are the correlated random rewards for mininodes that are yet to be opened given that the algorithm is at state (x, R i-1 , i)."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Algorithm 2 Expected Equivalent Reward Computation, Single Line",
+      "paragraphs": [
+        "Require: Ordered set of nodes {b 1 , . . . , b n }, probing cost {c 1 , . . . , c n }, distributions of the random payoff of nodes 1: Initialize z ← 0",
+        "end for 12: end for 13:",
+        "for x ∈ S do 15:",
+        "for s ∈ S do 16:"
+      ],
+      "subsections": []
+    },
+    {
+      "title": "24:",
+      "paragraphs": [
+        "end for 25: end for 26: Return Φ(x, s, i) for all x ∈ S, s ∈ S and i ∈ [n] 4. The distribution of future random cost4 :",
+        "Algorithm 2 describes how to fill in the dynamic programming table. Since all random variables that appear in Algorithm 2 has finite support with size bounded by poly(K, n), and any min operation for random variables only has three or less arguments, it follows that algorithm 2 takes polynomial time and space."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "C MORE DETAILS COSTLY EXPLORATION OVER TREE",
+      "paragraphs": [
+        "Notations In our analysis, λc i always appears as a whole. Notice that in our analysis, λ is not used as the tradeoff parameter but is applied for other purposes throughout our analysis on the indexing policy. For graphs with a directed-tree constraint, since each node has exactly one parent, we can allocate the edge cost to the node itself. In this way, inspecting a node i reveals both its loss ℓ i and its inspection cost c i . Please see Fig. 6 as an example.",
+        "We first define the notion of a hypernode, namely a directed-line subgraph of the DAG that, under suitable conditions, can be reparameterized as a single node with aggregated loss and cost. Definition C.1 (Hypernode). Given an instance of the costly exploration problem with n nodes V organized in a directed acyclic graph (DAG) G = (V, E), a hypernode is a subset of nodes"
+      ],
+      "subsections": []
+    },
+    {
+      "title": "C.1 COSTLY EXPLORATION OVER MULTI LINES",
+      "paragraphs": [
+        "Before presenting our solution for the tree case, we first introduce the solution for the multi-line setting. We begin by introducing the problem definition of the multi-line setting. Definition C.2 (Multi-Line Costly Exploration). Given an instance of the Markovian costly exploration problem (Prob. 2.4), we say it is in a multi-line setting if the induced subgraph of G, excluding the dummy root node v 0 , can be decomposed into a collection of disjoint directed lines:",
+        ", such that every node v ∈ V belongs to exactly one line L j . Each line L j can then be reparameterized as a sequence of hypernodes (Def. C.1), so that the costly exploration problem reduces to choosing among multiple directed lines. We now show that in the multi-line case, the optimal strategy is to probe each hypernode according to the dynamic index of its first unopened node.",
+        "We begin by presenting the definition of a node with random cost, with reward and cost correlated. Definition C.3 (Node with Random Cost). A node v is classified as a node with random cost if it is associated with a loss ℓ and an inspection cost c, where both ℓ and c are random variables drawn from known distributions D ℓ and D c , respectively. The inspection cost c may vary and can be correlated with the loss ℓ; we denote their joint distribution as Γ.",
+        "Next, we introduce how to equivalently represent a hypernode as a single node with random cost, where the dynamic index of the hypernode equals that of the equivalent node. Lemma C.4 (Equivalent Single Node for Hypernode). For a stopping time τ and a hypernode H := {v 1 , . . . , v n }, there exists a node v with random cost (Def. C.3) such that following τ over H yields the same loss distribution as inspecting v.",
+        "Proof. Let L = (ℓ 1 , . . . , ℓ n ) be a realization of the joint loss distribution in hypernode H. For each realization of L, the stopping time τ uniquely determines the effective loss and cumulative cost of the hypernode.",
+        "To construct the distribution of the equivalent single node, we define a coupling between the realizations of L and the resulting loss and cost. When the joint loss is L, we assign the single node's loss as min τ i=1 ℓ i and the single node's cost as τ i=1 c i , where τ is the stopping time. The probability of each outcome matches the probability of L under the original hypernode's joint distribution.",
+        "From our construction of the equivalent node, we obtain the following lemma: the dynamic index remains well-defined for a node with random cost, even when the nodes inside a hypernode have stochastic costs. Lemma C.5 (Extending Dynamic Index to Hypernodes with Random Cost). Given a hypernode H := {v 1 , . . . , v n }, where each node has a stochastic inspection cost that may be correlated with its loss distribution, the dynamic index of each node with random cost is well-defined and can be computed in polynomial time.",
+        "Moreover, if the dynamic index σ of individual nodes-i.e., the index when there is only one node with random cost-satisfies",
+        "for any realized losses ℓ 1 , . . . , ℓ n , then the dynamic index of v i within the hypernode depends only on v i itself.",
+        "Proof. Since the ϕ and H functions remain well-defined and preserve their properties, the dynamic index remains well-defined for hypernodes with nodes of random cost. The second claim follows from Lem. B.2.",
+        "We begin by presenting a key lemma for our main theorem, which establishes that under certain Markovian correlations, the dynamic index remains an optimal decision rule. We show this lemma by first principles, where we compare the utility of the ordering A ≺ B ≺ C with that of B ≺ A ≺ C through a case-by-case analysis of 9 outcomes from the joint distribution of A, B, and C and aggregate them by the law of total expectation. Lemma C.6 (Probing Equivalent Nodes). Consider three nodes A, B, C with random cost (Def. C.3) satisfying the following properties:",
+        "• The loss and cost of B are independent of the loss and cost of A;",
+        "• The loss and cost (hence effective outcome) of C depend on both A and B in a Markovian fashion;",
+        "• The dynamic indices satisfy σ(A) < σ(B) < σ(C) given any realizations of A and B5 , i.e., for any possible value x of A and value y of B,",
+        "• A precedence constraint that A and B must be probed before C;",
+        "then, conditioned on any competing loss X, the optimal probing strategy is A ≺ B ≺ C.",
+        "Proof. It's sufficient to compare two strategies: 1) D 1 : B → A → C, and 2)",
+        "Notice that if X < σ(A), then it's optimal to not probe any node, then the ordering of the node doesn't matter. WLOG, we may assume X > σ(A).",
+        "We first write down the expected loss according to ordering strategy D 1 , if we use notation as in Table . 1, we have that this loss is equivalent to:",
+        "Here, we abuse the notation ρ, π, λ to denote both events and their probabilities, with the intended meaning clear from context; we use ϕ as similar definition to Φ (Lem. B.1), which denote the equivalent loss of probing C based on the observation. We also use E ∩ F to denote the event that both E and F occur.",
+        "Similarly, using the notations in Table 2, we have that the expected loss according to strategy D 2 is:",
+        "Notice that the last term of both payoffs can be cancelled out. Also notice that the reservation value for box A and B satisfies:",
+        "Plugging in the appropraite values of ρ, π, λ, we have:",
+        "Now, plugging the value of the expected cost and after simplification, we have that:",
+        "where the last inequality follows by the property that E[A|A ≤ X] < X.",
+        "Finally, we show that the last term is negative. Notice that:",
+        "where the last equality follows from the independence of box A and B. Aggregating all of the above we have:",
+        "Hence it's optimal to probe according to policy D 2 .",
+        "C.2 EXTENSION TO DIRECTED TREE Next, we introduce how to generalize the previous indexing policies from the multi-line setting in order to achieve theoretical optimal performance. Note that the directed tree case is equivalent to the directed forest setting (where each root has only outward edges), since we can add a dummy root node connecting all roots in the forest.",
+        "Graph Basics. We introduce some basics from graph theory in order to formally define tree contraction. Definition C.9 (Component). Given an undirected graph G",
+        "• C is connected: There exists a path between any two vertices in V C .",
+        "• C is maximal: No additional vertex v ∈ V \\V C can be included without losing connectivity.",
+        "A graph is said to be connected if it consists of a single component. Definition C.10 (Induced Subgraph). Given a graph G = (V, E) and a subset of vertices",
+        "] contains all edges from G whose endpoints are both in V ′ .",
+        "We next define a minimal tree. Definition C.11 (Directed Tree, Branch Vertex, Minimal Tree). A directed tree T is a connected DAG equipped with an orientation such that there exists a designated root vertex r with the following properties:",
+        "• every edge is oriented away from dummy root v 0 and root r.",
+        "• for every vertex v ∈ T , there exists a unique directed path from r to v.",
+        "A branch vertex in a directed tree is a vertex with at least two outgoing edges. A minimal tree is a directed tree whose proper subgraphs contain no branch vertices.",
+        "Generalizing Dynamic Indexing to Directed Tree. The key intuition behind our algorithm is that, after probing the root r in a minimal tree, the remaining costly exploration problem reduces to exploring multiple lines, enabling us to apply our solutions in Section C.1. We formally define the dynamic index for the directed tree setting. Definition C.12 (Dynamic Index, Directed Tree). Consider a Markovian costly exploration problem with precedence graph G = (V, E) structured as a directed tree. Let V o denote the set of opened nodes, and let the information set on the realized losses be",
+        "For any unopened node v i , its dynamic index is derived by applying Alg. 3 on the component of the induced subgraph G[V \\ V o ], conditioned on the current information set I o .",
+        "Proof. When computing the dynamic index for a node inside the algorithm, the node is either the root of a minimal tree, or the current graph reduces to a collection of disjoint lines. It suffices to show that the index is well-defined in both cases.",
+        "From the multi-line results, we know that if the graph6 is a line or a set of isolated nodes, then the dynamic index is well-defined. Moreover, the entire graph can be contracted into a single equivalent node with random cost (Lem. C.4).",
+        "We now define the dynamic index of the root r of a minimal tree. First, we contract the induced subgraph consisting of all vertices other than r into a single equivalent node v with random cost. Given the current observed loss x, the equivalent loss for r is computed as:",
+        "The three terms correspond to: (i) stopping without opening r, (ii) opening r only, and (iii) opening r while optimally exploring the remaining nodes.",
+        "Consequently, we define the dynamic index of r as the smallest x satisfying Φ(x, r) = x. This index is well defined since the minimal tree can be equivalently treated as a hypernode with r as the first node and v as the second node. By Lem. C.5, the dynamic index is therefore guaranteed to be well defined.",
+        "In addition, we present our algorithm for computing the dynamic index for every node. The algorithm iteratively identifies and contracts the minimal subtrees of the underlying graph into directed lines, thereby eliminating all branch vertices step by step. Notice that after inspecting a new node, we need to partially update the dynamic index of each of its children.7 Please see Figure 3 for an illustration.",
+        "Algorithm 3 Updating Dynamic Index in Forests",
+        "Require: An instance of a Markovian costly exploration problem with precedence graph G structured as a forest. 1: G ← G, t ← 1. 2: while there exist minimal trees in G do 3:",
+        "for each minimal tree T i with root r i do 4:",
+        "for every possible loss realization ℓ ri of r i do 5:",
+        "Condition on ℓ ri , compute ϕ and the dynamic index σ for all states of nodes in T i \\ {r i }."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "6:",
+      "paragraphs": [
+        "Contract T i \\ {r i } into a single node v i , and compute its loss and cost distribution conditioned on ℓ ri . Proof. Preprocessing. During the execution of the algorithm, each minimal tree can be identified using either a BFS or DFS traversal, both of which run in O(n). Each tree traversal and possible contraction only needs to be performed once.",
+        "Similar to the multi-line case, we maintain an if-stop table based on the minimum loss and the loss of the current box. The main difference is that the computation of the dynamic index for a node now proceeds from the leaf nodes. Consequently, the preprocessing time remains O(n • |V | 2 T ), since each leaf has only one parent.",
+        "Space complexity. We store the ϕ-table for all possible states of each node, together with the graph structure required by the algorithm. As argued in earlier sections, storing the ϕ-table requires O(n • |V | 2 ) space. Time complexity. At inference time, the complexity per input is O(n), since we only need to perform table lookups.",
+        "Since probing according to the latest dynamic index can probe at most all the nodes, Algorithm 3 is invoked at most once per node in the forest. Thus, the overall runtime is still polynomial."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "D MORE DETAILS FROM THE EXPERIMENTS",
+      "paragraphs": [
+        "In this section, we provide additional experimental details omitted from the main text due to space constraints, along with background information on the early exit inference model."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "D.1 BACKGROUND ON EARLY EXIT MODELS",
+      "paragraphs": [
+        "Early-exit (EE) models extend standard deep neural networks by introducing multiple intermediate exit points, enabling inference to terminate early on \"easy\" inputs. An EE model typically consists of three components: (1) a backbone model, corresponding to the original single-exit architecture;",
+        "(2) a set of ramps, i.e., intermediate exits attached to selected layers of the backbone; and (3) an exit decision policy, which determines whether to stop at a given ramp and return its prediction. Importantly, only the exit policy remains controllable at inference time.  Markovian dependency. EE models are typically designed to place ramps at \"natural breakpoints,\" such as layer groups in CNNs or transformer blocks. This induces a Markovian structure: the output distribution at each ramp depends only on its immediate predecessor, making the sequence of ramps analogous to a single directed line. This observation underlies our theoretical abstraction, where EE corresponds to the single-line setting of our indexing framework.",
+        "Notation. Let n denote the number of exits (with the final exit being the backbone output). For an input x, let ℓ i (x) denote the task-specific loss at the i-th exit. We abstract each ramp as an node, which will serve as the atomic unit in our theoretical model."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "D.2 MORE DETAILS ON EARLY EXIT EXPERIMENTS",
+      "paragraphs": [
+        "To capture the trade-off between accuracy and efficiency for EE models, we employ a latency-aware loss. The FLOP-based cost can be replaced with any hardware-invariant measure of latency, ensuring consistent policies across platforms. Definition D.1 (Latency-Aware Loss). Given an input x, the latency-aware loss of using exit j ≤ i after evaluating i exits is θ λ (j, i)[x] := (1 -λ) ℓ j (x) + λ"
+      ],
+      "subsections": []
+    }
+  ],
+  "body_paragraphs": [
+    "As models continue to grow in scale, relying on a single model often fails to meet all service-level objectives (SLOs), such as accuracy, latency, and cost. Deploying only the largest model for every query is both impractical and suboptimal for inference platforms, as many queries can be effectively handled without resorting to the most resource-intensive option (Nie et al., 2024;Rahmath P et al., 2024;Matsubara et al., 2022).",
+    "Motivated by this observation, cascaded inference has emerged as a widely adopted paradigm for efficient large-scale model serving. The central idea is to maintain a collection of sub-models with varying complexity and to invoke them adaptively in sequence. In practice, the inference platform receives a stream of queries for a classification task together with specified SLOs, such as achieving high accuracy under an average latency budget. Cascaded inference routes simple queries to lightweight models, while reserving the most complex models for the hardest cases. By adaptively selecting sub-models based on query characteristics, the up-cascade framework provides a principled mechanism for efficient inference in modern machine learning systems.",
+    "Alternatively, the inference platform can be viewed as taming the trade-offs among conflicting SLOs. While the accuracy-latency trade-off is the most prominent, similar tensions arise in ac- curacy-cost (where more accurate models generally incur higher computational/monetary cost) and latency-throughput (where larger batch sizes improve throughput but increase per-sample latency).",
+    "However, there is no universally accepted policy for sub-model routing and termination that applies across different trade-offs and use cases. Existing policies are typically developed in an ad hoc manner and remain largely heuristic-driven.1 This gives rise to two fundamental issues: (1) limited generalizability, as a policy designed for one use case often fails to transfer to others, and (2) suboptimality, as the resulting strategy is either inefficient or lacks provable efficiency guarantees.",
+    "We propose T-Tamer, a general theoretical framework for taming bi-objective trade-offs in cascaded inference. At its core, the framework computes a theoretically optimal strategy and instantiates it as a data-driven learner that fits this solution using input-output pairs from all sub-models. At inference time, given a query, T-Tamer incrementally updates its belief over sub-model performance as models are inspected and computes the optimal routing and termination policy based on this belief. Notably, the training of the T-Tamer is agnostic to that of the sub-models, enabling it to operate as a plug-in component rather than a case-specific solution.",
+    "The key to T-Tamer strategy is a theoretical abstraction of routing and termination as a multi-stage costly exploration defined over a directed acyclic graph (DAG), where nodes represent sub-models and edges represent both precedence constraints (i.e., model A must precede model B) precedence and performance dependencies (i.e., the output of model B conditionally depends on the outputs of model A). The policies derived by T-Tamer are supported by our theoretical analysis and can be computed in polynomial time for DAG structures that commonly arise in practice (See Fig. 1): the directed line, its transitive closure (allowing any skip while preserving order), and the directed tree (decision-tree structure).",
+    "The DAG topologies studied here naturally arise in practical inference systems. We review models and prior work that instantiate these structures and connect them to research on multi-model inference, cascaded architectures, and adaptive computation. See App. A for a complete discussion.",
+    "Intra-Model Cascaded Inference. Existing intra-model inference methods manage trade-offs by adaptively determining whether to incorporate deeper layers of the network during inference (see surveys by (Han et al., 2021;Montello et al., 2025)). Since the layered architecture of neural networks naturally induces Markovian dependencies, these approaches can be regarded as special cases of the cascaded inference framework. Representative examples include early-exit models (Teerapittayanon et al., 2016;Xin et al., 2020;Matsubara et al., 2022;Rahmath P et al., 2024), skip networks (Wang et al., 2018), and dynamic recursive neural networks (Guo et al., 2019).",
+    "Inter-Model Cascaded Inference. More recently, inter-model cascaded inference has been adapted to large models (including LLMs), to mitigate their high inference cost. Existing works have explored how to jointly train the cascades (Varshney & Baral, 2022), how to design cascades with awareness of system-level constraints (Lebovitz et al., 2023) and how to leverage signals to route the model (Varshney & Baral, 2022). These efforts show the promise of cascaded inference for large-scale model serving, yet the absence of guarantees exposes a fundamental theoretical gap.",
+    "We formulate the trade-off between the two objectives as a weighted sum of their proxy loss functions, with weights controlled by a tunable parameter λ. More concretely, probing and consulting exactly one model on input x corresponds to the objective",
+    "where λ ∈ [0, 1] and ℓ 1 , ℓ 2 are loss functions depending on x. This additive formulation is (i) flexible, as it can directly incorporate standard loss functions used in machine learning models, and (ii) stable, since θ λ (x) is always well-defined, whereas subtraction-based formulations may produce pathological behavior such as negative or unbounded objectives.",
+    "Building on this formulation, we note that because inputs are drawn from a distribution, the induced losses of sub-models follow a joint correlated distribution. Our T-Tamer captures this structure by assigning losses to edges and nodes, thereby reducing routing, stopping, and consulting in cascaded models to a costly exploration problem over a directed acyclic graph (DAG) that encodes both precedence constraints and inter-model correlations:",
+    "• Optimal Stopping Under Single Line Setting( §4): We classify strategies based on whether they allow recall, that is, whether previously explored sub-models can be revisited and selected after further exploration. Specifically, we develop separate theoretical frameworks for no-recall and with-recall strategies in the single-line setting. We show that no-recall strategies fail to achieve any constant-factor approximation to the optimal utility ( §3). This impossibility is informationtheoretic, rather than computational, and thus cannot be circumvented by increased computational resources. Notably, existing confidence-based cascaded models (Xin et al., 2020;Teerapittayanon et al., 2016;Laskaridis et al., 2021) can be viewed as no-recall strategies, and our results therefore reveal the fundamental limitations of such heuristics.",
+    "For the with-recall setting, we establish a provably optimal dynamic indexing strategy. At each step, the strategy computes the index of the next available model and decides whether to stop or continue based on this value. Upon stopping, it returns the best model among those inspected. Moreover, this strategy can be computed and implemented efficiently via dynamic programming. • General Costly Exploration for More General DAGs( §5): Our work generalizes the dynamic indexing strategy beyond the single-line setting, where at every iteration, the strategy computes the indices of all available models that remain uninspected. We prove that for both tree topologies (Fig. 1c) and the transitive closure of the directed-line case (Fig. 1b), this indexing strategy remains theoretically optimal and can be computed in polynomial time.",
+    "Finally, we evaluate our dynamic indexing strategy on synthetic datasets and early-exit workloads from standard vision and NLP benchmarks ( §6). The results show that recall-based strategies consistently deliver efficient accuracy-latency trade-offs. We now present our main results:",
+    "• General-Purpose Tradeoff Tamer for Up-Cascade Inference. We introduce T-Tamer, a principled framework for taming bi-objective trade-offs in cascaded inference. Unlike heuristic-driven methods, T-Tamer is model-agnostic and learns to compute the theoretically optimal routing and stopping policy across all sub-models. This makes it broadly applicable as a plug-in component for diverse cascaded inference systems without requiring case-specific tuning. • No Constant-Factor Approximation for No-Recall Policy. We prove an information-theoretic impossibility for no-recall strategies, showing that even in the directed-line case, such policies cannot achieve any constant-factor approximation to the optimal utility. This result shows that confidence-based heuristics (i.e., early-exit thresholds) for cascaded inference are inherently suboptimal, motivating recall-based strategies with stronger guarantees. • Provably Efficient Routing-and-Stopping Policy over DAGs. We develop a dynamic indexing strategy that provably achieves optimal exploration and stopping across canonical DAG structures arising in cascaded inference (directed lines, their transitive closures, and trees). Our approach is not only theoretically optimal but also computationally efficient, running in polynomial time. This bridges the gap between theory and practice by providing the first provable, efficient policies for real-world cascaded inference topologies.",
+    "In this section, we establish the notation, assumptions, and formal framework of costly exploration over general DAGs, which serves as the theoretical model for cascaded inference.",
+    "Notations. Throughout, let n denote the number of sub-models in the cascade, and let X denote the input space with x ∈ X . We use T to denote the number of samples used to fit the costly inspection strategy. We use ℓ to denote the dominant loss function and c to denote the secondary loss function, occasionally abusing notation by referring to c as the (inspection) cost.",
+    "We impose two standard assumptions in supervised learning (Goodfellow et al., 2016). First, all losses are strictly positive2 . Second, inputs are drawn from a distribution. Assumption 2.1 (Loss). For any sub-model j ∈ [n] and input x ∈ X , the losses satisfy ℓ j (x) > 0 and c j > 0. Moreover, the cost loss c j is a constant independent of the input. Assumption 2.2 (Distributional Assumption). Each x t , for sample index t ∈ [T ], is assumed to be i.i.d. from a fixed distribution D over R d .",
+    "We distinguish between recall and no-recall strategies, depending on whether previously consulted models remain available as candidates. Definition 2.3 (Recall / No-Recall Strategy). Given a policy that terminates after consulting submodel i ∈ [n], the strategy is no-recall, if the final prediction must come from sub-model i; withrecall, if the policy may return the prediction of any sub-model j ≤ i.",
+    "We formalize the costly exploration problem over a DAG. Specifically, we introduce a dummy root node v 0 as the starting node of the policy, in addition to the nodes representing sub-models. Problem 2.4 (Markovian Costly Exploration). Consider a set of n nodes V = {v 1 , . . . , v n }. Each node v i is associated with a random loss ℓ i drawn from a known distribution D i . We also include a designated null node v 0 , which connects to v 1 but to no other node, with ℓ 0 = 0. The nodes are organized into a directed acyclic graph G = (V, E), where edges encode:",
+    "• Partial ordering. For any edge (v i , v j ) ∈ E, if node v j is probed, then v i must be probed strictly before v j . We denote this as v i ≺ v j . Note that v i itself need not be probed unless v j is selected. • Edge cost. For each edge (v i , v j ) ∈ E, probing v j right after v i incurs an edge cost c(i, j).",
+    "• Markov property. For any adjacent nodes v i ≺ v j ≺ v k along a directed path in G, the node losses satisfy the conditional independence",
+    "A policy π starts from v 0 and adaptively selects edges to probe subsequent nodes, deciding at each step whether to continue or stop. Let O(π) denote the set of probed nodes and E(π) the set of edges traversed by π. The goal is to minimize the sum of node and edge losses weighted by the tradeoff parameter λ:",
+    "For no-recall, f equals the loss of the last visited node; for with-recall, f equals min i∈O(π) ℓ 1,i .",
+    "Finally, we describe how a general policy routes through the sub-models in the cascade (Figure 2).",
+    "For each input x ∈ X x :",
+    "1. The policy observes the input x and sets i ← 1.",
+    "2. The policy queries sub-model i and observes its loss λℓ i (x).",
+    "3. The policy decides whether to stop or continue:",
+    "• Continue: Among the sub-models available after sub-model i, choose the next sub-model j to probe, incur edge cost (1 -λ)c(i, j) and return to Step 2. • Stop: Return the prediction of a selected sub-model.",
+    "In this section, we establish an information-theoretic bound showing that no-recall strategies cannot achieve a constant-factor approximation to the offline optimal loss, even in the single-line setting.",
+    "The single line case corresponds to the sequential cascaded inference paradigm widely adopted in practice. In sequential CI, sub-models are arranged in a fixed order and must be inspected one by one (Xin et al., 2020;Dekoninck et al., 2024). A no-recall strategy in this setting amounts to always serving the most complex model inspected so far. A prominent approach is the confidencethreshold strategy, which stops and serves the current model once its prediction confidence exceeds a predefined threshold (Dai et al., 2024;Xin et al., 2020).",
+    "In the single-line case, the costly no-recall exploration problem can be formalized as an optimal stopping problem over a sequence of losses R i with Markovian dependencies. Specifically,",
+    "be non-negative random variables drawn from known distributions D 1 , . . . , D n , with a joint distribution exhibiting Markovian dependency, i.e., for all i ∈ [n], R i+1 is conditionally independent of the past given R i :",
+    "A decision maker sequentially observes R 1 to R n . After observing R i , they must either stop and pay the cost R i or irrevocably discard and continue. The goal is to design a stopping rule ALG that minimizes the expected loss.",
+    "Ideally, ALG is benchmarked against the optimal loss attainable with perfect knowledge of all R i . Definition 3.2 (Offline Optimal). The benchmark is an oracle who knows all realizations in advance and selects",
+    "As achieving the offline optimal loss is generally infeasible without full future information, the best attainable guarantee lies in bounding the approximation ratio. Definition 3.3 (Approximation Ratio). We say ALG is an α-approximation if for some α ≥ 1,",
+    "We concluded by showing that no algorithm can achieve a constant approximation ratio for no recall costly exploration problem, even when the underlying distribution is bounded. Theorem 3.4 (Impossibility of Constant Approximation, No-Recall Costly Exploration). For norecall costly exploration problem (Prob. 3.1), no algorithm achieves a bounded α-approximation ratio, even with n = 2 and bounded distributions.",
+    "Proof Sketch. Let n = 2 and α > 1 be an arbitrary large constant. Consider the following random variables:",
+    "Under this construction, any algorithm achieves an expected reward of exactly 1/α 2 , but a prophet achieves OPT = 1 /α 3 . This indicates an α-competitive ratio. This competitive ratio can be made arbitrarily large by increasing α.",
+    "This theorem establishes an information-theoretic impossibility: no no-recall costly exploration policy can achieve any non-trivial approximation to the offline optimum. Importantly, this limitation is not due to computational hardness (e.g., NP-hardness), but stems from the intrinsic information structure of the problem. One might ask whether it is possible to design an algorithm ALG that approximates a restricted class of benchmarks. However, such benchmarks can be trivial to approximate-for example, in the construction above, all strategies achieve the same expected utility.",
+    "While the no-recall approach is natural, it overlooks an important practical phenomenon: larger models are not always superior to smaller ones and may even \"over-think,\" producing worse predictions than intermediate models (Sui et al., 2025;Kaya et al., 2019). Such behavior has been observed in real systems, underscoring the practical need for recall-based strategies that can revisit earlier models and provide stronger guarantees. In this section, we introduce a theoretically optimal indexing strategy for with-recall costly exploration for single-line setting.",
+    "Motivated by the theoretical limitations of no-recall policies discussed earlier, we now turn to analyzing the efficiency of with-recall policies. The with-recall setting admits a similar abstraction under costly exploration. The key distinction from the no-recall formulation is that the two losses cannot be collapsed into a single objective: one loss R i = λℓ i is incurred at the nodes, while a separate cost",
+    ") is incurred along the edges when moving to the current node.",
+    "Problem 4.1 (With-Recall Costly Exploration). Let the costs of the nodes R 1 , . . . , R n be nonnegative random variables drawn from known distributions D 1 , . . . , D n , with a joint distribution exhibiting Markovian dependency; i.e., R i+1 is conditionally independent of the past given R i .",
+    "A decision maker sequentially observes R 1 , . . . , R n , where each node i incurs a cost λc i . After observing R i , the decision maker must either stop-incurring a total cost of min k∈",
+    "The goal is to minimize the expected total cost.",
+    "Since Markovian-correlated distributions with continuous support cannot be directly represented without additional assumptions (Ethier & Kurtz, 2009), we quantize them into a discrete domain and base decisions on this discretization. Such discretization is standard in practice (e.g., grid search). Hence, without loss of generality, we assume D 1 , . . . , D n are discrete.",
+    "Note that the counterexample in Theorem 3.4 continues to yield arbitrarily large approximation gaps even when recall is allowed. We therefore benchmark against a more favorable comparator with tractable guarantees.",
+    "Definition 4.2 (Online Optimal). The benchmark is the optimal online algorithm, which has access to the joint distribution D 1 , . . . , D n and achieves the minimum possible expected loss without observing realizations in advance.",
+    "By Bellman's principle of optimality, we derive the optimal with-recall costly exploration strategy via dynamic programming, starting from the last node and progressively extending to the first. This yields a clean structural result: the optimal policy stops once the current minimum loss falls below a dynamic index σ determined by the current observation.",
+    "Algorithm 1 Costly Exploration via Indexing",
+    "▷ Update minimum loss.",
+    "▷ Update threshold.",
+    "i ← i + 1. 7: end while 8: Return node v j that has been inspected with the minimum loss.",
+    "Algorithm 1 illustrates the structure of the optimal strategy. At each step, the algorithm updates the dynamic index of the next box and decides whether to stop given the current minimum loss. Thus, the stopping decision at step i can be represented as a stop/continue rule table dependent on (X, R i ).",
+    "We now introduce the dynamic index, which serves as the core of our provably efficient strategy. At a high level, the optimal policy stores, for every possible state (X, R i-1 , i), the corresponding index and the stop/continue decision. These indices can be computed efficiently via dynamic programming, proceeding backward from the last node.",
+    "be the transition matrix from D i to D i+1 , such that p i+1 = p i • P i+1 . The optimal policy π reduces to a stopping rule that selects the node with minimum loss, we use τ to denote it.",
+    "We now formally describe the dynamic programming procedure to compute the dynamic index function σ. Any stopping time τ depends only on the current minimum reward X, the most recent loss R i , and the next candidate index i + 1. We refer to the tuple (X, R i , i+1) as the algorithm's state, and proceed to derive the expected loss incurred at this state under a given stopping time τ . Definition 4.3 (Equivalent Loss). Given τ and (x, R i-1 , i), we define the expected loss of the state",
+    "to denote the expected future loss following the optimal strategy τ * starting at state (X, R i-1 , i).",
+    "Let Φ be the expected loss of a state, then Φ can be solved inductively using Bellman's principle of optimality:",
+    "where the first term corresponds to stopping immediately, and the second to continuing and applying the optimal stopping time τ * for the remaining boxes. Importantly, for fixed R i-1 and i, there exists a maximal X such that the decision maker is indifferent between stopping and opening the next box. This value defines the dynamic index σ that governs our algorithm (Alg. 1). More formally, Definition 4.4 (Dynamic Index). Given any state (X, R i-1 , i), we define the dynamic index at the current state, denoted by σ i (X, R i-1 , i), as the smallest solution to:",
+    "where τ * is the optimal strategy.",
+    "Next, we establish that the dynamic index is both well-defined and optimal, thereby justifying the correctness of our algorithm (Alg. 1). Moreover, we show that the optimal strategy can be computed efficiently via dynamic programming. See Sec. B for more details. Theorem 4.5 (Optimality and Efficiency of Dynamic Indexing). Given the current state (X, R i , i+1), there exists a solution to (1). This solution is independent of the current minimum loss X and can be denoted by σ(R i , i+1). The indexing policy that stops when σ > X and continues otherwise (Alg. 1) achieves online optimality.",
+    "In this section, we extend the dynamic index to general DAGs. The generalized indexing policy remains optimal, but it must additionally incorporate the routing decision, i.e., which model to inspect next. We show that this policy can still be implemented efficiently via dynamic programming.",
+    "We describe how to generalize the previous indexing strategy to the directed tree setting. One application of this setting is cost-aware binary search over domains, where the tree corresponds to a binary search tree and the loss represents the cost of acquiring feedback, as in human-in-the-loop settings such as RLHF (Xiong et al., 2023) or crowdsourcing. Illustrated by Fig. 3, the key idea of our generalized dynamic index is to define a tree contraction procedure that contracts a subtree into a single node while preserving the equivalent loss table and loss distribution of the subtree. Concretely, we first identify subtrees whose children consist only of single nodes or multi-lines, contract these into single nodes, and then repeat the process iteratively.",
+    "To carry out this indexing policy, we can still keep an if-stop matrix for each node, which only depends on the realized minimum loss and the loss of that node. The main difference is that now, when using dynamic programming, we need to combine information from all of the node's children.",
+    "Theorem 5.1 (Dynamic Indexing in Directed Trees: Optimality and Efficiency). There exist a generalization of the dynamic indexing policy (Alg. 3), which is theoretically optimal. Furthermore, preprocessing this policy takes O(n • |V | 2 T ) time and requires O(n|V | 2 ) space. At inference time, for each input x, the policy runs in O(1) per node and O(n) overall per input.",
+    "We defer the details to Lem. C.13 and Thm. C.14 in the Appendix C.",
+    "We extend the dynamic index to the transitive closure of a directed line. Unlike the directed line setting, where models must be evaluated strictly sequentially, the transitive closure allows skipping while preserving order, enabling cost savings by reducing the number of evaluations.",
+    "Theorem 5.2 (Dynamic Indexing in Skipped Inference: Optimality and Efficiency). There exists a generalization of the dynamic indexing policy, which is theoretically optimal. Furthermore, preprocessing this policy takes O(n 2 • |V | 2 T ) time and requires O(n|V | 2 ) space. At inference time, for each input x, the policy runs in O(1) per node and O(n) overall per input.",
+    "We can still use dynamic programming to pre-compute the if-stop matrix and the equivalent-loss table . The key difference from the single-line case is that, when computing the equivalent loss, we must enumerate over all possible next nodes rather than just the immediate successor. This increases the preprocessing time by a factor of n. We defer the technical details to Section C.3.",
+    "In this section, we evaluate our dynamic indexing strategy RECALL over real-world CV/ NLP early exit (EE) classification workloads. Experiments of synthetic data and more details are in Appendix D Experimental Setup. Our testbed consists of a single server equipped with two Intel Xeon Gold 6438M processors (3.90 GHz), 512 GB of DDR5 memory, and one NVIDIA RTX 4000 Ada GPU. The server runs Ubuntu 22.04 with Linux kernel 5.15, CUDA version 13.0, and Python 3.10.",
+    "We use the error rate as a metric, defined as Err = 1 -Acc, where Acc is the empirical accuracy measured against the outputs of the backbone model, which we regard as an upper bound on achievable performance given the model's capacity. To demonstrate latency reduction, we normalize the achieved latency against the original latency.",
+    "Evaluations. In Figure 4, we evaluate our dynamic index strategy over vision classification tasks, using the video streaming dataset collected from (Agarwal & Netravali, 2023;Hsieh et al., 2018), with VGG-{11, 13} models (Simonyan & Zisserman, 2014) as the backbone models for EE.  where latency is significantly reduced with only limited accuracy degradation. For instance, Fig. 4a shows that latency is reduced to 45% of the original, while sacrificing less than 7% accuracy.",
+    "In Figure 5, we also evaluate the dynamic index strategy on NLP classification tasks using the IMDB (Pal et al., 2020)",
+    "We introduced T-Tamer, a principled framework for taming bi-objective trade-offs in cascaded inference. By formulating routing and stopping as a costly exploration problem over DAGs, we developed a dynamic indexing strategy that achieves provable optimality with polynomial-time complexity. Experiments on synthetic data and real-world CV/NLP benchmarks confirm that T-Tamer consistently delivers favorable accuracy-latency trade-offs, providing a general-purpose and efficient foundation for modern inference platforms.",
+    "Early Exit Models. Among intra-model cascaded inference methods, early-exit (EE) architectures have been widely adopted to accelerate inference in both computer vision and natural language processing, including ResNet (He et al., 2016), VGG (Simonyan & Zisserman, 2015), and BERTbased (Devlin et al., 2019b) models (see Rahmath P et al. (2024); Laskaridis et al. (2021) for a recent survey). The ramp architectures in these models are typically designed to align with the structural properties of the backbone. Existing exit strategies commonly rely on metrics such as label confidence (Xin et al., 2021), prediction entropy (Xin et al., 2020;Teerapittayanon et al., 2016), or more advanced mechanisms such as ramp-level counters (Zhou et al., 2020). However, these approaches do not allow for prediction with recall, where the system may return to the output of a previously visited exit-a setting where empirical evidence suggests that earlier exits can occasionally outperform later ones (Kaya et al., 2019).",
+    "Relation to Pandora's Box and Prophet Inequality. The Pandora's Box framework (Weitzman, 1979;Boodaghians et al., 2020;Chawla et al., 2020) and the Prophet Inequality framework (Krengel & Sucheston, 1977;1978;Livanos & Mehta, 2024) are two classical models for decision making under uncertainty. Specifically, our exit-with-recall model bears structural similarity to the Pandora's Box problem, while the no-recall variant aligns closely with the Prophet Inequality setting-both situated within a cost minimization framework. However, our setting imposes two key constraints: (i) a precedence constraint on the order in which boxes (or exits) may be inspected, and (ii) a Markovian correlation that the underlying distributions conform to. These constraints render existing algorithms for the aforementioned problems inapplicable.",
+    "Since Weitzman's classic formulation (Weitzman, 1979), Pandora's Box has been extended in numerous ways. Variants with order constraints (Boodaghians et al., 2020) and correlated rewards (Chawla et al., 2019;2020;2021;Gergatsouli & Tzamos, 2023) highlight the challenges of adaptivity, with the latter proving constant-factor approximation NP-hard in the fully adaptive case. Online variants connect to bandits and set cover, yielding competitive or regret-minimizing algorithms (Gergatsouli & Tzamos, 2022;Gatmiry et al., 2024). Nonobligatory inspection (Doval, 2018;Beyhaghi & Kleinberg, 2019;Beyhaghi & Cai, 2023;Fu et al., 2023) further departs from Weitzman's ranking-based solution, with NP-hardness results and PTAS guarantees. Other extensions address partial openings (Aouad et al., 2020), generalized objectives (Olszewski & Weber, 2015), deadlines (Berger et al., 2024), time-dependent costs (Amanatidis et al., 2024), and strategic information revelation (Ding et al., 2023).",
+    "Prophet inequalities, first studied by Krengel & Sucheston (1977;1978), compare the performance of an online stopping rule to a prophet with full foresight. Classical results (reward maximization) guarantee a 1/2-approximation in general settings, with improvements under additional structure. Recent work has extended this line to matroids and combinatorial constraints (Kleinberg & Krakovski, 2005;Bhattacharya & Khanna, 2012), correlated and non-i.i.d. distributions (Correa et al., 2019;Yan, 2011), and online matching and allocation problems (Esfandiari et al., 2017;Feldman et al., 2016). Further advances include connections to posted pricing in mechanism design (Chawla et al., 2010;Correa et al., 2022) and to multi-armed bandits (Gatmiry et al., 2024).",
+    "Data-Driven Algorithm Design. Our framework relates to data-driven algorithm design (Gupta & Roughgarden, 2016)  Gittin's Index In particular, in the single-line and multi-line cases our adaptive index reduces to the well-known non-discounted Gittins index (Gittins, 1979;1989;Weber, 1992). By contrast, for directed-tree and skip-graph structures, the indexing strategy developed here appears to be novel, as no analogous formulation has been established in prior work. Other recent studies have also leveraged Gittins indices to address efficiency challenges in machine learning, including applications such as hyperparameter tuning (Xie et al., 2024;2025).",
+    "Other Related Work. Another relevant direction is the stochastic probing problem, where one must decide both which elements to probe and when to probe them. Gupta & Nagarajan (2013) introduced this setting under matroid and knapsack intersection constraints, giving the first polynomialtime Ω(1/k)-approximate sequential posted price mechanism for k-matroid intersections. Adamczyk et al. (2016) extended the model to monotone submodular objectives, achieving a 1-1/e kin+kout+1approximation in general and a tighter 1 kin+kout bound for linear objectives. Subsequent work (Gupta et al., 2016;2017) investigated adaptivity gaps, quantifying the performance loss of non-adaptive strategies relative to optimal adaptive ones under prefix-closed constraints.",
+    "Beyond stochastic probing, other problems share similar information structures or solution concepts, including search (Armstrong, 2017;Kleinberg & Kleinberg, 2018), ranking (Derakhshan et al., 2022), Markov games (Li & Liu, 2022), sorting and selection (Gupta & Kumar, 2001), revenue maximization (Kleinberg et al., 2016;Chawla et al., 2019), and costly information acquisition (Charikar et al., 2000;Chen et al., 2015b;a;Li & Shi, 2017;Singla, 2018;Bergemann et al., 2018;Gupta et al., 2019;Chawla et al., 2024).",
+    "We introduce additional notation to facilitate the formal analysis of the dynamic index. Specifically, we use Φ and ϕ interchangeably to denote the equivalent loss. Lemma B.1 (Properties of Φ and H i ). Given any state (x, R i-1 , i),",
+    ") is nonnegative, 1-Lipschitz and monotone non-increasing. • For σ i as the index (Def. 4.4) of the i-th node of the hypernode, then Φ(x, R i-1 , i) = x for any",
+    "Proof. Given any a < b,",
+    "where in the first inequality, we used that τ * (a, R i-1 , i) is a suboptimal strategy for Φ τ (b, R i-1 , i).",
+    "Using the same reasoning, we have:",
+    "where we use that Φ(•, R i-1 , i) is 1-Lipschitz. The above inequality implies that H i (x, R i-1 ) is 1-Lipschitz and monotone non-increasing. Lastly, Φ(x, R i-1 , i) -x = 0 for all x ≥ σ i follows from the that fact that σ i is the smallest such that H i (σ i , R i-1 ) = 0 and H i is non-negative and monotone non-increasing.",
+    "Lemma B.2 (Properties of the Dynamic Index). Given a costly exploration problem with line precedence graph L = [b 1 , . . . , b n ], the dynamic index of every node i ∈ [n] satisfies the following property: Given any state R i-1 as the state of (i -1)-th node,",
+    ") is nonincreasing as additional nodes are appended to L.",
+    "• Let η be the (random) index of the first node that has dynamic index larger than",
+    "Proof. • The first property holds because the optimal policy stops at the additional nodes only if they yield a lower expected loss. Consequently, appending nodes at the end of L can only decrease the expected loss for any given state. As a result, this operation leads to a nonincreasing dynamic index.",
+    "• The second property is due to that the optimal stopping time will stop at (η -1)-th node, hence the dynamic index doesn't depend on any nodes starting from η.",
+    "Lemma B.3. The smallest solution to (1) exists, and hence Definition 4.4 is well defined. Given current state (x, R i-1 , i), if the dynamic index σ i = x, then there exists some optimal stopping time τ * (x, R i-1 , i) ≥ i.",
+    "Proof. Given any state (x, R i-1 , i), consider function",
+    "This proves the existence of σ i . Now, we show that if x = σ i is positive, then there exists an optimal stopping rule that proceeds to open b i . Fix any i such that σ i > 0. Let τ be the best strategy among all strategies that open b i . To show that τ is indeed optimal, we show that",
+    "Assume towards contradiction that δ > 0. We have",
+    "where we used Lipschitzness of Φ for the last inequality, and the first inequality comes from the fact that τ * (σ i -ϵ, R i-1 , i) is a sub-optimal policy that opens b i . We have",
+    "> 0 meaning the optimal policy will accumulate more reward than current best, thus it has to open b i . As ϵ → 0, we get a contradiction. On the other hand, H i (σ i , R i-1 ) = Φ(σ i , R i-1 , i) -σ i = 0 implies that the strategy that stops at b i-1 is also optimal. Thus, σ i is indeed the value for which we are indifferent between stopping and proceeding optimally. ). There is an efficient algorithm that computes ϕ(x, s, i) for all i, x and s.",
+    "Proof. Now we give an efficient algorithm for computing the dynamic index. In fact, we will give an algorithm that uses dynamic programming to compute Φ(x, R i-1 , i) for all triples (x, R i-1 , i).",
+    "Then, given the current state of the algorithm (x, R i-1 , i), the dynamic index σ i for node i is the smallest x in the table where",
+    "Denote by T (x, R i-1 , i) our three dimensional dynamic programming table. Each entry T (x, R i-1 , i) will store the following information:",
+    "1. Expected future loss: Φ(x, R i-1 , i)",
+    "2. Indicator: 1(x, R i-1 , i) indicating whether the optimal policy will open b i in this state 3. The distribution of future random min reward3 : R FRM (x, R i-1 , i) := min",
+    "R j where R j 's are the correlated random rewards for mininodes that are yet to be opened given that the algorithm is at state (x, R i-1 , i).",
+    "Require: Ordered set of nodes {b 1 , . . . , b n }, probing cost {c 1 , . . . , c n }, distributions of the random payoff of nodes 1: Initialize z ← 0",
+    "end for 12: end for 13:",
+    "for x ∈ S do 15:",
+    "for s ∈ S do 16:",
+    "end for 25: end for 26: Return Φ(x, s, i) for all x ∈ S, s ∈ S and i ∈ [n] 4. The distribution of future random cost4 :",
+    "Algorithm 2 describes how to fill in the dynamic programming table. Since all random variables that appear in Algorithm 2 has finite support with size bounded by poly(K, n), and any min operation for random variables only has three or less arguments, it follows that algorithm 2 takes polynomial time and space.",
+    "Notations In our analysis, λc i always appears as a whole. Notice that in our analysis, λ is not used as the tradeoff parameter but is applied for other purposes throughout our analysis on the indexing policy. For graphs with a directed-tree constraint, since each node has exactly one parent, we can allocate the edge cost to the node itself. In this way, inspecting a node i reveals both its loss ℓ i and its inspection cost c i . Please see Fig. 6 as an example.",
+    "We first define the notion of a hypernode, namely a directed-line subgraph of the DAG that, under suitable conditions, can be reparameterized as a single node with aggregated loss and cost. Definition C.1 (Hypernode). Given an instance of the costly exploration problem with n nodes V organized in a directed acyclic graph (DAG) G = (V, E), a hypernode is a subset of nodes",
+    "Before presenting our solution for the tree case, we first introduce the solution for the multi-line setting. We begin by introducing the problem definition of the multi-line setting. Definition C.2 (Multi-Line Costly Exploration). Given an instance of the Markovian costly exploration problem (Prob. 2.4), we say it is in a multi-line setting if the induced subgraph of G, excluding the dummy root node v 0 , can be decomposed into a collection of disjoint directed lines:",
+    ", such that every node v ∈ V belongs to exactly one line L j . Each line L j can then be reparameterized as a sequence of hypernodes (Def. C.1), so that the costly exploration problem reduces to choosing among multiple directed lines. We now show that in the multi-line case, the optimal strategy is to probe each hypernode according to the dynamic index of its first unopened node.",
+    "We begin by presenting the definition of a node with random cost, with reward and cost correlated. Definition C.3 (Node with Random Cost). A node v is classified as a node with random cost if it is associated with a loss ℓ and an inspection cost c, where both ℓ and c are random variables drawn from known distributions D ℓ and D c , respectively. The inspection cost c may vary and can be correlated with the loss ℓ; we denote their joint distribution as Γ.",
+    "Next, we introduce how to equivalently represent a hypernode as a single node with random cost, where the dynamic index of the hypernode equals that of the equivalent node. Lemma C.4 (Equivalent Single Node for Hypernode). For a stopping time τ and a hypernode H := {v 1 , . . . , v n }, there exists a node v with random cost (Def. C.3) such that following τ over H yields the same loss distribution as inspecting v.",
+    "Proof. Let L = (ℓ 1 , . . . , ℓ n ) be a realization of the joint loss distribution in hypernode H. For each realization of L, the stopping time τ uniquely determines the effective loss and cumulative cost of the hypernode.",
+    "To construct the distribution of the equivalent single node, we define a coupling between the realizations of L and the resulting loss and cost. When the joint loss is L, we assign the single node's loss as min τ i=1 ℓ i and the single node's cost as τ i=1 c i , where τ is the stopping time. The probability of each outcome matches the probability of L under the original hypernode's joint distribution.",
+    "From our construction of the equivalent node, we obtain the following lemma: the dynamic index remains well-defined for a node with random cost, even when the nodes inside a hypernode have stochastic costs. Lemma C.5 (Extending Dynamic Index to Hypernodes with Random Cost). Given a hypernode H := {v 1 , . . . , v n }, where each node has a stochastic inspection cost that may be correlated with its loss distribution, the dynamic index of each node with random cost is well-defined and can be computed in polynomial time.",
+    "Moreover, if the dynamic index σ of individual nodes-i.e., the index when there is only one node with random cost-satisfies",
+    "for any realized losses ℓ 1 , . . . , ℓ n , then the dynamic index of v i within the hypernode depends only on v i itself.",
+    "Proof. Since the ϕ and H functions remain well-defined and preserve their properties, the dynamic index remains well-defined for hypernodes with nodes of random cost. The second claim follows from Lem. B.2.",
+    "We begin by presenting a key lemma for our main theorem, which establishes that under certain Markovian correlations, the dynamic index remains an optimal decision rule. We show this lemma by first principles, where we compare the utility of the ordering A ≺ B ≺ C with that of B ≺ A ≺ C through a case-by-case analysis of 9 outcomes from the joint distribution of A, B, and C and aggregate them by the law of total expectation. Lemma C.6 (Probing Equivalent Nodes). Consider three nodes A, B, C with random cost (Def. C.3) satisfying the following properties:",
+    "• The loss and cost of B are independent of the loss and cost of A;",
+    "• The loss and cost (hence effective outcome) of C depend on both A and B in a Markovian fashion;",
+    "• The dynamic indices satisfy σ(A) < σ(B) < σ(C) given any realizations of A and B5 , i.e., for any possible value x of A and value y of B,",
+    "• A precedence constraint that A and B must be probed before C;",
+    "then, conditioned on any competing loss X, the optimal probing strategy is A ≺ B ≺ C.",
+    "Proof. It's sufficient to compare two strategies: 1) D 1 : B → A → C, and 2)",
+    "Notice that if X < σ(A), then it's optimal to not probe any node, then the ordering of the node doesn't matter. WLOG, we may assume X > σ(A).",
+    "We first write down the expected loss according to ordering strategy D 1 , if we use notation as in Table . 1, we have that this loss is equivalent to:",
+    "Here, we abuse the notation ρ, π, λ to denote both events and their probabilities, with the intended meaning clear from context; we use ϕ as similar definition to Φ (Lem. B.1), which denote the equivalent loss of probing C based on the observation. We also use E ∩ F to denote the event that both E and F occur.",
+    "Similarly, using the notations in Table 2, we have that the expected loss according to strategy D 2 is:",
+    "Notice that the last term of both payoffs can be cancelled out. Also notice that the reservation value for box A and B satisfies:",
+    "Plugging in the appropraite values of ρ, π, λ, we have:",
+    "Now, plugging the value of the expected cost and after simplification, we have that:",
+    "where the last inequality follows by the property that E[A|A ≤ X] < X.",
+    "Finally, we show that the last term is negative. Notice that:",
+    "where the last equality follows from the independence of box A and B. Aggregating all of the above we have:",
+    "Hence it's optimal to probe according to policy D 2 .",
+    "C.2 EXTENSION TO DIRECTED TREE Next, we introduce how to generalize the previous indexing policies from the multi-line setting in order to achieve theoretical optimal performance. Note that the directed tree case is equivalent to the directed forest setting (where each root has only outward edges), since we can add a dummy root node connecting all roots in the forest.",
+    "Graph Basics. We introduce some basics from graph theory in order to formally define tree contraction. Definition C.9 (Component). Given an undirected graph G",
+    "• C is connected: There exists a path between any two vertices in V C .",
+    "• C is maximal: No additional vertex v ∈ V \\V C can be included without losing connectivity.",
+    "A graph is said to be connected if it consists of a single component. Definition C.10 (Induced Subgraph). Given a graph G = (V, E) and a subset of vertices",
+    "] contains all edges from G whose endpoints are both in V ′ .",
+    "We next define a minimal tree. Definition C.11 (Directed Tree, Branch Vertex, Minimal Tree). A directed tree T is a connected DAG equipped with an orientation such that there exists a designated root vertex r with the following properties:",
+    "• every edge is oriented away from dummy root v 0 and root r.",
+    "• for every vertex v ∈ T , there exists a unique directed path from r to v.",
+    "A branch vertex in a directed tree is a vertex with at least two outgoing edges. A minimal tree is a directed tree whose proper subgraphs contain no branch vertices.",
+    "Generalizing Dynamic Indexing to Directed Tree. The key intuition behind our algorithm is that, after probing the root r in a minimal tree, the remaining costly exploration problem reduces to exploring multiple lines, enabling us to apply our solutions in Section C.1. We formally define the dynamic index for the directed tree setting. Definition C.12 (Dynamic Index, Directed Tree). Consider a Markovian costly exploration problem with precedence graph G = (V, E) structured as a directed tree. Let V o denote the set of opened nodes, and let the information set on the realized losses be",
+    "For any unopened node v i , its dynamic index is derived by applying Alg. 3 on the component of the induced subgraph G[V \\ V o ], conditioned on the current information set I o .",
+    "Proof. When computing the dynamic index for a node inside the algorithm, the node is either the root of a minimal tree, or the current graph reduces to a collection of disjoint lines. It suffices to show that the index is well-defined in both cases.",
+    "From the multi-line results, we know that if the graph6 is a line or a set of isolated nodes, then the dynamic index is well-defined. Moreover, the entire graph can be contracted into a single equivalent node with random cost (Lem. C.4).",
+    "We now define the dynamic index of the root r of a minimal tree. First, we contract the induced subgraph consisting of all vertices other than r into a single equivalent node v with random cost. Given the current observed loss x, the equivalent loss for r is computed as:",
+    "The three terms correspond to: (i) stopping without opening r, (ii) opening r only, and (iii) opening r while optimally exploring the remaining nodes.",
+    "Consequently, we define the dynamic index of r as the smallest x satisfying Φ(x, r) = x. This index is well defined since the minimal tree can be equivalently treated as a hypernode with r as the first node and v as the second node. By Lem. C.5, the dynamic index is therefore guaranteed to be well defined.",
+    "In addition, we present our algorithm for computing the dynamic index for every node. The algorithm iteratively identifies and contracts the minimal subtrees of the underlying graph into directed lines, thereby eliminating all branch vertices step by step. Notice that after inspecting a new node, we need to partially update the dynamic index of each of its children.7 Please see Figure 3 for an illustration.",
+    "Algorithm 3 Updating Dynamic Index in Forests",
+    "Require: An instance of a Markovian costly exploration problem with precedence graph G structured as a forest. 1: G ← G, t ← 1. 2: while there exist minimal trees in G do 3:",
+    "for each minimal tree T i with root r i do 4:",
+    "for every possible loss realization ℓ ri of r i do 5:",
+    "Condition on ℓ ri , compute ϕ and the dynamic index σ for all states of nodes in T i \\ {r i }.",
+    "Contract T i \\ {r i } into a single node v i , and compute its loss and cost distribution conditioned on ℓ ri . Proof. Preprocessing. During the execution of the algorithm, each minimal tree can be identified using either a BFS or DFS traversal, both of which run in O(n). Each tree traversal and possible contraction only needs to be performed once.",
+    "Similar to the multi-line case, we maintain an if-stop table based on the minimum loss and the loss of the current box. The main difference is that the computation of the dynamic index for a node now proceeds from the leaf nodes. Consequently, the preprocessing time remains O(n • |V | 2 T ), since each leaf has only one parent.",
+    "Space complexity. We store the ϕ-table for all possible states of each node, together with the graph structure required by the algorithm. As argued in earlier sections, storing the ϕ-table requires O(n • |V | 2 ) space. Time complexity. At inference time, the complexity per input is O(n), since we only need to perform table lookups.",
+    "Since probing according to the latest dynamic index can probe at most all the nodes, Algorithm 3 is invoked at most once per node in the forest. Thus, the overall runtime is still polynomial.",
+    "In this section, we provide additional experimental details omitted from the main text due to space constraints, along with background information on the early exit inference model.",
+    "Early-exit (EE) models extend standard deep neural networks by introducing multiple intermediate exit points, enabling inference to terminate early on \"easy\" inputs. An EE model typically consists of three components: (1) a backbone model, corresponding to the original single-exit architecture;",
+    "(2) a set of ramps, i.e., intermediate exits attached to selected layers of the backbone; and (3) an exit decision policy, which determines whether to stop at a given ramp and return its prediction. Importantly, only the exit policy remains controllable at inference time.  Markovian dependency. EE models are typically designed to place ramps at \"natural breakpoints,\" such as layer groups in CNNs or transformer blocks. This induces a Markovian structure: the output distribution at each ramp depends only on its immediate predecessor, making the sequence of ramps analogous to a single directed line. This observation underlies our theoretical abstraction, where EE corresponds to the single-line setting of our indexing framework.",
+    "Notation. Let n denote the number of exits (with the final exit being the backbone output). For an input x, let ℓ i (x) denote the task-specific loss at the i-th exit. We abstract each ramp as an node, which will serve as the atomic unit in our theoretical model.",
+    "To capture the trade-off between accuracy and efficiency for EE models, we employ a latency-aware loss. The FLOP-based cost can be replaced with any hardware-invariant measure of latency, ensuring consistent policies across platforms. Definition D.1 (Latency-Aware Loss). Given an input x, the latency-aware loss of using exit j ≤ i after evaluating i exits is θ λ (j, i)[x] := (1 -λ) ℓ j (x) + λ",
+    "As an aside, exhaustive search is prohibitively time-consuming in most use cases.",
+    "Loss functions that may take negative values can be shifted or transformed to satisfy this condition.",
+    "The randomness comes from both random stopping time τ * and correlated random variables Ri's,",
+    "The randomness comes from τ * being a random stopping time.",
+    "Here, σ(C) is a random variable that depends on A and B.",
+    "In our modeling, the structure of the graph is determined by the induced subgraph obtained after removing the dummy root r.",
+    "In the presence of already probed nodes, for any unopened node i, we apply the algorithm to the subtree rooted at i to compute its dynamic index."
+  ],
+  "references": [
+    {
+      "id": 1,
+      "text": "Submodular Stochastic Probing on Matroids\n\t\t\n\t\t\tMarekAdamczyk\n\t\t\n\t\t\n\t\t\tMaximSviridenko\n\t\t\n\t\t\n\t\t\tJustinWard\n\t\t\n\t\t10.1287/moor.2015.0766\n\t\n\t\n\t\tMathematics of Operations Research\n\t\tMathematics of OR\n\t\t0364-765X\n\t\t1526-5471\n\t\t\n\t\t\t41\n\t\t\t3\n\t\t\t\n\t\t\t2016\n\t\t\tInstitute for Operations Research and the Management Sciences (INFORMS)"
+    },
+    {
+      "id": 2,
+      "text": "Boggart: Towards {General-Purpose} acceleration of retrospective video analytics\n\t\t\n\t\t\tNeilAgarwal\n\t\t\n\t\t\n\t\t\tRaviNetravali\n\t\t\n\t\n\t\n\t\t20th USENIX Symposium on Networked Systems Design and Implementation (NSDI 23)\n\t\t\n\t\t\t2023"
+    },
+    {
+      "id": 3,
+      "text": "Self-Improving Algorithms\n\t\t\n\t\t\tNirAilon\n\t\t\n\t\t\n\t\t\tBernardChazelle\n\t\t\n\t\t\n\t\t\tKennethLClarkson\n\t\t\n\t\t\n\t\t\tDingLiu\n\t\t\n\t\t\n\t\t\tWolfgangMulzer\n\t\t\n\t\t\n\t\t\tCSeshadhri\n\t\t\n\t\t10.1137/090766437\n\t\n\t\n\t\tSIAM Journal on Computing\n\t\tSIAM J. Comput.\n\t\t0097-5397\n\t\t1095-7111\n\t\t\n\t\t\t40\n\t\t\t2\n\t\t\t\n\t\t\t2011\n\t\t\tSociety for Industrial & Applied Mathematics (SIAM)"
+    },
+    {
+      "id": 4,
+      "text": "Learning to prune: Speeding up repeated computations\n\t\t\n\t\t\tDanielAlabi\n\t\t\n\t\t\n\t\t\tAdamTaumanKalai\n\t\t\n\t\t\n\t\t\tKatrinaLiggett\n\t\t\n\t\t\n\t\t\tCameronMusco\n\t\t\n\t\t\n\t\t\tChristosTzamos\n\t\t\n\t\t\n\t\t\tEllenVitercik\n\t\t\n\t\tPMLR\n\t\n\t\n\t\tConference on Learning Theory\n\t\t\n\t\t\t2019"
+    },
+    {
+      "id": 5,
+      "text": "Pandora's box problem with time constraints\n\t\t\n\t\t\tGeorgiosAmanatidis\n\t\t\t0000-0002-4341-5439\n\t\t\n\t\t\n\t\t\tBenBerger\n\t\t\t0000-0002-9115-6160\n\t\t\n\t\t\n\t\t\tTomerEzra\n\t\t\t0000-0003-0626-4851\n\t\t\n\t\t\n\t\t\tMichalFeldman\n\t\t\n\t\t\n\t\t\tFedericoFusco\n\t\t\t0000-0001-6250-945X\n\t\t\n\t\t\n\t\t\tRebeccaReiffenhäuser\n\t\t\t0000-0002-0959-2589\n\t\t\n\t\t\n\t\t\tArtemTsikiridis\n\t\t\t0009-0007-5924-3620\n\t\t\n\t\t10.1016/j.artint.2025.104426\n\t\tarXiv:2407.15261\n\t\n\t\n\t\tArtificial Intelligence\n\t\tArtificial Intelligence\n\t\t0004-3702\n\t\t\n\t\t\t349\n\t\t\t104426\n\t\t\t2024\n\t\t\tElsevier BV\n\t\t\n\t\n\tarXiv preprint"
+    },
+    {
+      "id": 6,
+      "text": "Pandora's Box Problem with Sequential Inspections\n\t\t\n\t\t\tAliAouad\n\t\t\n\t\t\n\t\t\tJingweiJi\n\t\t\n\t\t\n\t\t\tYaronShaposhnik\n\t\t\n\t\t10.2139/ssrn.3726167\n\t\n\t\n\t\tSSRN Electronic Journal\n\t\tSSRN Journal\n\t\t1556-5068\n\t\t\n\t\t\t2020\n\t\t\tElsevier BV"
+    },
+    {
+      "id": 7,
+      "text": "Ordered Consumer Search\n\t\t\n\t\t\tMarkArmstrong\n\t\t\n\t\t10.1093/jeea/jvx017\n\t\n\t\n\t\tJournal of the European Economic Association\n\t\t1542-4766\n\t\t1542-4774\n\t\t\n\t\t\t15\n\t\t\t5\n\t\t\t\n\t\t\t2017\n\t\t\tOxford University Press (OUP)"
+    },
+    {
+      "id": 8,
+      "text": "Dispersion for Data-Driven Algorithm Design, Online Learning, and Private Optimization\n\t\t\n\t\t\tMaria-FlorinaBalcan\n\t\t\n\t\t\n\t\t\tTravisDick\n\t\t\n\t\t\n\t\t\tEllenVitercik\n\t\t\n\t\t10.1109/focs.2018.00064\n\t\tPMLR\n\t\n\t\n\t\t2018 IEEE 59th Annual Symposium on Foundations of Computer Science (FOCS)\n\t\t\n\t\t\tIEEE\n\t\t\t2017"
+    },
+    {
+      "id": 9,
+      "text": "Learning to Branch: Generalization Guarantees and Limits of Data-Independent Discretization\n\t\t\n\t\t\tMaria-FlorinaBalcan\n\t\t\t0000-0002-9525-0103\n\t\t\n\t\t\n\t\t\tTravisDick\n\t\t\t0009-0005-1271-307X\n\t\t\n\t\t\n\t\t\tTuomasSandholm\n\t\t\t0000-0001-8861-9366\n\t\t\n\t\t\n\t\t\tEllenVitercik\n\t\t\t0000-0003-4891-1367\n\t\t\n\t\t10.1145/3637840\n\t\n\t\n\t\tJournal of the ACM\n\t\tJ. ACM\n\t\t0004-5411\n\t\t1557-735X\n\t\t\n\t\t\t71\n\t\t\t2\n\t\t\t\n\t\t\t2018\n\t\t\tAssociation for Computing Machinery (ACM)"
+    },
+    {
+      "id": 10,
+      "text": "How much data is sufficient to learn high-performing algorithms? generalization guarantees for data-driven algorithm design\n\t\t\n\t\t\tMaria-FlorinaBalcan\n\t\t\n\t\t\n\t\t\tDanDeblasio\n\t\t\t0000-0003-4110-4431\n\t\t\n\t\t\n\t\t\tTravisDick\n\t\t\n\t\t\n\t\t\tCarlKingsford\n\t\t\t0000-0002-0118-5516\n\t\t\n\t\t\n\t\t\tTuomasSandholm\n\t\t\n\t\t\n\t\t\tEllenVitercik\n\t\t\t0000-0003-4891-1367\n\t\t\n\t\t10.1145/3406325.3451036\n\t\n\t\n\t\tProceedings of the 53rd Annual ACM SIGACT Symposium on Theory of Computing\n\t\tthe 53rd Annual ACM SIGACT Symposium on Theory of Computing\n\t\t\n\t\t\tACM\n\t\t\t2019"
+    },
+    {
+      "id": 11,
+      "text": "The Design and Price of Information\n\t\t\n\t\t\tDirkBergemann\n\t\t\n\t\t\n\t\t\tAlessandroBonatti\n\t\t\n\t\t\n\t\t\tAlexSmolin\n\t\t\n\t\t10.1257/aer.20161079\n\t\n\t\n\t\tAmerican Economic Review\n\t\tAmerican Economic Review\n\t\t0002-8282\n\t\t\n\t\t\t108\n\t\t\t1\n\t\t\t\n\t\t\t2018\n\t\t\tAmerican Economic Association\n\t\t\n\t\n\tAmerican economic review"
+    },
+    {
+      "id": 12,
+      "text": "Pandora’s Problem with Deadlines\n\t\t\n\t\t\tBenBerger\n\t\t\n\t\t\n\t\t\tTomerEzra\n\t\t\n\t\t\n\t\t\tMichalFeldman\n\t\t\n\t\t\n\t\t\tFedericoFusco\n\t\t\n\t\t10.1609/aaai.v38i18.30015\n\t\n\t\n\t\tProceedings of the AAAI Conference on Artificial Intelligence\n\t\tAAAI\n\t\t2159-5399\n\t\t2374-3468\n\t\t\n\t\t\t38\n\t\t\t18\n\t\t\t\n\t\t\t2024\n\t\t\tAssociation for the Advancement of Artificial Intelligence (AAAI)"
+    },
+    {
+      "id": 13,
+      "text": "Random search for hyper-parameter optimization\n\t\t\n\t\t\tJamesBergstra\n\t\t\n\t\t\n\t\t\tYoshuaBengio\n\t\t\n\t\n\t\n\t\tJournal of machine learning research\n\t\t\n\t\t\t13\n\t\t\t2\n\t\t\t2012"
+    },
+    {
+      "id": 14,
+      "text": "Pandora’s Problem with Nonobligatory Inspection: Optimal Structure and a PTAS\n\t\t\n\t\t\tHedyehBeyhaghi\n\t\t\n\t\t\n\t\t\tLindaCai\n\t\t\n\t\t10.1145/3564246.3585217\n\t\n\t\n\t\tProceedings of the 55th Annual ACM Symposium on Theory of Computing\n\t\tthe 55th Annual ACM Symposium on Theory of Computing\n\t\t\n\t\t\tACM\n\t\t\t2023"
+    },
+    {
+      "id": 15,
+      "text": "Pandora's Problem with Nonobligatory Inspection\n\t\t\n\t\t\tHedyehBeyhaghi\n\t\t\n\t\t\n\t\t\tRobertKleinberg\n\t\t\n\t\t10.1145/3328526.3329626\n\t\n\t\n\t\tProceedings of the 2019 ACM Conference on Economics and Computation\n\t\tthe 2019 ACM Conference on Economics and Computation\n\t\t\n\t\t\tACM\n\t\t\t2019"
+    },
+    {
+      "id": 16,
+      "text": "Prophet inequalities with limited information\n\t\t\n\t\t\tSayanBhattacharya\n\t\t\n\t\t\n\t\t\tSanjeevKhanna\n\t\t\n\t\n\t\n\t\tProceedings of the 23rd Annual ACM-SIAM Symposium on Discrete Algorithms (SODA)\n\t\tthe 23rd Annual ACM-SIAM Symposium on Discrete Algorithms (SODA)\n\t\t\n\t\t\t2012"
+    },
+    {
+      "id": 17,
+      "text": "Pandora's Box Problem with Order Constraints\n\t\t\n\t\t\tShantBoodaghians\n\t\t\n\t\t\n\t\t\tFedericoFusco\n\t\t\n\t\t\n\t\t\tPhilipLazos\n\t\t\n\t\t\n\t\t\tStefanoLeonardi\n\t\t\n\t\t10.1145/3391403.3399501\n\t\n\t\n\t\tProceedings of the 21st ACM Conference on Economics and Computation\n\t\tthe 21st ACM Conference on Economics and Computation\n\t\t\n\t\t\tACM\n\t\t\t2020"
+    },
+    {
+      "id": 18,
+      "text": "Query strategies for priced information (extended abstract)\n\t\t\n\t\t\tMosesCharikar\n\t\t\n\t\t\n\t\t\tRonaldFagin\n\t\t\n\t\t\n\t\t\tVenkatesanGuruswami\n\t\t\n\t\t\n\t\t\tJonKleinberg\n\t\t\n\t\t\n\t\t\tPrabhakarRaghavan\n\t\t\n\t\t\n\t\t\tAmitSahai\n\t\t\n\t\t10.1145/335305.335382\n\t\n\t\n\t\tProceedings of the thirty-second annual ACM symposium on Theory of computing\n\t\tthe thirty-second annual ACM symposium on Theory of computing\n\t\t\n\t\t\tACM\n\t\t\t2000"
+    },
+    {
+      "id": 19,
+      "text": "Multi-parameter mechanism design and sequential posted pricing\n\t\t\n\t\t\tShuchiChawla\n\t\t\n\t\t\n\t\t\tJasonDHartline\n\t\t\n\t\t\n\t\t\tDavidLMalec\n\t\t\n\t\t\n\t\t\tBalasubramanianSivan\n\t\t\n\t\t10.1145/1806689.1806733\n\t\n\t\n\t\tProceedings of the forty-second ACM symposium on Theory of computing\n\t\tthe forty-second ACM symposium on Theory of computing\n\t\t\n\t\t\tACM\n\t\t\t2010"
+    },
+    {
+      "id": 20,
+      "text": "Revenue maximization for query pricing\n\t\t\n\t\t\tShuchiChawla\n\t\t\n\t\t\n\t\t\tShaleenDeep\n\t\t\n\t\t\n\t\t\tParaschosKoutrisw\n\t\t\n\t\t\n\t\t\tYifengTeng\n\t\t\n\t\t10.14778/3357377.3357378\n\t\n\t\n\t\tProceedings of the VLDB Endowment\n\t\tProc. VLDB Endow.\n\t\t2150-8097\n\t\t\n\t\t\t13\n\t\t\t1\n\t\t\t\n\t\t\t2019\n\t\t\tAssociation for Computing Machinery (ACM)"
+    },
+    {
+      "id": 21,
+      "text": "Pandora's Box with Correlations: Learning and Approximation\n\t\t\n\t\t\tShuchiChawla\n\t\t\n\t\t\n\t\t\tEvangeliaGergatsouli\n\t\t\n\t\t\n\t\t\tYifengTeng\n\t\t\n\t\t\n\t\t\tChristosTzamos\n\t\t\n\t\t\n\t\t\tRuiminZhang\n\t\t\n\t\t10.1109/focs46700.2020.00116\n\t\n\t\n\t\t2020 IEEE 61st Annual Symposium on Foundations of Computer Science (FOCS)\n\t\t\n\t\t\tIEEE\n\t\t\t2020"
+    },
+    {
+      "id": 22,
+      "text": "Approximating pandora's box with correlations\n\t\t\n\t\t\tShuchiChawla\n\t\t\n\t\t\n\t\t\tEvangeliaGergatsouli\n\t\t\n\t\t\n\t\t\tJeremyMcmahan\n\t\t\n\t\t\n\t\t\tChristosTzamos\n\t\t\n\t\tarXiv:2108.12976\n\t\t\n\t\t\t2021\n\t\t\n\t\n\tarXiv preprint"
+    },
+    {
+      "id": 23,
+      "text": "ShuchiChawla\n\t\t\n\t\t\n\t\t\tDimitrisChristou\n\t\t\n\t\t\n\t\t\tAmitHarlev\n\t\t\n\t\t\n\t\t\tZivScully\n\t\t\n\t\tarXiv:2412.03860\n\t\tCombinatorial selection with costly information\n\t\t\n\t\t\t2024\n\t\t\n\t\n\tarXiv preprint"
+    },
+    {
+      "id": 24,
+      "text": "Sequential information maximization: When is greedy near-optimal?\n\t\t\n\t\t\tYuxinChen\n\t\t\n\t\t\n\t\t\t, S HamedHassani\n\t\t\n\t\t\n\t\t\tAminKarbasi\n\t\t\n\t\t\n\t\t\tAndreasKrause\n\t\t\n\t\n\t\n\t\tConference on Learning Theory\n\t\t\n\t\t\t2015"
+    },
+    {
+      "id": 25,
+      "text": "Submodular surrogates for value of information\n\t\t\n\t\t\tYuxinChen\n\t\t\n\t\t\n\t\t\tShervinJavdani\n\t\t\n\t\t\n\t\t\tAminKarbasi\n\t\t\n\t\t\n\t\t\tJBagnell\n\t\t\n\t\t\n\t\t\tSiddharthaSrinivasa\n\t\t\n\t\t\n\t\t\tAndreasKrause\n\t\t\n\t\n\t\n\t\tProceedings of the AAAI Conference on Artificial Intelligence\n\t\tthe AAAI Conference on Artificial Intelligence\n\t\t\n\t\t\t2015\n\t\t\t29"
+    },
+    {
+      "id": 26,
+      "text": "Self-improving algorithms for convex hulls\n\t\t\n\t\t\tWolfgangKenneth L Clarkson\n\t\t\n\t\t\n\t\t\tCMulzer\n\t\t\n\t\t\n\t\t\tSeshadhri\n\t\t\n\t\n\t\n\t\tProceedings of the Twenty-First Annual ACM-SIAM Symposium on Discrete Algorithms\n\t\tthe Twenty-First Annual ACM-SIAM Symposium on Discrete Algorithms\n\t\t\n\t\t\tSIAM\n\t\t\t2010"
+    },
+    {
+      "id": 27,
+      "text": "Prophet inequalities for independent random variables from an unknown distribution\n\t\t\n\t\t\tJoséCorrea\n\t\t\n\t\t\n\t\t\tPabloD AFoncea\n\t\t\n\t\t\n\t\t\tRubenHoeksma\n\t\t\n\t\t\n\t\t\tTimRoughgarden\n\t\t\n\t\n\t\n\t\tProceedings of the 30th Annual ACM-SIAM Symposium on Discrete Algorithms (SODA)\n\t\tthe 30th Annual ACM-SIAM Symposium on Discrete Algorithms (SODA)\n\t\t\n\t\t\t2019"
+    },
+    {
+      "id": 28,
+      "text": "Prophet inequalities and posted pricing mechanisms\n\t\t\n\t\t\tJoséCorrea\n\t\t\n\t\t\n\t\t\tAnjaKorol\n\t\t\n\t\t\n\t\t\tRubenHoeksma\n\t\t\n\t\n\t\n\t\tMathematics of Operations Research\n\t\t\n\t\t\t47\n\t\t\t4\n\t\t\t\n\t\t\t2022"
+    },
+    {
+      "id": 29,
+      "text": "Apparate: Rethinking early exits to tame latency-throughput tensions in ml serving\n\t\t\n\t\t\tYinweiDai\n\t\t\n\t\t\n\t\t\tRuiPan\n\t\t\n\t\t\n\t\t\tAnandIyer\n\t\t\n\t\t\n\t\t\tKaiLi\n\t\t\n\t\t\n\t\t\tRaviNetravali\n\t\t\n\t\n\t\n\t\tProceedings of the ACM SIGOPS 30th Symposium on Operating Systems Principles\n\t\tthe ACM SIGOPS 30th Symposium on Operating Systems Principles\n\t\t\n\t\t\t2024"
+    },
+    {
+      "id": 30,
+      "text": "A unified approach to routing and cascading for llms\n\t\t\n\t\t\tJasperDekoninck\n\t\t\n\t\t\n\t\t\tMaximilianBaader\n\t\t\n\t\t\n\t\t\tMartinVechev\n\t\t\n\t\tarXiv:2410.10347\n\t\t\n\t\t\t2024\n\t\t\n\t\n\tarXiv preprint"
+    },
+    {
+      "id": 31,
+      "text": "Product Ranking on Online Platforms\n\t\t\n\t\t\tMahsaDerakhshan\n\t\t\n\t\t\n\t\t\tNeginGolrezaei\n\t\t\t0000-0001-9066-2304\n\t\t\n\t\t\n\t\t\tVahidehManshadi\n\t\t\t0000-0001-9103-7797\n\t\t\n\t\t\n\t\t\tVahabMirrokni\n\t\t\n\t\t10.1287/mnsc.2021.4044\n\t\n\t\n\t\tManagement Science\n\t\tManagement Science\n\t\t0025-1909\n\t\t1526-5501\n\t\t\n\t\t\t68\n\t\t\t6\n\t\t\t\n\t\t\t2022\n\t\t\tInstitute for Operations Research and the Management Sciences (INFORMS)"
+    },
+    {
+      "id": 32,
+      "text": "Bert: Pre-training of deep bidirectional transformers for language understanding\n\t\t\n\t\t\tJacobDevlin\n\t\t\n\t\t\n\t\t\tMing-WeiChang\n\t\t\n\t\t\n\t\t\tKentonLee\n\t\t\n\t\t\n\t\t\tKristinaToutanova\n\t\t\n\t\n\t\n\t\tProceedings of the 2019 conference of the North American chapter of the association for computational linguistics: human language technologies\n\t\tthe 2019 conference of the North American chapter of the association for computational linguistics: human language technologies\n\t\t\n\t\t\t2019\n\t\t\t1"
+    },
+    {
+      "id": 33,
+      "text": "Bert: Pre-training of deep bidirectional transformers for language understanding\n\t\t\n\t\t\tJacobDevlin\n\t\t\n\t\t\n\t\t\tMing-WeiChang\n\t\t\n\t\t\n\t\t\tKentonLee\n\t\t\n\t\t\n\t\t\tKristinaToutanova\n\t\t\n\t\n\t\n\t\tProceedings of the 2019 conference of the North American chapter of the association for computational linguistics: human language technologies\n\t\tthe 2019 conference of the North American chapter of the association for computational linguistics: human language technologies\n\t\t\n\t\t\t2019\n\t\t\t1"
+    },
+    {
+      "id": 34,
+      "text": "Competitive information design for pandora's box\n\t\t\n\t\t\tYidingBolin Ding\n\t\t\n\t\t\n\t\t\tChien-JuFeng\n\t\t\n\t\t\n\t\t\tWeiHo\n\t\t\n\t\t\n\t\t\tHaifengTang\n\t\t\n\t\t\n\t\t\tXu\n\t\t\n\t\n\t\n\t\tProceedings of the 2023 Annual ACM-SIAM Symposium on Discrete Algorithms (SODA)\n\t\tthe 2023 Annual ACM-SIAM Symposium on Discrete Algorithms (SODA)\n\t\t\n\t\t\tSIAM\n\t\t\t2023"
+    },
+    {
+      "id": 35,
+      "text": "Whether or not to open pandora's box\n\t\t\n\t\t\tLauraDoval\n\t\t\n\t\n\t\n\t\tJournal of Economic Theory\n\t\t\n\t\t\t175\n\t\t\t\n\t\t\t2018"
+    },
+    {
+      "id": 36,
+      "text": "Prophet inequalities with unknown distributions\n\t\t\n\t\t\tHosseinEsfandiari\n\t\t\n\t\t\n\t\t\tMohammadTaghiHajiaghayi\n\t\t\n\t\t\n\t\t\tBrendanLucier\n\t\t\n\t\t\n\t\t\tMortezaZadimoghaddam\n\t\t\n\t\n\t\n\t\tProceedings of the 49th Annual ACM SIGACT Symposium on Theory of Computing (STOC)\n\t\tthe 49th Annual ACM SIGACT Symposium on Theory of Computing (STOC)\n\t\t\n\t\t\t2017"
+    },
+    {
+      "id": 37,
+      "text": "Markov processes: characterization and convergence\n\t\t\n\t\t\tNStewart\n\t\t\n\t\t\n\t\t\tThomasGEthier\n\t\t\n\t\t\n\t\t\tKurtz\n\t\t\n\t\t\n\t\t\t2009\n\t\t\tJohn Wiley & Sons"
+    },
+    {
+      "id": 38,
+      "text": "Online stochastic matching: Beating 1 -1/e\n\t\t\n\t\t\tMichalFeldman\n\t\t\n\t\t\n\t\t\tThomasKesselheim\n\t\t\n\t\t\n\t\t\tBrendanLucier\n\t\t\n\t\n\t\n\t\tProceedings of the 48th Annual ACM Symposium on Theory of Computing (STOC)\n\t\tthe 48th Annual ACM Symposium on Theory of Computing (STOC)\n\t\t\n\t\t\t2016"
+    },
+    {
+      "id": 39,
+      "text": "Pandora box problem with nonobligatory inspection: Hardness and approximation scheme\n\t\t\n\t\t\tHuFu\n\t\t\n\t\t\n\t\t\tJiaweiLi\n\t\t\n\t\t\n\t\t\tDaogaoLiu\n\t\t\n\t\n\t\n\t\tProceedings of the 55th Annual ACM Symposium on Theory of Computing\n\t\tthe 55th Annual ACM Symposium on Theory of Computing\n\t\t\n\t\t\t2023"
+    },
+    {
+      "id": 40,
+      "text": "Bandit algorithms for prophet inequality and pandora's box\n\t\t\n\t\t\tKhashayarGatmiry\n\t\t\n\t\t\n\t\t\tThomasKesselheim\n\t\t\n\t\t\n\t\t\tSahilSingla\n\t\t\n\t\t\n\t\t\tYifanWang\n\t\t\n\t\n\t\n\t\tProceedings of the 2024 Annual ACM-SIAM Symposium on Discrete Algorithms (SODA)\n\t\tthe 2024 Annual ACM-SIAM Symposium on Discrete Algorithms (SODA)\n\t\t\n\t\t\tSIAM\n\t\t\t2024"
+    },
+    {
+      "id": 41,
+      "text": "Online learning for min sum set cover and pandora's box\n\t\t\n\t\t\tEvangeliaGergatsouli\n\t\t\n\t\t\n\t\t\tChristosTzamos\n\t\t\n\t\tPMLR\n\t\n\t\n\t\tInternational Conference on Machine Learning\n\t\t\n\t\t\t2022"
+    },
+    {
+      "id": 42,
+      "text": "Weitzman's rule for pandora's box with correlations\n\t\t\n\t\t\tEvangeliaGergatsouli\n\t\t\n\t\t\n\t\t\tChristosTzamos\n\t\t\n\t\tarXiv:2301.13534\n\t\t\n\t\t\t2023\n\t\t\n\t\n\tarXiv preprint"
+    },
+    {
+      "id": 43,
+      "text": "Bandit processes and dynamic allocation indices\n\t\t\n\t\t\tJohnCGittins\n\t\t\n\t\n\t\n\t\tJournal of the Royal Statistical Society: Series B (Methodological)\n\t\t\n\t\t\t41\n\t\t\t2\n\t\t\t\n\t\t\t1979"
+    },
+    {
+      "id": 44,
+      "text": "Multi-armed Bandit Allocation Indices\n\t\t\n\t\t\tJohnCGittins\n\t\t\n\t\t\n\t\t\t1989\n\t\t\tJohn Wiley & Sons\n\t\t\tChichester, UK"
+    },
+    {
+      "id": 45,
+      "text": "Asking the right questions: Model-driven optimization using probes\n\t\t\n\t\t\tAshishGoel\n\t\t\n\t\t\n\t\t\tSudiptoGuha\n\t\t\n\t\t\n\t\t\tKameshMunagala\n\t\t\n\t\n\t\n\t\tProceedings of the twenty-fifth ACM SIGMOD-SIGACT-SIGART symposium on Principles of database systems\n\t\tthe twenty-fifth ACM SIGMOD-SIGACT-SIGART symposium on Principles of database systems\n\t\t\n\t\t\t2006"
+    },
+    {
+      "id": 46,
+      "text": "Deep learning\n\t\t\n\t\t\tIanGoodfellow\n\t\t\n\t\t\n\t\t\tYoshuaBengio\n\t\t\n\t\t\n\t\t\tAaronCourville\n\t\t\n\t\t\n\t\t\tYoshuaBengio\n\t\t\n\t\t\n\t\t\t2016\n\t\t\tMIT press Cambridge\n\t\t\t1"
+    },
+    {
+      "id": 47,
+      "text": "Dynamic recursive neural network\n\t\t\n\t\t\tQiushanGuo\n\t\t\n\t\t\n\t\t\tZhipengYu\n\t\t\n\t\t\n\t\t\tYichaoWu\n\t\t\n\t\t\n\t\t\tDingLiang\n\t\t\n\t\t\n\t\t\tHaoyuQin\n\t\t\n\t\t\n\t\t\tJunjieYan\n\t\t\n\t\n\t\n\t\tProceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition\n\t\tthe IEEE/CVF Conference on Computer Vision and Pattern Recognition\n\t\t\n\t\t\t2019"
+    },
+    {
+      "id": 48,
+      "text": "Sorting and selection with structured costs\n\t\t\n\t\t\tAnupamGupta\n\t\t\n\t\t\n\t\t\tAmitKumar\n\t\t\n\t\n\t\n\t\tProceedings 42nd IEEE Symposium on Foundations of Computer Science\n\t\t42nd IEEE Symposium on Foundations of Computer Science\n\t\t\n\t\t\tIEEE\n\t\t\t2001"
+    },
+    {
+      "id": 49,
+      "text": "A Stochastic Probing Problem with Applications\n\t\t\n\t\t\tAnupamGupta\n\t\t\n\t\t\n\t\t\tViswanathNagarajan\n\t\t\n\t\t10.1007/978-3-642-36694-9_18\n\t\n\t\n\t\tLecture Notes in Computer Science\n\t\tProceedings\n\t\tValparaiso, Chile\n\t\t\n\t\t\tSpringer Berlin Heidelberg\n\t\t\t2013. March 18-20, 2013. 2013\n\t\t\t16"
+    },
+    {
+      "id": 50,
+      "text": "Algorithms and Adaptivity Gaps for Stochastic Probing\n\t\t\n\t\t\tAnupamGupta\n\t\t\n\t\t\n\t\t\tViswanathNagarajan\n\t\t\n\t\t\n\t\t\tSahilSingla\n\t\t\n\t\t10.1137/1.9781611974331.ch120\n\t\n\t\n\t\tProceedings of the Twenty-Seventh Annual ACM-SIAM Symposium on Discrete Algorithms\n\t\tthe Twenty-Seventh Annual ACM-SIAM Symposium on Discrete Algorithms\n\t\t\n\t\t\tSociety for Industrial and Applied Mathematics\n\t\t\t2016"
+    },
+    {
+      "id": 51,
+      "text": "Adaptivity gaps for stochastic probing: Submodular and xos functions\n\t\t\n\t\t\tAnupamGupta\n\t\t\n\t\t\n\t\t\tViswanathNagarajan\n\t\t\n\t\t\n\t\t\tSahilSingla\n\t\t\n\t\n\t\n\t\tProceedings of the Twenty-Eighth Annual ACM-SIAM Symposium on Discrete Algorithms\n\t\tthe Twenty-Eighth Annual ACM-SIAM Symposium on Discrete Algorithms\n\t\t\n\t\t\tSIAM\n\t\t\t2017"
+    },
+    {
+      "id": 52,
+      "text": "The Markovian Price of Information\n\t\t\n\t\t\tAnupamGupta\n\t\t\n\t\t\n\t\t\tHaotianJiang\n\t\t\n\t\t\n\t\t\tZivScully\n\t\t\n\t\t\n\t\t\tSahilSingla\n\t\t\n\t\t10.1007/978-3-030-17953-3_18\n\t\n\t\n\t\tLecture Notes in Computer Science\n\t\tAnn Arbor, MI, USA\n\t\t\n\t\t\tSpringer International Publishing\n\t\t\t2019. May 22-24, 2019. 2019\n\t\t\t20"
+    },
+    {
+      "id": 53,
+      "text": "A PAC Approach to Application-Specific Algorithm Selection\n\t\t\n\t\t\tRishiGupta\n\t\t\n\t\t\n\t\t\tTimRoughgarden\n\t\t\n\t\t10.1145/2840728.2840766\n\t\n\t\n\t\tProceedings of the 2016 ACM Conference on Innovations in Theoretical Computer Science\n\t\tthe 2016 ACM Conference on Innovations in Theoretical Computer Science\n\t\t\n\t\t\tACM\n\t\t\t2016"
+    },
+    {
+      "id": 54,
+      "text": "Dynamic neural networks: A survey\n\t\t\n\t\t\tYizengHan\n\t\t\n\t\t\n\t\t\tGaoHuang\n\t\t\n\t\t\n\t\t\tShijiSong\n\t\t\n\t\t\n\t\t\tLeYang\n\t\t\n\t\t\n\t\t\tHonghuiWang\n\t\t\n\t\t\n\t\t\tYulinWang\n\t\t\n\t\n\t\n\t\tIEEE transactions on pattern analysis and machine intelligence\n\t\t\n\t\t\t44\n\t\t\t11\n\t\t\t\n\t\t\t2021"
+    },
+    {
+      "id": 55,
+      "text": "Hyperparameter optimization: a spectral approach\n\t\t\n\t\t\tEladHazan\n\t\t\n\t\t\n\t\t\tAdamKlivans\n\t\t\n\t\t\n\t\t\tYangYuan\n\t\t\n\t\n\t\n\t\tInternational Conference on Learning Representations\n\t\t\n\t\t\t2018"
+    },
+    {
+      "id": 56,
+      "text": "Deep Residual Learning for Image Recognition\n\t\t\n\t\t\tKaimingHe\n\t\t\n\t\t\n\t\t\tXiangyuZhang\n\t\t\n\t\t\n\t\t\tShaoqingRen\n\t\t\n\t\t\n\t\t\tJianSun\n\t\t\n\t\t10.1109/cvpr.2016.90\n\t\n\t\n\t\t2016 IEEE Conference on Computer Vision and Pattern Recognition (CVPR)\n\t\t\n\t\t\tIEEE\n\t\t\t2016"
+    },
+    {
+      "id": 57,
+      "text": "OSDI (9th Usenix Symposium on Operating Systems Design and Implementation) advertisement\n\t\t\n\t\t\tKevinHsieh\n\t\t\n\t\t\n\t\t\tGaneshAnanthanarayanan\n\t\t\n\t\t\n\t\t\tPeterBodik\n\t\t\n\t\t\n\t\t\tShivaramVenkataraman\n\t\t\n\t\t\n\t\t\tParamvirBahl\n\t\t\n\t\t\n\t\t\tMatthaiPhilipose\n\t\t\n\t\t\n\t\t\tPhillipBGibbons\n\t\t\n\t\t\n\t\t\tOnurMutlu\n\t\t\n\t\t10.1109/msp.2010.134\n\t\n\t\n\t\tIEEE Security & Privacy Magazine\n\t\tIEEE Secur. Privacy Mag.\n\t\t1540-7993\n\t\t\n\t\t\t8\n\t\t\t4\n\t\t\t\n\t\t\t2018\n\t\t\tInstitute of Electrical and Electronics Engineers (IEEE)"
+    },
+    {
+      "id": 58,
+      "text": "Non-stochastic best arm identification and hyperparameter optimization\n\t\t\n\t\t\tKevinJamieson\n\t\t\n\t\t\n\t\t\tAmeetTalwalkar\n\t\t\n\t\n\t\n\t\tArtificial intelligence and statistics\n\t\t\n\t\t\t2016"
+    },
+    {
+      "id": 59,
+      "text": "Shallow-deep networks: Understanding and mitigating network overthinking\n\t\t\n\t\t\tYigitcanKaya\n\t\t\n\t\t\n\t\t\tSanghyunHong\n\t\t\n\t\t\n\t\t\tTudorDumitras\n\t\t\n\t\tPMLR\n\t\n\t\n\t\tInternational conference on machine learning\n\t\t\n\t\t\t2019"
+    },
+    {
+      "id": 60,
+      "text": "Delegated search approximates efficient search\n\t\t\n\t\t\tJonKleinberg\n\t\t\n\t\t\n\t\t\tRobertKleinberg\n\t\t\n\t\n\t\n\t\tProceedings of the 2018 ACM Conference on Economics and Computation\n\t\tthe 2018 ACM Conference on Economics and Computation\n\t\t\n\t\t\t2018"
+    },
+    {
+      "id": 61,
+      "text": "Multiple-choice prophet inequalities\n\t\t\n\t\t\tRobertKleinberg\n\t\t\n\t\t\n\t\t\tSergeiMKrakovski\n\t\t\n\t\n\t\n\t\tProceedings of the 16th Annual ACM-SIAM Symposium on Discrete Algorithms (SODA)\n\t\tthe 16th Annual ACM-SIAM Symposium on Discrete Algorithms (SODA)\n\t\t\n\t\t\t2005"
+    },
+    {
+      "id": 62,
+      "text": "Descending Price Optimally Coordinates Search\n\t\t\n\t\t\tRobertKleinberg\n\t\t\n\t\t\n\t\t\tBoWaggoner\n\t\t\n\t\t\n\t\t\tEGlenWeyl\n\t\t\n\t\t10.1145/2940716.2940760\n\t\n\t\n\t\tProceedings of the 2016 ACM Conference on Economics and Computation\n\t\tthe 2016 ACM Conference on Economics and Computation\n\t\t\n\t\t\tACM\n\t\t\t2016"
+    },
+    {
+      "id": 63,
+      "text": "Efficiency Through Procrastination: Approximately Optimal Algorithm Configuration with Runtime Guarantees\n\t\t\n\t\t\tRobertKleinberg\n\t\t\n\t\t\n\t\t\tKevinLeyton-Brown\n\t\t\n\t\t\n\t\t\tBrendanLucier\n\t\t\n\t\t10.24963/ijcai.2017/281\n\t\n\t\n\t\tProceedings of the Twenty-Sixth International Joint Conference on Artificial Intelligence\n\t\tthe Twenty-Sixth International Joint Conference on Artificial Intelligence\n\t\t\n\t\t\tInternational Joint Conferences on Artificial Intelligence Organization\n\t\t\t2017\n\t\t\t3"
+    },
+    {
+      "id": 64,
+      "text": "Autoweka: Automatic model selection and hyperparameter optimization in weka. Automated machine learning: methods, systems, challenges\n\t\t\n\t\t\tLarsKotthoff\n\t\t\n\t\t\n\t\t\tChrisThornton\n\t\t\n\t\t\n\t\t\tHHolger\n\t\t\n\t\t\n\t\t\tFrankHoos\n\t\t\n\t\t\n\t\t\tKevinHutter\n\t\t\n\t\t\n\t\t\tLeyton-Brown\n\t\t\n\t\t\n\t\t\t2019"
+    },
+    {
+      "id": 65,
+      "text": "Semiamarts and finite values\n\t\t\n\t\t\tUlrichKrengel\n\t\t\n\t\t\n\t\t\tLouisSucheston\n\t\t\n\t\t\n\t\t\t1977"
+    },
+    {
+      "id": 66,
+      "text": "On semiamarts, amarts, and processes with finite value\n\t\t\n\t\t\tUlrichKrengel\n\t\t\n\t\t\n\t\t\tLouisSucheston\n\t\t\n\t\n\t\n\t\tProbability on Banach spaces\n\t\t\n\t\t\t1978\n\t\t\t4"
+    },
+    {
+      "id": 67,
+      "text": "Adaptive inference through earlyexit networks: Design, challenges and directions\n\t\t\n\t\t\tStefanosLaskaridis\n\t\t\n\t\t\n\t\t\tAlexandrosKouris\n\t\t\n\t\t\n\t\t\tNicholasDLane\n\t\t\n\t\n\t\n\t\tProceedings of the 5th International Workshop on Embedded and Mobile Deep Learning\n\t\tthe 5th International Workshop on Embedded and Mobile Deep Learning\n\t\t\n\t\t\t2021"
+    },
+    {
+      "id": 68,
+      "text": "Efficient inference with model cascades\n\t\t\n\t\t\tLuzianLebovitz\n\t\t\n\t\t\n\t\t\tLukasCavigelli\n\t\t\n\t\t\n\t\t\tMicheleMagno\n\t\t\n\t\t\n\t\t\tLorenz\n\t\t\n\t\t\n\t\t\tMuller\n\t\t\n\t\n\t\n\t\tTransactions on Machine Learning Research\n\t\t\n\t\t\t2023"
+    },
+    {
+      "id": 69,
+      "text": "Discriminatory information disclosure\n\t\t\n\t\t\tHaoLi\n\t\t\n\t\t\n\t\t\tXianwenShi\n\t\t\n\t\n\t\n\t\tAmerican Economic Review\n\t\t\n\t\t\t107\n\t\t\t11\n\t\t\t\n\t\t\t2017"
+    },
+    {
+      "id": 70,
+      "text": "Multi-token markov game with switching costs\n\t\t\n\t\t\tJianLi\n\t\t\n\t\t\n\t\t\tDaogaoLiu\n\t\t\n\t\n\t\n\t\tProceedings of the 2022 Annual ACM-SIAM Symposium on Discrete Algorithms (SODA)\n\t\tthe 2022 Annual ACM-SIAM Symposium on Discrete Algorithms (SODA)\n\t\t\n\t\t\tSIAM\n\t\t\t2022"
+    },
+    {
+      "id": 71,
+      "text": "Hyperband: A novel bandit-based approach to hyperparameter optimization\n\t\t\n\t\t\tLishaLi\n\t\t\n\t\t\n\t\t\tKevinJamieson\n\t\t\n\t\t\n\t\t\tGiuliaDesalvo\n\t\t\n\t\t\n\t\t\tAfshinRostamizadeh\n\t\t\n\t\t\n\t\t\tAmeetTalwalkar\n\t\t\n\t\n\t\n\t\tThe Journal of Machine Learning Research\n\t\t\n\t\t\t18\n\t\t\t1\n\t\t\t\n\t\t\t2017"
+    },
+    {
+      "id": 72,
+      "text": "Minimization is harder in the prophet world\n\t\t\n\t\t\tVasilisLivanos\n\t\t\n\t\t\n\t\t\tRutaMehta\n\t\t\n\t\n\t\n\t\tProceedings of the 2024 Annual ACM-SIAM Symposium on Discrete Algorithms (SODA)\n\t\tthe 2024 Annual ACM-SIAM Symposium on Discrete Algorithms (SODA)\n\t\t\n\t\t\t2024"
+    },
+    {
+      "id": 73,
+      "text": "Split computing and early exiting for deep learning applications: Survey and research challenges\n\t\t\n\t\t\tYoshitomoMatsubara\n\t\t\n\t\t\n\t\t\tMarcoLevorato\n\t\t\n\t\t\n\t\t\tFrancescoRestuccia\n\t\t\n\t\n\t\n\t\tACM Computing Surveys\n\t\t\n\t\t\t55\n\t\t\t5\n\t\t\t\n\t\t\t2022"
+    },
+    {
+      "id": 74,
+      "text": "Hidden factors and hidden topics: understanding rating dimensions with review text\n\t\t\n\t\t\tJulianMcauley\n\t\t\n\t\t\n\t\t\tJureLeskovec\n\t\t\n\t\n\t\n\t\tProceedings of the 7th ACM conference on Recommender systems\n\t\tthe 7th ACM conference on Recommender systems\n\t\t\n\t\t\t2013"
+    },
+    {
+      "id": 75,
+      "text": "A survey on dynamic neural networks: from computer vision to multi-modal sensor fusion\n\t\t\n\t\t\tFabioMontello\n\t\t\n\t\t\n\t\t\tRonjaGüldenring\n\t\t\n\t\t\n\t\t\tSimoneScardapane\n\t\t\n\t\t\n\t\t\tLazarosNalpantidis\n\t\t\n\t\tarXiv:2501.07451\n\t\t\n\t\t\t2025\n\t\t\n\t\n\tarXiv preprint"
+    },
+    {
+      "id": 76,
+      "text": "Online cascade learning for efficient inference over streams\n\t\t\n\t\t\tLunyiuNie\n\t\t\n\t\t\n\t\t\tZhiminDing\n\t\t\n\t\t\n\t\t\tErdongHu\n\t\t\n\t\t\n\t\t\tChristopherJermaine\n\t\t\n\t\t\n\t\t\tSwaratChaudhuri\n\t\t\n\t\tPMLR\n\t\n\t\n\t\tProceedings of the 41st International Conference on Machine Learning\n\t\tProceedings of Machine Learning Research\n\t\t\n\t\t\tRuslanSalakhutdinov\n\t\t\n\t\t\n\t\t\tZicoKolter\n\t\t\n\t\t\n\t\t\tKatherineHeller\n\t\t\n\t\t\n\t\t\tAdrianWeller\n\t\t\n\t\t\n\t\t\tNuriaOliver\n\t\t\n\t\t\n\t\t\tJonathanScarlett\n\t\t\n\t\t\n\t\t\tFelixBerkenkamp\n\t\t\n\t\tthe 41st International Conference on Machine Learning\n\t\t\n\t\t\tJul 2024\n\t\t\t235"
+    },
+    {
+      "id": 77,
+      "text": "A more general pandora rule\n\t\t\n\t\t\tWojciechOlszewski\n\t\t\n\t\t\n\t\t\tRichardWeber\n\t\t\n\t\n\t\n\t\tJournal of Economic Theory\n\t\t\n\t\t\t160\n\t\t\t\n\t\t\t2015"
+    },
+    {
+      "id": 78,
+      "text": "Imdb movie reviews dataset\n\t\t\n\t\t\tAdityaPal\n\t\t\n\t\t\n\t\t\tAbhilashBarigidad\n\t\t\n\t\t\n\t\t\tAbhijitMustafi\n\t\t\n\t\t10.21227/zm1y-b270\n\t\t\n\t\t\n\t\t\t2020"
+    },
+    {
+      "id": 79,
+      "text": "Language models are unsupervised multitask learners\n\t\t\n\t\t\tAlecRadford\n\t\t\n\t\t\n\t\t\tJeffreyWu\n\t\t\n\t\t\n\t\t\tRewonChild\n\t\t\n\t\t\n\t\t\tDavidLuan\n\t\t\n\t\t\n\t\t\tDarioAmodei\n\t\t\n\t\t\n\t\t\tIlyaSutskever\n\t\t\n\t\n\t\n\t\tOpenAI blog\n\t\t\n\t\t\t1\n\t\t\t8\n\t\t\t9\n\t\t\t2019"
+    },
+    {
+      "id": 80,
+      "text": "Early-exit deep neural network-a comprehensive survey\n\t\t\n\t\t\tHaseenaRahmath\n\t\t\n\t\t\n\t\t\tP\n\t\t\n\t\t\n\t\t\tVishalSrivastava\n\t\t\n\t\t\n\t\t\tKuldeepChaurasia\n\t\t\n\t\t\n\t\t\tRobertoGPacheco\n\t\t\n\t\t\n\t\t\tRodrigoSCouto\n\t\t\n\t\n\t\n\t\tACM Computing Surveys\n\t\t\n\t\t\t57\n\t\t\t3\n\t\t\t\n\t\t\t2024"
+    },
+    {
+      "id": 81,
+      "text": "Very deep convolutional networks for large-scale image recognition\n\t\t\n\t\t\tKSimonyan\n\t\t\n\t\t\n\t\t\tZisserman\n\t\t\n\t\n\t\n\t\t3rd International Conference on Learning Representations\n\t\t\n\t\t\tComputational and Biological Learning Society\n\t\t\t2015. 2015"
+    },
+    {
+      "id": 82,
+      "text": "Very deep convolutional networks for large-scale image recognition\n\t\t\n\t\t\tKarenSimonyan\n\t\t\n\t\t\n\t\t\tAndrewZisserman\n\t\t\n\t\tarXiv:1409.1556\n\t\t\n\t\t\t2014\n\t\t\n\t\n\tarXiv preprint"
+    },
+    {
+      "id": 83,
+      "text": "The price of information in combinatorial optimization\n\t\t\n\t\t\tSahilSingla\n\t\t\n\t\n\t\n\t\tProceedings of the twentyninth annual ACM-SIAM symposium on discrete algorithms\n\t\tthe twentyninth annual ACM-SIAM symposium on discrete algorithms\n\t\t\n\t\t\tSIAM\n\t\t\t2018"
+    },
+    {
+      "id": 84,
+      "text": "Thijs Vogels, Martin Jaggi, and Franc ¸ois Fleuret. Optimizer benchmarking needs to account for hyperparameter tuning\n\t\t\n\t\t\tTejaPrabhu\n\t\t\n\t\t\n\t\t\tFlorianSivaprasad\n\t\t\n\t\t\n\t\t\tMai\n\t\t\n\t\tPMLR\n\t\n\t\n\t\tInternational conference on machine learning\n\t\t\n\t\t\t2020"
+    },
+    {
+      "id": 85,
+      "text": "Practical bayesian optimization of machine learning algorithms\n\t\t\n\t\t\tJasperSnoek\n\t\t\n\t\t\n\t\t\tHugoLarochelle\n\t\t\n\t\t\n\t\t\tRyanPAdams\n\t\t\n\t\n\t\n\t\tAdvances in neural information processing systems\n\t\t\n\t\t\t25\n\t\t\t2012"
+    },
+    {
+      "id": 86,
+      "text": "Stop overthinking: A survey on efficient reasoning for large language models\n\t\t\n\t\t\tYangSui\n\t\t\n\t\t\n\t\t\tYu-NengChuang\n\t\t\n\t\t\n\t\t\tGuanchuWang\n\t\t\n\t\t\n\t\t\tJiamuZhang\n\t\t\n\t\t\n\t\t\tTianyiZhang\n\t\t\n\t\t\n\t\t\tJiayiYuan\n\t\t\n\t\t\n\t\t\tHongyiLiu\n\t\t\n\t\t\n\t\t\tAndrewWen\n\t\t\n\t\t\n\t\t\tShaochenZhong\n\t\t\n\t\t\n\t\t\tNaZou\n\t\t\n\t\tarXiv:2503.16419\n\t\t\n\t\t\t2025\n\t\t\n\t\n\tarXiv preprint"
+    },
+    {
+      "id": 87,
+      "text": "Branchynet: Fast inference via early exiting from deep neural networks\n\t\t\n\t\t\tBradleySurat Teerapittayanon\n\t\t\n\t\t\n\t\t\tHsiang-TsungMcdanel\n\t\t\n\t\t\n\t\t\tKung\n\t\t\n\t\n\t\n\t\t2016 23rd international conference on pattern recognition (ICPR)\n\t\t\n\t\t\tIEEE\n\t\t\t2016"
+    },
+    {
+      "id": 88,
+      "text": "Model cascading: Towards jointly improving efficiency and accuracy of nlp systems\n\t\t\n\t\t\tNeerajVarshney\n\t\t\n\t\t\n\t\t\tChittaBaral\n\t\t\n\t\tarXiv:2210.05528\n\t\t\n\t\t\t2022\n\t\t\n\t\n\tarXiv preprint"
+    },
+    {
+      "id": 89,
+      "text": "Skipnet: Learning dynamic routing in convolutional networks\n\t\t\n\t\t\tXinWang\n\t\t\n\t\t\n\t\t\tFisherYu\n\t\t\n\t\t\n\t\t\tZi-YiDou\n\t\t\n\t\t\n\t\t\tTrevorDarrell\n\t\t\n\t\t\n\t\t\tJosephEGonzalez\n\t\t\n\t\n\t\n\t\tProceedings of the European conference on computer vision (ECCV)\n\t\tthe European conference on computer vision (ECCV)\n\t\t\n\t\t\t2018"
+    },
+    {
+      "id": 90,
+      "text": "On the gittins index for multiarmed bandits\n\t\t\n\t\t\tRichardRWeber\n\t\t\n\t\t10.1214/aoap/1177005775\n\t\n\t\n\t\tThe Annals of Applied Probability\n\t\t\n\t\t\t2\n\t\t\t4\n\t\t\t\n\t\t\t1992"
+    },
+    {
+      "id": 91,
+      "text": "Leapsandbounds: A method for approximately optimal algorithm configuration\n\t\t\n\t\t\tGellértWeisz\n\t\t\n\t\t\n\t\t\tAndrasGyorgy\n\t\t\n\t\t\n\t\t\tCsabaSzepesvári\n\t\t\n\t\tPMLR\n\t\n\t\n\t\tInternational Conference on Machine Learning\n\t\t\n\t\t\t2018"
+    },
+    {
+      "id": 92,
+      "text": "Optimal search for the best alternative\n\t\t\n\t\t\tMartin L Weitzman\n\t\t\n\t\n\t\n\t\tEconometrica: Journal of the Econometric Society\n\t\t\n\t\t\t\n\t\t\t1979"
+    },
+    {
+      "id": 93,
+      "text": "Cost-aware bayesian optimization via the pandora's box gittins index\n\t\t\n\t\t\tQianXie\n\t\t\n\t\t\n\t\t\tRaulAstudillo\n\t\t\n\t\t\n\t\t\tPeterFrazier\n\t\t\n\t\t\n\t\t\tZivScully\n\t\t\n\t\t\n\t\t\tAlexanderTerenin\n\t\t\n\t\n\t\n\t\tAdvances in Neural Information Processing Systems\n\t\t\n\t\t\t37\n\t\t\t\n\t\t\t2024"
+    },
+    {
+      "id": 94,
+      "text": "QianXie\n\t\t\n\t\t\n\t\t\tLindaCai\n\t\t\n\t\t\n\t\t\tAlexanderTerenin\n\t\t\n\t\t\n\t\t\tPeterIFrazier\n\t\t\n\t\t\n\t\t\tZivScully\n\t\t\n\t\tarXiv:2507.12453\n\t\tCost-aware stopping for bayesian optimization\n\t\t\n\t\t\t2025\n\t\t\n\t\n\tarXiv preprint"
+    },
+    {
+      "id": 95,
+      "text": "Deebert: Dynamic early exiting for accelerating bert inference\n\t\t\n\t\t\tJiXin\n\t\t\n\t\t\n\t\t\tRaphaelTang\n\t\t\n\t\t\n\t\t\tJaejunLee\n\t\t\n\t\t\n\t\t\tYaoliangYu\n\t\t\n\t\t\n\t\t\tJimmyLin\n\t\t\n\t\tarXiv:2004.12993\n\t\t\n\t\t\t2020\n\t\t\n\t\n\tarXiv preprint"
+    },
+    {
+      "id": 96,
+      "text": "Berxit: Early exiting for bert with better finetuning and extension to regression\n\t\t\n\t\t\tJiXin\n\t\t\n\t\t\n\t\t\tRaphaelTang\n\t\t\n\t\t\n\t\t\tYaoliangYu\n\t\t\n\t\t\n\t\t\tJimmyLin\n\t\t\n\t\n\t\n\t\tProceedings of the 16\n\t\tthe 16\n\t\t\n\t\t\t2021\n\t\t\t\n\t\t\n\t\n\tth conference of the European chapter of the association for computational linguistics: Main Volume"
+    },
+    {
+      "id": 97,
+      "text": "Iterative preference learning from human feedback: Bridging theory and practice for rlhf under kl-constraint\n\t\t\n\t\t\tWeiXiong\n\t\t\n\t\t\n\t\t\tHanzeDong\n\t\t\n\t\t\n\t\t\tChenluYe\n\t\t\n\t\t\n\t\t\tZiqiWang\n\t\t\n\t\t\n\t\t\tHanZhong\n\t\t\n\t\t\n\t\t\tHengJi\n\t\t\n\t\t\n\t\t\tNanJiang\n\t\t\n\t\t\n\t\t\tTongZhang\n\t\t\n\t\tarXiv:2312.11456\n\t\t\n\t\t\t2023\n\t\t\n\t\n\tarXiv preprint"
+    },
+    {
+      "id": 98,
+      "text": "Mechanism design via correlation gap\n\t\t\n\t\t\tQiqiYan\n\t\t\n\t\n\t\n\t\tACM Transactions on Economics and Computation\n\t\t\n\t\t\t1\n\t\t\t1\n\t\t\t\n\t\t\t2011"
+    },
+    {
+      "id": 99,
+      "text": "Bert loses patience: Fast and robust inference with early exit\n\t\t\n\t\t\tWangchunshuZhou\n\t\t\n\t\t\n\t\t\tCanwenXu\n\t\t\n\t\t\n\t\t\tTaoGe\n\t\t\n\t\t\n\t\t\tJulianMcauley\n\t\t\n\t\t\n\t\t\tKeXu\n\t\t\n\t\t\n\t\t\tFuruWei\n\t\t\n\t\n\t\n\t\tAdvances in Neural Information Processing Systems\n\t\t\n\t\t\t33\n\t\t\t\n\t\t\t2020"
+    }
+  ],
+  "formulas": [
+    {
+      "id": "FORMULA_1",
+      "raw": "θ λ (x) = λℓ 1 (x) + (1 -λ)ℓ 2 (x),"
+    },
+    {
+      "id": "FORMULA_2",
+      "raw": "ℓ i ⊥ ℓ k | ℓ j ."
+    },
+    {
+      "id": "FORMULA_3",
+      "raw": "E[λ • f([ℓ i ] i∈O(π) ) + (1 -λ) • e∈E(π) c(e)]."
+    },
+    {
+      "id": "FORMULA_4",
+      "raw": "R i+1 ∼ λℓ i + (1 -λ)c(i -1, i) for i ∈ [n]. Problem 3.1 (No Recall Exit Problem). Let costs R 1 ∼ D 1 , . . . , R n ∼ D n"
+    },
+    {
+      "id": "FORMULA_5",
+      "raw": "Pr(R i+1 | R 1 , . . . , R i ) = Pr(R i+1 | R i ), for all i."
+    },
+    {
+      "id": "FORMULA_6",
+      "raw": "min i R i , incurring expected cost OPT = E[min i R i ]."
+    },
+    {
+      "id": "FORMULA_7",
+      "raw": "E[ALG] ≤ α • OPT ."
+    },
+    {
+      "id": "FORMULA_8",
+      "raw": "R 1 = 1 α 2 w.p. 1, R 2 = 0 w.p.1 -1 α , 1 α w.p. 1 α"
+    },
+    {
+      "id": "FORMULA_9",
+      "raw": "c i := (1 -λ)c(i -1, i"
+    },
+    {
+      "id": "FORMULA_10",
+      "raw": "[i] R k + j∈[i] c j by selecting arg min k∈[i] R k -or continue."
+    },
+    {
+      "id": "FORMULA_11",
+      "raw": "Require: Nodes {v 1 , . . . , v n }, edge costs {c 1 , . . . , c n }, dynamic index σ(i, s) (Def. 4.4) for all i and s ∈ V . 1: Initialize minimum loss X ← ∞, i ← 1, σ ← σ(1, ∅). 2: while X > σ do 3: Pay c i to inspect node v i , observe loss R i . 4: X ← min{X, R i }."
+    },
+    {
+      "id": "FORMULA_12",
+      "raw": "σ ← σ(i + 1, R i )."
+    },
+    {
+      "id": "FORMULA_13",
+      "raw": "Notation. Assume that each R i takes values in a common finite support V = {v 1 , . . . , v k }. For each i ∈ [n], let p i denote the probability mass function (PMF) of R i , with p i [v q ] = Pr[R i = v q ]. Let P i ∈ R k×k +"
+    },
+    {
+      "id": "FORMULA_14",
+      "raw": "(X, R i-1 , i) following stopping rule τ as Φ τ (X, R i-1 , i). Φ τ (X, R i-1 , i) := E[min{X, τ (X,Ri-1,i) min j=i R j } + τ (X,Ri-1,i) j=i c j ] In addition, we use Φ(X, R i-1 , i) = Φ τ * (X, R i-1 , i) = min τ Φ τ (X, R i-1 , i)"
+    },
+    {
+      "id": "FORMULA_15",
+      "raw": "Φ τ * (X, R i-1 , i) = min X, c i + E Ri|Ri-1 [ϕ τ * (min{X, R i }, R i , i + 1)] ,"
+    },
+    {
+      "id": "FORMULA_16",
+      "raw": "E σ - τ * (σ,Ri-1,i) min j=i R j + - τ * (σ,Ri-1,i) j=i c j = 0,(1)"
+    },
+    {
+      "id": "FORMULA_17",
+      "raw": "• Φ(•, R i-1 , i) is 1-Lipschitz and monotone non-decreasing. • Let H i (x, R i-1 ) := Φ(x, R i-1 , i)-x, then H i (•, R i-1"
+    },
+    {
+      "id": "FORMULA_18",
+      "raw": "Φ(b, R i-1 , i) -Φ(a, R i-1 , i) ≤ E min{b, τ * (a,Ri-1,i) min j=i R j } -min{a, τ * (a,Ri-1,i) min j=i R j } ≤ b -a"
+    },
+    {
+      "id": "FORMULA_19",
+      "raw": "Φ(b, R i-1 , i) = E min{b, τ * (b,Ri-1,i) min j=i R j } + τ * (b,Ri-1,i) j=i c j ≥ E min{a, τ * (b,Ri-1,i) min j=i R j } + τ * (b,Ri-1,i) j=i c j ≥ E min{a, τ * (a,Ri-1,i) min j=i R j } + τ * (a,Ri-1,i) j=i c j = Φ(a, R i-1 , i) Thus, Φ(•, R i-1 , i) is monotone non-decreasing. Now consider H i , we have H i (b, R i-1 ) -H i (a, R i-1 ) = Φ(b, R i-1 , i) -Φ(a, R i-1 , i) -(b -a) ≤ 0"
+    },
+    {
+      "id": "FORMULA_20",
+      "raw": "• σ i (R i-1 , i"
+    },
+    {
+      "id": "FORMULA_21",
+      "raw": "σ i (R i-1 , i), then σ i (R i-1 , i) depends only on the (sub)hypernode L := {b i , . . . , b η }. If i = η with probability 1, then σ i (R i-1 , i) depends only on b i ."
+    },
+    {
+      "id": "FORMULA_22",
+      "raw": "H i (x, R i-1 ) = Φ(x, R i-1 , i) -x H i (x) is 1-Lipschitz and monotone non-increasing by lemma B.1. Since H i (0, R i-1 ) = Φ(0, R i-1 , i) ≥ 0 and H i (v k , R i-1 ) = 0, there exist some σ i ∈ S, such that H i (σ i , R i-1 ) = 0."
+    },
+    {
+      "id": "FORMULA_23",
+      "raw": "δ = Φ(σ i , R i-1 , i) -Φ τ (σ i , R i-1 , i) = 0"
+    },
+    {
+      "id": "FORMULA_24",
+      "raw": "0 < δ = Φ(σ i , R i-1 , i) -Φ τ (σ i , R i-1 , i) ≤ Φ(σ i , R i-1 , i) -Φ τ * (σi-ϵ,Ri-1,i) (σ i , R i-1 , i) = (Φ(σ i , R i-1 , i) -Φ(σ i -ϵ, R i-1 , i)) + (Φ(σ i -ϵ, R i-1 , i) -Φ τ * (σi-ϵ,Ri-1,i) (σ i , R i-1 , i)) ≤ 2ϵ"
+    },
+    {
+      "id": "FORMULA_25",
+      "raw": "τ * (σ i -ϵ, R i-1 , i) ≥ i since σ i is the smallest such that H i (σ i , R i-1 ) = 0, this implies that H i (σ i -ϵ, R i-1 ) = Φ τ * (σi-ϵ,Ri-1,i) (σ i -ϵ, R i-1 , i) -(σ i -ϵ)"
+    },
+    {
+      "id": "FORMULA_26",
+      "raw": "Φ(x, R i-1 , i) = x."
+    },
+    {
+      "id": "FORMULA_27",
+      "raw": "τ ⋆ (x,Ri-1,i) j=i"
+    },
+    {
+      "id": "FORMULA_28",
+      "raw": "2: for x ∈ S do ▷ Base case: filling in T (•, •, n) 3: for s ∈ S do 4: z ← y∈S (min{x, y} + c n ) • Pr(R n = y) 5: if z > x then 6: Φ(x, s, n) = z, 1(x, s, n) = 1 7: else 8: Φ(x, s, n) = x, 1(x, s, n) = 0 9: end if 10: R FRM (x, s, n) = 1(x, s, n) • R n , and c FR (x, s, n) = 1(x, s, n) • c n 11:"
+    },
+    {
+      "id": "FORMULA_29",
+      "raw": "for i = n -1, • • • , 1 do ▷ Filling in T (•, •, i) for all i = n -1, • • • , 1 14:"
+    },
+    {
+      "id": "FORMULA_30",
+      "raw": "z ← E y∈S min x, y, R FRM (x, s y , i + 1) + c j + c FR (x, s y , i + 1) • Pr(R i = y) where s y is the state that gives R i realization R i = y 17: if z > x then 18: Φ(x, s, i) = z, 1(x, s, i) = 1 19: else 20: Φ(x, s, i) = x, 1(x, s, i) = 0 21: end if 22: Calculate R FRM (x, s, i) and c FR (x, s, i) as follows: with probability Pr(R i = y), R FRM (x, s, i) is 1(x, s, i) • min{y, R FRM (x, s y , i + 1)} and c FR (x, s, i) is 1(x, s, i) • (c i + c FR (x, s y , i + 1)) 23:"
+    },
+    {
+      "id": "FORMULA_31",
+      "raw": "c FR (x, R i-1 , i) := τ ⋆ (x,Ri-1,i) j=i c j"
+    },
+    {
+      "id": "FORMULA_32",
+      "raw": "H := {v 1 , . . . , v m } ⊆ V such that the subgraph of G induced by H, denoted by L, forms a directed path. That is, for each i ∈ [m -1], the edge (v i , v i+1 ) belongs to E."
+    },
+    {
+      "id": "FORMULA_33",
+      "raw": "L = {L 1 , L 2 , . . . , L k }, L j = (v j 1 → v j 2 → • • • → v j mj )"
+    },
+    {
+      "id": "FORMULA_34",
+      "raw": "σ(v 1 ) ≤ σ(v 2 | ℓ 1 ) ≤ • • • ≤ σ(v n | ℓ n-1 ),"
+    },
+    {
+      "id": "FORMULA_35",
+      "raw": "σ(A) ≤ σ(B) ≤ [σ(C) | ℓ A = x, ℓ B = y];"
+    },
+    {
+      "id": "FORMULA_36",
+      "raw": "D 2 : A → B → C."
+    },
+    {
+      "id": "FORMULA_37",
+      "raw": "E[c B ] + E[R B |π B ] Pr[π B ] + λ B [E[c A ] + E[R A |π A ]π A + E[min{R A , R B , y}|λ B ∩ λ A ]λ A ] + E[min{R B , y|ρ A , λ B }ρ A ]] + ρ B [E[c A ] + E[R A |π A ]π A + E[min{y, R A |λ A }λ A + E[ϕ C ({R A , R B , X}|ρ A ∩ ρ B )]]]"
+    },
+    {
+      "id": "FORMULA_38",
+      "raw": "E[c A ] + π A E[R A |π A ] + λ A E[min{X, R A }|λ A ] + ρ A [E[c B ] + π B E[R B |π B ] + λ B E[min{X, R B }|λ B ∩ ρ A ] + ρ B ϕ C (min{X, R B , R A }|ρ A ∩ ρ B )]"
+    },
+    {
+      "id": "FORMULA_39",
+      "raw": "E[(σ B -R B ) + -c B ] = 0"
+    },
+    {
+      "id": "FORMULA_40",
+      "raw": "E[c A ] = π A σ A -π A E[R A |π A ] E[c B ] = (π B + λ B )σ B -π B E[R B |π B ] -λ B E[R B |λ B ]"
+    },
+    {
+      "id": "FORMULA_41",
+      "raw": "E[UTIL(D 2 ) -UTIL(D 1 )] = π B π A (σ A -σ B ) + π A λ B [E[R B |λ B ] -σ B ] + λ A π B [E[min{X, R A |λ A } -σ B ]]] + λ B λ A [-E[min{R A , R B .X}|λ B ∩ λ A ] -σ B + E[R B |λ B ] + E[min{y, R A }|λ A ]] < λ B λ A [-E[min{R A , R B .X}|λ B ∩ λ A ] -σ B + E[R B |λ B ] + E[min{y, R A }|λ A ]]"
+    },
+    {
+      "id": "FORMULA_42",
+      "raw": "E[min{R A , R B , X}|λ B ∩ λ A ] = σ B + E[min{min{R A , X} -σ B , R B -σ B }|λ B ∩ λ A ] ≤ σ B + E[min{R A , X} -σ B + R B -σ B |λ B ∩ λ A ] = E[R B |λ B ] + E[min{X, R A }|λ A ] -σ B < 0"
+    },
+    {
+      "id": "FORMULA_43",
+      "raw": "E[UTIL(D 2 ) -UTIL(D 1 )] < 0."
+    },
+    {
+      "id": "FORMULA_44",
+      "raw": "R A ≤ σ A R A ∈ (σ A , σ B ) R A ≥ σ B π A λ A ρ A R B ≤ σ A E[R B |π B ] E[R B |π B ] E[R B |π B ] π B , stop at B. + E[c B |π B ] + E[c B |π B ] + E[c B |π B ] R B ∈ (σ A , σ B ) E[R A |π A ] E[min{R A , R B , X|λ A ∩ λ B }] E[min{R B , y}|λ B ] λ B , open A. + E[c B |λ B ] + E[c A |π A ] + E[c B |λ B ] + E[c A |λ A ] + E[c B |λ B ] + E[c A |ρ A ] R B ≥ ρ B E[R A |ρ B ] E[min{X, R A }|λ A ] E[ϕ C ({R A , R B , X}|ρ A ∩ ρ B )] ρ B + E[c B |ρ B ] + E[c A |π A ] + E[c B |ρ B ] + E[c A |λ A ] + E[c B |ρ B ] + E[c A |ρ A ]"
+    },
+    {
+      "id": "FORMULA_45",
+      "raw": "= 1 -π A -λ A ."
+    },
+    {
+      "id": "FORMULA_46",
+      "raw": "= (V, E), a component of G is a maximal connected subgraph C = (V C , E C ) such that:"
+    },
+    {
+      "id": "FORMULA_47",
+      "raw": "V ′ ⊆ V , the induced subgraph G[V ′ ] is the graph (V ′ , E ′ )"
+    },
+    {
+      "id": "FORMULA_48",
+      "raw": "E ′ = {(u, v) ∈ E | u, v ∈ V ′ } That is, G[V ′"
+    },
+    {
+      "id": "FORMULA_49",
+      "raw": "I o := {v i = ℓ i | i ∈ V o }."
+    },
+    {
+      "id": "FORMULA_50",
+      "raw": "Φ(x, r) = min x, E[min{ℓ r , x}] + c r , E[min{ℓ r , x, ℓ v }] + c r + c v ."
+    }
+  ]
+}

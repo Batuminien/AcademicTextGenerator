@@ -1,0 +1,376 @@
+{
+  "title": "Stab-QRAM: An All-Clifford Quantum Random Access Memory for Special Data",
+  "authors": [
+    {
+      "firstname": "Guangyi",
+      "surname": "Li",
+      "email": ""
+    },
+    {
+      "firstname": "Yu",
+      "surname": "Gan",
+      "email": ""
+    },
+    {
+      "firstname": "Zeguan",
+      "surname": "Wu",
+      "email": ""
+    },
+    {
+      "firstname": "Xueyue",
+      "surname": "Zhang",
+      "email": ""
+    },
+    {
+      "firstname": "Zheshen",
+      "surname": "Zhang",
+      "email": ""
+    },
+    {
+      "firstname": "Junyu",
+      "surname": "Liu",
+      "email": ""
+    }
+  ],
+  "abstract": "Quantum random access memories (QRAMs) are pivotal for data-intensive quantum algorithms, but existing general-purpose and domain-specific architectures are hampered by a critical bottleneck: a heavy reliance on non-Clifford gates (e.g., T-gates), which are prohibitively expensive to implement fault-tolerantly. To address this challenge, we introduce the Stabilizer-QRAM (Stab-QRAM), a domain-specific architecture tailored for data with an affine Boolean structure (f (x) = Ax + b over F2), a class of functions vital for optimization, time-series analysis, and quantum linear systems algorithms. We demonstrate that the gate interactions required to implement the matrix A form a bipartite graph. By applying König's edge-coloring theorem to this graph, we prove that Stab-QRAM achieves an optimal logical circuit depth of O(log N) for N data items, matching its O(log N) space complexity. Critically, the Stab-QRAM is constructed exclusively from Clifford gates (CNOT and X), resulting in a zero T-count. This design completely circumvents the non-Clifford bottleneck, eliminating the need for costly magic state distillation and making it exceptionally suited for early fault-tolerant quantum computing platforms. We highlight Stab-QRAM's utility as a resource-efficient oracle for applications in discrete dynamical systems, and as a core component in Quantum Linear Systems Algorithms, providing a practical pathway for executing data-intensive tasks on emerging quantum hardware.",
+  "sections": [
+    {
+      "title": "",
+      "paragraphs": [
+        "Introduction -The field of quantum computing has transitioned from a theoretical framework to an experimental reality, driven by advancements in physical platforms such as superconducting [1] and trapped-ion [2] systems. These developments have enabled increasingly capable quantum processors. However, a key challenge in realizing the potential of transformative quantum algorithms is the efficient encoding of large classical data into quantum states, as this must be done in a way that preserves the computational advantages of quantum algorithms for big data applications. Analogous to Random Access Memory (RAM) in classical computing [3], Quantum Random Access Memory (QRAM) [4][5][6] addresses this challenge by performing coherent memory lookups. Specifically, QRAM transforms a superposition of address states i α i |i⟩|0⟩ ⊗m into a superposition of data states i α i |i⟩|f (i)⟩ via the unitary operation U f . This capability is critical for quantum algorithmic speedups, as it enables simultaneous querying of multiple memory locations in a single coherent operation, providing exponential parallelism in data access unattainable by classical RAM.",
+        "Current QRAM architectures can be broadly categorized into two types [7]: general-purpose (GP) and domain-specific (DS). A GP architecture is designed for universality, aiming to load arbitrary and unstructured data with perfect fidelity. Conversely, a DS architecture sacrifices this universal capability for highly efficient-in terms of resource cost and/or execution time-loading or representation of data that conforms to a specific structure, distribution, or algorithmic domain. GP architectures [5][6][7][8][9][10][11][12] offer this universality but face significant resource trade-offs; prominent designs either require a prohibitive number of qubits proportional to the memory size, O(N ), or suffer from a circuit depth that scales at least linearly with memory size. In line with their design principle, existing DS architectures [13,14], often based on machine learning models, exemplify this trade-off by typically providing an approximate data loading, which may require computationally intensive training and lack adaptability. Critically, nearly all existing GP and DS architectures rely heavily on non-Clifford gates (e.g., T-gates or Toffoli gates), which exhibit substantially higher error rates and are exceptionally costly to implement fault-tolerantly [15,16]. This reliance on fragile, resource-intensive gates severely limits the scale of data-intensive algorithms that can be executed.",
+        "To address this gap, we introduce the Stab-QRAM, a novel DS architecture designed for near-and mid-term quantum devices. Our approach makes a strategic trade-off: we sacrifice universality in favor of exceptional resource efficiency by focusing on data with an affine Boolean structure: functions of the form f (x) = Ax + b over the finite field F 2 . While the implementability of such functions with Clifford circuits is a known consequence of the Gottesman-Knill theorem [17], our work is the first to leverage this principle to construct a complete and practical quantum memory framework. We formalize this concept into a complete, reconfigurable QRAM architecture, and provide the first rigorous analysis of its optimal performance. The resulting architecture circumvents the non-Clifford gate bottleneck entirely, achieving O(log N ) space and depth complexity, which makes it uniquely suited for data-intensive tasks. This paper presents a comprehensive blueprint for the Stab-QRAM. We begin by establishing the theoretical foundations of our model and characterizing the Stab-QRAM's properties. This is followed by a comparative analysis with existing architectures to highlight its unique advantages. We conclude by exploring promising applications and discussing the potential for the Stab-QRAM's efficient implementation on contemporary quantum hardware platforms.",
+        "Theoretical Model and Construction -We first prove that a universal QRAM, capable of implementing an oracle for an arbitrary Boolean function f : {0, 1} n → {0, 1} m , cannot be arXiv:2509.26494v2 [quant-ph] 5 Oct 2025 constructed using only Clifford gates. The proof rests on the constrained nature of the Clifford group [18].",
+        "A QRAM oracle must perform the transformation U f : |x⟩|0⟩ ⊗m → |x⟩|f (x)⟩. Let us assume this transformation is implemented by a Clifford circuit C. The action of any Clifford circuit on a computational basis state is restricted to the form C|x⟩|0⟩ ⊗k = |g(x)⟩|ϕ(x)⟩, where both g and ϕ must be affine functions over the finite field F 2 [19]. For the circuit C to function as the QRAM oracle U f , its output must match the required form, which implies we must have g(x) = x and ϕ(x) = f (x). This directly forces the function f (x) to be affine.",
+        "This constraint makes a pure Clifford-based QRAM for universal data access impossible. The class of affine functions is exponentially smaller than the set of all Boolean functions. For a single output bit (m = 1), the number of affine functions is |A n | = 2 n+1 , whereas the total number of Boolean functions is",
+        ". Since for any n ≥ 2 most Boolean functions are non-affine, they cannot be realized by a Clifford circuit. Therefore, a universal QRAM cannot be built from Clifford gates alone.",
+        "This fundamental limitation, however, precisely defines the domain where a highly efficient, specialized QRAM can be built. We show that for any function belonging to this affine class,",
+        "an exact, all-Clifford oracle can be constructed. For an n-qubit address register |x⟩ and an m-qubit data register |0⟩ ⊗m (where often m = n), the linear transformation Ax is implemented by applying a CNOT gate from address qubit x k to data qubit d j if and only if the matrix entry A j,k = 1. The constant offset b is then added by applying an X gate to data qubit d j if the vector entry b j = 1. The complete unitary operator takes the compact form:",
+        "This construction is reconfigurable and requires only n + m qubits, yielding a space complexity of O(log N ) where N = 2 n denotes the number of memory locations.",
+        "Stab-QRAM's properties -The implementation of the affine function f (x) = Ax + b in the Stab-QRAM architecture is modeled by a logical interaction graph G A = (V, E). The vertices V represent the system's qubits, which are partitioned into two disjoint sets: an n-qubit address register V addr = {x 1 , . . . , x n }, and an m-qubit data register V data = {d 1 , . . . , d m }.",
+        "The graph's edges E represent the required CNOT interactions between these registers. An edge (x k , d j ) exists if and only if the matrix entry A j,k = 1, corresponding to a CNOT(x k , d j ) operation. The complete edge set is thus formally defined as",
+        "By this construction, every edge connects an address qubit to a data qubit, making G A an inherently bipartite graph. This structural property is fundamental to the architecture's efficient hardware implementation [20] and it lays the foundation for achieving O(log N ) optimal logical circuit depth.",
+        "The logical circuit depth, defined as the minimum number of parallel time steps required to execute all gates, is a critical performance metric for quantum algorithms. Our objective is to determine an optimal scheduling strategy for the CNOT and X gates in the Stab-QRAM circuit to minimize this depth. We demonstrate that this scheduling problem can be solved exactly by mapping it to a classic problem in graph theory.",
+        "The fundamental physical constraint is that a single qubit can only participate in one CNOT gate per time step. In the graph-theoretic framework, this constraint translates directly to an edge-coloring problem: any two edges (CNOTs) that are incident on the same vertex (qubit) must be assigned to different time layers (colors). Consequently, the minimum circuit depth for the CNOT portion of the circuit is precisely the chromatic index of the graph G A -the minimum number of colors needed for a valid edge-coloring.",
+        "To determine this value, we consider the maximum degree of the graph, ∆(G A ), which is the maximum number of CNOT operations in which any single qubit participates. The maximum degree is formally given by:",
+        "A cornerstone result in graph theory, König's edge-coloring theorem [21], states that the chromatic index of any bipartite graph is exactly equal to its maximum degree. Since the interaction graph G A is inherently bipartite, this theorem provides a direct construction for the optimal circuit schedule: all CNOT gates corresponding to edges of the same color are assigned to a single parallel execution layer. This allows all CNOT operations to be scheduled in precisely ∆ layers. The remaining single-qubit X gates, which implement the constant offset b, can all be executed in a single additional parallel layer after the CNOT operations are complete. Therefore, the total logical depth of the Stab-QRAM circuit is given by:",
+        "In the worst-case scenario, the maximum degree ∆ is bounded by max(n, m). Since the number of memory locations is N = 2 n , the circuit depth scales as O(n) = O(log N ). This analysis rigorously establishes the optimal logarithmic depth complexity of the Stab-QRAM architecture, a key advantage highlighted in Table I.",
+        "Numerical simulations in Figure 1 underscore Stab-QRAM's application advantages. Sparse matrices yield minimal depths, suiting sparse-data tasks like quantum machine learning or graph algorithms with reduced latency. Dense matrices, while deeper, maintain robustness below bounds, A scatter plot for randomly generated matrices reveals no direct correlation between the circuit depth and the matrix rank over F2. This highlights that depth is a local property (maximum degree ∆) rather than a global algebraic property.",
+        "To further characterize performance, we also analyzed the effect of the matrix rank over F 2 , a global algebraic property. The results in Figure 2 yield a key insight: there is no direct correlation with circuit depth. This is because rank is a global property, whereas depth is dictated by the local graph property of maximum qubit degree, ∆. This distinction is critical for algorithm design, as it shows the Stab-QRAM's performance hinges on the local distribution of CNOTs rather than the matrix's global structure. Consequently, sparse matrices, regardless of their rank, are ideal for leveraging the architecture's inherent parallelism.",
+        "In addition to its optimal depth, another key metric is the resource requirement, quantified by the gate count. Our Stab-QRAM circuit contains no non-Clifford gates, with CNOT gates being the primary operations. The total CNOT count equals the Hamming weight of matrix A (number of non-zero entries). As illustrated in Figure 3, this count scales linearly with matrix density p (probability of A j,k = 1) and quadratically with dimension n (for m = n), matching the expected E[count] = m•n•p. This corresponds to an O((log N ) 2 ) scaling, where N = 2 n represents the data space size, enabling slow growth and strong scalability for large-scale implementations. Finally, beyond abstract metrics, practical performance hinges on locality-how efficiently the logical bipartite graph G A can be mapped onto physical hardware with limited connectivity. To analyze this, we model the hardware as a kregular graph [22], where each vertex (representing a physical qubit) has exactly k edges connecting it to other vertices. This structure is chosen for its generality, as it abstracts away from specific proprietary architectures while capturing the fundamental connectivity constraints prevalent across various quantum platforms [23,24]. For concreteness, consider the connectivity in leading platforms: IBM's 2025 processors, such as the Nighthawk [25], adopt a square-lattice topology with a 4-degree nearest-neighbor connectivity (k = 4), enabling denser two-qubit gate implementations in a 2D grid-like arrangement. In contrast, Google's Willow chip [26] features a more irregular tunable coupler architecture with an average connectivity of 3.47, optimized for error-corrected logical qubits but with boundary effects reducing the effective degree for edge qubits. Moreover, by varying the parameter k, it facilitates the exploration of different connectivity levels, enabling predictions about performance on future hardware with potentially enhanced connectivity without being limited to current designs.",
+        "Using a greedy heuristic for mapping-sorting logical qubits by degree and placing them to maximize connections-we assess non-local CNOTs, which require SWAP operations. We quantify this via the maximum required distance d on the hardware graph, necessitating (d -1) SWAPs per such CNOT, indicating potential bottlenecks.",
+        "Heatmaps in Figure 4 highlight Stab-QRAM's advantages: increasing hardware connectivity k markedly reduces the maximum (d -1)-locality. Sparse matrices (low p) and smaller dimensions (n) yield significant optimizations, min- imizing SWAP overhead and enhancing efficiency on nearterm devices.",
+        "Comparison -The Stab-QRAM occupies a unique and highly advantageous position within the landscape of QRAM designs. As a domain-specific architecture, it leverages the structure of affine Boolean functions to achieve exceptional efficiency, setting it apart from both general-purpose and other domain-specific models.",
+        "GP architectures offer universality at the cost of significant resource overhead. The seminal Bucket-Brigade QRAM (BB-QRAM) [5] is notable for its logarithmic O(log N ) query time, but its O(N ) space complexity makes it prohibitive for large datasets. We select BB-QRAM as the representative router-based QRAM, as subsequent developments based on BB-QRAM do not offer significant improvements in asymptotic complexity for key metrics and continue to rely heavily on non-Clifford gates. In contrast, Quantum Read-Only Memory (QROM) [10] achieves an optimal O(log N ) space complexity but suffers from a O(N log N ) circuit depth. Crucially, both architectures rely on a high number of non-Clifford gates, leading to at least an O(N ) T-gate count, which is a primary bottleneck for fault-tolerant implementation.",
+        "Other DS architectures sacrifice universality for efficiency, a philosophy our work shares, but they do so with different trade-offs. Prominent examples like Parametric Quantum Circuit based QRAM (PQC-based QRAM) [13] uses variational or machine learning techniques to \"learn\" a data-loading function.Though the PQC-based QRAM work claims the ability to access arbitrary data, its design differs significantly from a general-purpose QRAM, and its ability to extend to arbitrary datasets is relatively weak. So far, its functionality has been demonstrated primarily in quantum machine learning and binary storage tasks, which is why we regard PQCbased QRAM as a DS QRAM in this work. While PQC-based QRAM can achieve impressive O(1) logical circuit depth for specific tasks, this paradigm introduces distinct challenges. The data loading is often approximate, the training process itself can be computationally intensive, and the underlying circuits still require non-Clifford gates, resulting in a non-zero T-gate complexity.",
+        "The Stab-QRAM's advantage lies in its unique combination of strengths. Unlike trainable models, its construction is deterministic, providing exact data loading for its specified domain. Most importantly, by restricting its operation to a class of functions implementable with linear algebra over F 2 , our architecture is constructed exclusively using Clifford gates. This design choice completely eliminates the non-Clifford gate bottleneck, resulting in a zero T-gate count. As summarized in Table I, the Stab-QRAM combines O(log N ) space and depth complexity with unparalleled T-gate efficiency, making it a uniquely powerful and practical solution for a significant class of quantum algorithms.",
+        "Discussion -In this work, we introduced the Stab-QRAM, a domain-specific architecture designed to overcome a critical bottleneck in quantum computing by enabling highly efficient loading of structured classical data. By deliberately trading the universality of general-purpose designs for exceptional resource efficiency on affine Boolean problems (f (x) = Ax + b), Stab-QRAM attains O(log N ) space and depth complexity with zero T-gates. Its Clifford-only construction is inherently compatible with fault-tolerant quantum computing (FTQC) [27], completely eliminating the costly magic state distillation [28] required by non-Clifford QRAMs.",
+        "One of the most promising applications of Stab-QRAM lies in time-series analysis [29], where data can often be modeled as discrete affine dynamical systems in binary state spaces. For instance, linear feedback shift registers [30] (LFSRs) underpins many real-world systems, including digital communications [31], gene regulatory networks [32], and simplified financial models. In this context, Stab-QRAM serves as a quantum co-processor for simulating system evolutions x t+1 = Ax t + b, enabling parallel exploration of superimposed trajectories. This capability directly supports probabilistic forecasting by sampling from evolved quantum states, as well as structured search tasks via integration with Grover's algorithm [33] for pattern matching or cryptanalysis of LFSRbased stream ciphers.",
+        "Beyond time-series, Stab-QRAM holds potential for opti-  [36] and Mod2VQLS [37], the profound efficiency gains offered by Stab-QRAM propagate enables a viable path toward applying these powerful algorithms to challenging optimization tasks in fields such as logistics, power flow, and network design.",
+        "From a hardware perspective, Stab-QRAM's practicality stems from its specialized design. Compared to a generalpurpose QRAM, it relies solely on CNOT gates with specific connectivity requirements, a feature that enables its implementation on widely used quantum platforms, including trapped ions [2], Rydberg atom arrays [38], photonics [39,40], and superconducting qubits coupled with microwave or mechanical modes [40][41][42][43][44][45][46]. For superconducting circuits in particular, Stab-QRAM circumvents the need for complex controlled-iSWAP gates, which demand native support on specially engineered hardware [41] or quantum routers [42][43][44]. Instead, a general-purpose processor equipped with optimized CNOT gates can readily support it. Moreover, Stab-QRAM stands to benefit from recent advances in superconducting architectures that enable enhanced connectivity, either through a shared bus [47,48] or across separate modules [49][50][51]. In photonic measurement-based quantum computing (MBQC) platforms [52,53], Stab-QRAM can be implemented by encoding time-bin or dual-rail address and data qubits in cluster states. The oracle's all-Clifford layers are executed as parallel measurements to realize the CNOT and X gates based on fixed bases with Pauli-frame tracking-no adaptive angles are needed. The photonic implementation only requires short optical delays based on fiber loops [54,55] or on-chip low-loss waveguides [56] without resorting to no long-lived quantum storage, while photonic switching and multiplexing supplies the in-round parallelism. This hardware-friendly, T-gate-free construction is not only suitable for demonstration on current Noisy intermediatescale quantum computing (NISQ) [57] devices but also ensures that its performance will scale with hardware maturity.",
+        "Despite its applications and hardware ease, Stab-QRAM's domain-specific nature limits it to affine functions, potentially hindering broader adoption. However, it forms an efficient base for structured QRAMs. Future work could add minimal non-Clifford gates to introduce non-linearity, enabling non-affine functions like Quadratic unconstrained binary optimization (QUBO) [58], non-linear machine learning features [59], or piecewise affine cryptography and simulations. The T-count would scale with non-linearity, not data size N , offering expansion potential with hardware advances. This bridges specialized efficiency and general-purpose costs, enabling more near-term algorithms.",
+        "In conclusion, Stab-QRAM exemplifies a design philosophy rarely seen in the QRAM literature: a focused, datastructure-specific quantum memory engineered for maximal efficiency, rather than universal applicability. This targeted approach demonstrates how specialized quantum accelerators can unlock significant real-world performance gains long before fully universal, fault-tolerant quantum computers become available."
+      ],
+      "subsections": []
+    }
+  ],
+  "body_paragraphs": [
+    "Introduction -The field of quantum computing has transitioned from a theoretical framework to an experimental reality, driven by advancements in physical platforms such as superconducting [1] and trapped-ion [2] systems. These developments have enabled increasingly capable quantum processors. However, a key challenge in realizing the potential of transformative quantum algorithms is the efficient encoding of large classical data into quantum states, as this must be done in a way that preserves the computational advantages of quantum algorithms for big data applications. Analogous to Random Access Memory (RAM) in classical computing [3], Quantum Random Access Memory (QRAM) [4][5][6] addresses this challenge by performing coherent memory lookups. Specifically, QRAM transforms a superposition of address states i α i |i⟩|0⟩ ⊗m into a superposition of data states i α i |i⟩|f (i)⟩ via the unitary operation U f . This capability is critical for quantum algorithmic speedups, as it enables simultaneous querying of multiple memory locations in a single coherent operation, providing exponential parallelism in data access unattainable by classical RAM.",
+    "Current QRAM architectures can be broadly categorized into two types [7]: general-purpose (GP) and domain-specific (DS). A GP architecture is designed for universality, aiming to load arbitrary and unstructured data with perfect fidelity. Conversely, a DS architecture sacrifices this universal capability for highly efficient-in terms of resource cost and/or execution time-loading or representation of data that conforms to a specific structure, distribution, or algorithmic domain. GP architectures [5][6][7][8][9][10][11][12] offer this universality but face significant resource trade-offs; prominent designs either require a prohibitive number of qubits proportional to the memory size, O(N ), or suffer from a circuit depth that scales at least linearly with memory size. In line with their design principle, existing DS architectures [13,14], often based on machine learning models, exemplify this trade-off by typically providing an approximate data loading, which may require computationally intensive training and lack adaptability. Critically, nearly all existing GP and DS architectures rely heavily on non-Clifford gates (e.g., T-gates or Toffoli gates), which exhibit substantially higher error rates and are exceptionally costly to implement fault-tolerantly [15,16]. This reliance on fragile, resource-intensive gates severely limits the scale of data-intensive algorithms that can be executed.",
+    "To address this gap, we introduce the Stab-QRAM, a novel DS architecture designed for near-and mid-term quantum devices. Our approach makes a strategic trade-off: we sacrifice universality in favor of exceptional resource efficiency by focusing on data with an affine Boolean structure: functions of the form f (x) = Ax + b over the finite field F 2 . While the implementability of such functions with Clifford circuits is a known consequence of the Gottesman-Knill theorem [17], our work is the first to leverage this principle to construct a complete and practical quantum memory framework. We formalize this concept into a complete, reconfigurable QRAM architecture, and provide the first rigorous analysis of its optimal performance. The resulting architecture circumvents the non-Clifford gate bottleneck entirely, achieving O(log N ) space and depth complexity, which makes it uniquely suited for data-intensive tasks. This paper presents a comprehensive blueprint for the Stab-QRAM. We begin by establishing the theoretical foundations of our model and characterizing the Stab-QRAM's properties. This is followed by a comparative analysis with existing architectures to highlight its unique advantages. We conclude by exploring promising applications and discussing the potential for the Stab-QRAM's efficient implementation on contemporary quantum hardware platforms.",
+    "Theoretical Model and Construction -We first prove that a universal QRAM, capable of implementing an oracle for an arbitrary Boolean function f : {0, 1} n → {0, 1} m , cannot be arXiv:2509.26494v2 [quant-ph] 5 Oct 2025 constructed using only Clifford gates. The proof rests on the constrained nature of the Clifford group [18].",
+    "A QRAM oracle must perform the transformation U f : |x⟩|0⟩ ⊗m → |x⟩|f (x)⟩. Let us assume this transformation is implemented by a Clifford circuit C. The action of any Clifford circuit on a computational basis state is restricted to the form C|x⟩|0⟩ ⊗k = |g(x)⟩|ϕ(x)⟩, where both g and ϕ must be affine functions over the finite field F 2 [19]. For the circuit C to function as the QRAM oracle U f , its output must match the required form, which implies we must have g(x) = x and ϕ(x) = f (x). This directly forces the function f (x) to be affine.",
+    "This constraint makes a pure Clifford-based QRAM for universal data access impossible. The class of affine functions is exponentially smaller than the set of all Boolean functions. For a single output bit (m = 1), the number of affine functions is |A n | = 2 n+1 , whereas the total number of Boolean functions is",
+    ". Since for any n ≥ 2 most Boolean functions are non-affine, they cannot be realized by a Clifford circuit. Therefore, a universal QRAM cannot be built from Clifford gates alone.",
+    "This fundamental limitation, however, precisely defines the domain where a highly efficient, specialized QRAM can be built. We show that for any function belonging to this affine class,",
+    "an exact, all-Clifford oracle can be constructed. For an n-qubit address register |x⟩ and an m-qubit data register |0⟩ ⊗m (where often m = n), the linear transformation Ax is implemented by applying a CNOT gate from address qubit x k to data qubit d j if and only if the matrix entry A j,k = 1. The constant offset b is then added by applying an X gate to data qubit d j if the vector entry b j = 1. The complete unitary operator takes the compact form:",
+    "This construction is reconfigurable and requires only n + m qubits, yielding a space complexity of O(log N ) where N = 2 n denotes the number of memory locations.",
+    "Stab-QRAM's properties -The implementation of the affine function f (x) = Ax + b in the Stab-QRAM architecture is modeled by a logical interaction graph G A = (V, E). The vertices V represent the system's qubits, which are partitioned into two disjoint sets: an n-qubit address register V addr = {x 1 , . . . , x n }, and an m-qubit data register V data = {d 1 , . . . , d m }.",
+    "The graph's edges E represent the required CNOT interactions between these registers. An edge (x k , d j ) exists if and only if the matrix entry A j,k = 1, corresponding to a CNOT(x k , d j ) operation. The complete edge set is thus formally defined as",
+    "By this construction, every edge connects an address qubit to a data qubit, making G A an inherently bipartite graph. This structural property is fundamental to the architecture's efficient hardware implementation [20] and it lays the foundation for achieving O(log N ) optimal logical circuit depth.",
+    "The logical circuit depth, defined as the minimum number of parallel time steps required to execute all gates, is a critical performance metric for quantum algorithms. Our objective is to determine an optimal scheduling strategy for the CNOT and X gates in the Stab-QRAM circuit to minimize this depth. We demonstrate that this scheduling problem can be solved exactly by mapping it to a classic problem in graph theory.",
+    "The fundamental physical constraint is that a single qubit can only participate in one CNOT gate per time step. In the graph-theoretic framework, this constraint translates directly to an edge-coloring problem: any two edges (CNOTs) that are incident on the same vertex (qubit) must be assigned to different time layers (colors). Consequently, the minimum circuit depth for the CNOT portion of the circuit is precisely the chromatic index of the graph G A -the minimum number of colors needed for a valid edge-coloring.",
+    "To determine this value, we consider the maximum degree of the graph, ∆(G A ), which is the maximum number of CNOT operations in which any single qubit participates. The maximum degree is formally given by:",
+    "A cornerstone result in graph theory, König's edge-coloring theorem [21], states that the chromatic index of any bipartite graph is exactly equal to its maximum degree. Since the interaction graph G A is inherently bipartite, this theorem provides a direct construction for the optimal circuit schedule: all CNOT gates corresponding to edges of the same color are assigned to a single parallel execution layer. This allows all CNOT operations to be scheduled in precisely ∆ layers. The remaining single-qubit X gates, which implement the constant offset b, can all be executed in a single additional parallel layer after the CNOT operations are complete. Therefore, the total logical depth of the Stab-QRAM circuit is given by:",
+    "In the worst-case scenario, the maximum degree ∆ is bounded by max(n, m). Since the number of memory locations is N = 2 n , the circuit depth scales as O(n) = O(log N ). This analysis rigorously establishes the optimal logarithmic depth complexity of the Stab-QRAM architecture, a key advantage highlighted in Table I.",
+    "Numerical simulations in Figure 1 underscore Stab-QRAM's application advantages. Sparse matrices yield minimal depths, suiting sparse-data tasks like quantum machine learning or graph algorithms with reduced latency. Dense matrices, while deeper, maintain robustness below bounds, A scatter plot for randomly generated matrices reveals no direct correlation between the circuit depth and the matrix rank over F2. This highlights that depth is a local property (maximum degree ∆) rather than a global algebraic property.",
+    "To further characterize performance, we also analyzed the effect of the matrix rank over F 2 , a global algebraic property. The results in Figure 2 yield a key insight: there is no direct correlation with circuit depth. This is because rank is a global property, whereas depth is dictated by the local graph property of maximum qubit degree, ∆. This distinction is critical for algorithm design, as it shows the Stab-QRAM's performance hinges on the local distribution of CNOTs rather than the matrix's global structure. Consequently, sparse matrices, regardless of their rank, are ideal for leveraging the architecture's inherent parallelism.",
+    "In addition to its optimal depth, another key metric is the resource requirement, quantified by the gate count. Our Stab-QRAM circuit contains no non-Clifford gates, with CNOT gates being the primary operations. The total CNOT count equals the Hamming weight of matrix A (number of non-zero entries). As illustrated in Figure 3, this count scales linearly with matrix density p (probability of A j,k = 1) and quadratically with dimension n (for m = n), matching the expected E[count] = m•n•p. This corresponds to an O((log N ) 2 ) scaling, where N = 2 n represents the data space size, enabling slow growth and strong scalability for large-scale implementations. Finally, beyond abstract metrics, practical performance hinges on locality-how efficiently the logical bipartite graph G A can be mapped onto physical hardware with limited connectivity. To analyze this, we model the hardware as a kregular graph [22], where each vertex (representing a physical qubit) has exactly k edges connecting it to other vertices. This structure is chosen for its generality, as it abstracts away from specific proprietary architectures while capturing the fundamental connectivity constraints prevalent across various quantum platforms [23,24]. For concreteness, consider the connectivity in leading platforms: IBM's 2025 processors, such as the Nighthawk [25], adopt a square-lattice topology with a 4-degree nearest-neighbor connectivity (k = 4), enabling denser two-qubit gate implementations in a 2D grid-like arrangement. In contrast, Google's Willow chip [26] features a more irregular tunable coupler architecture with an average connectivity of 3.47, optimized for error-corrected logical qubits but with boundary effects reducing the effective degree for edge qubits. Moreover, by varying the parameter k, it facilitates the exploration of different connectivity levels, enabling predictions about performance on future hardware with potentially enhanced connectivity without being limited to current designs.",
+    "Using a greedy heuristic for mapping-sorting logical qubits by degree and placing them to maximize connections-we assess non-local CNOTs, which require SWAP operations. We quantify this via the maximum required distance d on the hardware graph, necessitating (d -1) SWAPs per such CNOT, indicating potential bottlenecks.",
+    "Heatmaps in Figure 4 highlight Stab-QRAM's advantages: increasing hardware connectivity k markedly reduces the maximum (d -1)-locality. Sparse matrices (low p) and smaller dimensions (n) yield significant optimizations, min- imizing SWAP overhead and enhancing efficiency on nearterm devices.",
+    "Comparison -The Stab-QRAM occupies a unique and highly advantageous position within the landscape of QRAM designs. As a domain-specific architecture, it leverages the structure of affine Boolean functions to achieve exceptional efficiency, setting it apart from both general-purpose and other domain-specific models.",
+    "GP architectures offer universality at the cost of significant resource overhead. The seminal Bucket-Brigade QRAM (BB-QRAM) [5] is notable for its logarithmic O(log N ) query time, but its O(N ) space complexity makes it prohibitive for large datasets. We select BB-QRAM as the representative router-based QRAM, as subsequent developments based on BB-QRAM do not offer significant improvements in asymptotic complexity for key metrics and continue to rely heavily on non-Clifford gates. In contrast, Quantum Read-Only Memory (QROM) [10] achieves an optimal O(log N ) space complexity but suffers from a O(N log N ) circuit depth. Crucially, both architectures rely on a high number of non-Clifford gates, leading to at least an O(N ) T-gate count, which is a primary bottleneck for fault-tolerant implementation.",
+    "Other DS architectures sacrifice universality for efficiency, a philosophy our work shares, but they do so with different trade-offs. Prominent examples like Parametric Quantum Circuit based QRAM (PQC-based QRAM) [13] uses variational or machine learning techniques to \"learn\" a data-loading function.Though the PQC-based QRAM work claims the ability to access arbitrary data, its design differs significantly from a general-purpose QRAM, and its ability to extend to arbitrary datasets is relatively weak. So far, its functionality has been demonstrated primarily in quantum machine learning and binary storage tasks, which is why we regard PQCbased QRAM as a DS QRAM in this work. While PQC-based QRAM can achieve impressive O(1) logical circuit depth for specific tasks, this paradigm introduces distinct challenges. The data loading is often approximate, the training process itself can be computationally intensive, and the underlying circuits still require non-Clifford gates, resulting in a non-zero T-gate complexity.",
+    "The Stab-QRAM's advantage lies in its unique combination of strengths. Unlike trainable models, its construction is deterministic, providing exact data loading for its specified domain. Most importantly, by restricting its operation to a class of functions implementable with linear algebra over F 2 , our architecture is constructed exclusively using Clifford gates. This design choice completely eliminates the non-Clifford gate bottleneck, resulting in a zero T-gate count. As summarized in Table I, the Stab-QRAM combines O(log N ) space and depth complexity with unparalleled T-gate efficiency, making it a uniquely powerful and practical solution for a significant class of quantum algorithms.",
+    "Discussion -In this work, we introduced the Stab-QRAM, a domain-specific architecture designed to overcome a critical bottleneck in quantum computing by enabling highly efficient loading of structured classical data. By deliberately trading the universality of general-purpose designs for exceptional resource efficiency on affine Boolean problems (f (x) = Ax + b), Stab-QRAM attains O(log N ) space and depth complexity with zero T-gates. Its Clifford-only construction is inherently compatible with fault-tolerant quantum computing (FTQC) [27], completely eliminating the costly magic state distillation [28] required by non-Clifford QRAMs.",
+    "One of the most promising applications of Stab-QRAM lies in time-series analysis [29], where data can often be modeled as discrete affine dynamical systems in binary state spaces. For instance, linear feedback shift registers [30] (LFSRs) underpins many real-world systems, including digital communications [31], gene regulatory networks [32], and simplified financial models. In this context, Stab-QRAM serves as a quantum co-processor for simulating system evolutions x t+1 = Ax t + b, enabling parallel exploration of superimposed trajectories. This capability directly supports probabilistic forecasting by sampling from evolved quantum states, as well as structured search tasks via integration with Grover's algorithm [33] for pattern matching or cryptanalysis of LFSRbased stream ciphers.",
+    "Beyond time-series, Stab-QRAM holds potential for opti-  [36] and Mod2VQLS [37], the profound efficiency gains offered by Stab-QRAM propagate enables a viable path toward applying these powerful algorithms to challenging optimization tasks in fields such as logistics, power flow, and network design.",
+    "From a hardware perspective, Stab-QRAM's practicality stems from its specialized design. Compared to a generalpurpose QRAM, it relies solely on CNOT gates with specific connectivity requirements, a feature that enables its implementation on widely used quantum platforms, including trapped ions [2], Rydberg atom arrays [38], photonics [39,40], and superconducting qubits coupled with microwave or mechanical modes [40][41][42][43][44][45][46]. For superconducting circuits in particular, Stab-QRAM circumvents the need for complex controlled-iSWAP gates, which demand native support on specially engineered hardware [41] or quantum routers [42][43][44]. Instead, a general-purpose processor equipped with optimized CNOT gates can readily support it. Moreover, Stab-QRAM stands to benefit from recent advances in superconducting architectures that enable enhanced connectivity, either through a shared bus [47,48] or across separate modules [49][50][51]. In photonic measurement-based quantum computing (MBQC) platforms [52,53], Stab-QRAM can be implemented by encoding time-bin or dual-rail address and data qubits in cluster states. The oracle's all-Clifford layers are executed as parallel measurements to realize the CNOT and X gates based on fixed bases with Pauli-frame tracking-no adaptive angles are needed. The photonic implementation only requires short optical delays based on fiber loops [54,55] or on-chip low-loss waveguides [56] without resorting to no long-lived quantum storage, while photonic switching and multiplexing supplies the in-round parallelism. This hardware-friendly, T-gate-free construction is not only suitable for demonstration on current Noisy intermediatescale quantum computing (NISQ) [57] devices but also ensures that its performance will scale with hardware maturity.",
+    "Despite its applications and hardware ease, Stab-QRAM's domain-specific nature limits it to affine functions, potentially hindering broader adoption. However, it forms an efficient base for structured QRAMs. Future work could add minimal non-Clifford gates to introduce non-linearity, enabling non-affine functions like Quadratic unconstrained binary optimization (QUBO) [58], non-linear machine learning features [59], or piecewise affine cryptography and simulations. The T-count would scale with non-linearity, not data size N , offering expansion potential with hardware advances. This bridges specialized efficiency and general-purpose costs, enabling more near-term algorithms.",
+    "In conclusion, Stab-QRAM exemplifies a design philosophy rarely seen in the QRAM literature: a focused, datastructure-specific quantum memory engineered for maximal efficiency, rather than universal applicability. This targeted approach demonstrates how specialized quantum accelerators can unlock significant real-world performance gains long before fully universal, fault-tolerant quantum computers become available."
+  ],
+  "references": [
+    {
+      "id": 1,
+      "text": "Scaling up superconducting quantum computers\n\t\t\n\t\t\tAnthonyMegrant\n\t\t\n\t\t\n\t\t\tYuChen\n\t\t\t0000-0002-7473-6745\n\t\t\n\t\t10.1038/s41928-025-01381-7\n\t\n\t\n\t\tNature Electronics\n\t\tNat Electron\n\t\t2520-1131\n\t\t\n\t\t\t8\n\t\t\t7\n\t\t\t\n\t\t\t2025\n\t\t\tSpringer Science and Business Media LLC"
+    },
+    {
+      "id": 2,
+      "text": "Trapped-ion quantum computing: Progress and challenges\n\t\t\n\t\t\tColinDBruzewicz\n\t\t\n\t\t\n\t\t\tJohnChiaverini\n\t\t\n\t\t\n\t\t\tRobertMcconnell\n\t\t\n\t\t\n\t\t\tJeremyMSage\n\t\t\t0000-0001-8180-0525\n\t\t\n\t\t10.1063/1.5088164\n\t\n\t\n\t\tApplied Physics Reviews\n\t\t1931-9401\n\t\t\n\t\t\t6\n\t\t\t2\n\t\t\t21314\n\t\t\t2019\n\t\t\tAIP Publishing"
+    },
+    {
+      "id": 3,
+      "text": "RCJaeger\n\t\t\n\t\t\n\t\t\tTNBlalock\n\t\t\n\t\t\n\t\t\tBJBlalock\n\t\t\n\t\tMicroelectronic circuit design\n\t\tNew York, NY\n\t\t\n\t\t\tMcGraw-Hill\n\t\t\t1997"
+    },
+    {
+      "id": 4,
+      "text": "SJaques\n\t\t\n\t\t\n\t\t\tAGRattew\n\t\t\n\t\tarXiv:2305.10310\n\t\tQRAM: A Survey and Critique\n\t\t\n\t\t\t2023\n\t\t\n\t\n\tquant-ph"
+    },
+    {
+      "id": 5,
+      "text": "Quantum Random Access Memory\n\t\t\n\t\t\tVittorioGiovannetti\n\t\t\n\t\t\n\t\t\tSethLloyd\n\t\t\n\t\t\n\t\t\tLorenzoMaccone\n\t\t\n\t\t10.1103/physrevlett.100.160501\n\t\n\t\n\t\tPhysical Review Letters\n\t\tPhys. Rev. Lett.\n\t\t0031-9007\n\t\t1079-7114\n\t\t\n\t\t\t100\n\t\t\t16\n\t\t\t160501\n\t\t\t2008\n\t\t\tAmerican Physical Society (APS)"
+    },
+    {
+      "id": 6,
+      "text": "Architectures for a quantum random access memory\n\t\t\n\t\t\tVittorioGiovannetti\n\t\t\n\t\t\n\t\t\tSethLloyd\n\t\t\n\t\t\n\t\t\tLorenzoMaccone\n\t\t\n\t\t10.1103/physreva.78.052310\n\t\n\t\n\t\tPhysical Review A\n\t\tPhys. Rev. A\n\t\t1050-2947\n\t\t1094-1622\n\t\t\n\t\t\t78\n\t\t\t5\n\t\t\t52310\n\t\t\t2008\n\t\t\tAmerican Physical Society (APS)"
+    },
+    {
+      "id": 7,
+      "text": "Systems Architecture for Quantum Random Access Memory\n\t\t\n\t\t\tShifanXu\n\t\t\t0009-0005-9103-228X\n\t\t\n\t\t\n\t\t\tConnorTHann\n\t\t\t0000-0003-0665-7161\n\t\t\n\t\t\n\t\t\tBenFoxman\n\t\t\t0009-0008-4422-6251\n\t\t\n\t\t\n\t\t\tStevenMGirvin\n\t\t\t0000-0002-6470-5494\n\t\t\n\t\t\n\t\t\tYongshanDing\n\t\t\t0000-0002-2338-1315\n\t\t\n\t\t10.1145/3613424.3614270\n\t\tarXiv:2306.03242\n\t\n\t\n\t\t56th Annual IEEE/ACM International Symposium on Microarchitecture\n\t\t\n\t\t\tACM\n\t\t\t2023\n\t\t\t\n\t\t\n\t\n\tquant-ph"
+    },
+    {
+      "id": 8,
+      "text": "Fat-Tree QRAM: A highbandwidth shared quantum random access memory for parallel queries\n\t\t\n\t\t\tSXu\n\t\t\n\t\t\n\t\t\tALu\n\t\t\n\t\t\n\t\t\tYDing\n\t\t\n\t\n\t\n\t\tProceedings of the 30th ACM International Conference on Architectural Support for Programming Languages and Operating Systems\n\t\tthe 30th ACM International Conference on Architectural Support for Programming Languages and Operating SystemsNew York, NY, USA\n\t\t\n\t\t\tAssociation for Computing Machinery\n\t\t\t2025\n\t\t\t2\n\t\t\t\n\t\t\n\t\n\tASPLOS '25)"
+    },
+    {
+      "id": 9,
+      "text": "Circuit-Based Quantum Random Access Memory for Classical Data\n\t\t\n\t\t\tDanielKPark\n\t\t\t0000-0002-3177-4143\n\t\t\n\t\t\n\t\t\tFrancescoPetruccione\n\t\t\n\t\t\n\t\t\tJune-Koo KevinRhee\n\t\t\n\t\t10.1038/s41598-019-40439-3\n\t\n\t\n\t\tScientific Reports\n\t\tSci Rep\n\t\t2045-2322\n\t\t\n\t\t\t9\n\t\t\t1\n\t\t\t3949\n\t\t\t2019\n\t\t\tSpringer Science and Business Media LLC"
+    },
+    {
+      "id": 10,
+      "text": "Encoding Electronic Spectra in Quantum Circuits with Linear T Complexity\n\t\t\n\t\t\tRyanBabbush\n\t\t\n\t\t\n\t\t\tCraigGidney\n\t\t\n\t\t\n\t\t\tDominicWBerry\n\t\t\n\t\t\n\t\t\tNathanWiebe\n\t\t\n\t\t\n\t\t\tJarrodMcclean\n\t\t\n\t\t\n\t\t\tAlexandruPaler\n\t\t\n\t\t\n\t\t\tAustinFowler\n\t\t\n\t\t\n\t\t\tHartmutNeven\n\t\t\n\t\t10.1103/physrevx.8.041015\n\t\n\t\n\t\tPhysical Review X\n\t\tPhys. Rev. X\n\t\t2160-3308\n\t\t\n\t\t\t8\n\t\t\t4\n\t\t\t41015\n\t\t\t2018\n\t\t\tAmerican Physical Society (APS)"
+    },
+    {
+      "id": 11,
+      "text": "MANielsen\n\t\t\n\t\t\n\t\t\tIChuang\n\t\t\n\t\tQuantum Computation and Quantum Information\n\t\t\n\t\t\tCambridge University Press\n\t\t\t2002"
+    },
+    {
+      "id": 12,
+      "text": "Trading T gates for dirty qubits in state preparation and unitary synthesis\n\t\t\n\t\t\tGHLow\n\t\t\n\t\t\n\t\t\tVKliuchnikov\n\t\t\n\t\t\n\t\t\tLSchaeffer\n\t\t\n\t\n\t\n\t\tQuantum\n\t\t\n\t\t\t8\n\t\t\t1375\n\t\t\t2024"
+    },
+    {
+      "id": 13,
+      "text": "Approximate quantum random access memory architectures\n\t\t\n\t\t\tKPhalak\n\t\t\n\t\t\n\t\t\tJLi\n\t\t\n\t\t\n\t\t\tSGhosh\n\t\t\n\t\tarXiv:2210.14804\n\t\t\n\t\t\t2022\n\t\t\n\t\n\tquantph"
+    },
+    {
+      "id": 14,
+      "text": "Entangling quantum generative adversarial networks\n\t\t\n\t\t\tMYNiu\n\t\t\n\t\t\n\t\t\tAZlokapa\n\t\t\n\t\t\n\t\t\tMBroughton\n\t\t\n\t\t\n\t\t\tSBoixo\n\t\t\n\t\t\n\t\t\tMMohseni\n\t\t\n\t\t\n\t\t\tVSmelyanskyi\n\t\t\n\t\t\n\t\t\tHNeven\n\t\t\n\t\tarXiv:2105.00080\n\t\t\n\t\t\t2021\n\t\t\n\t\n\tquant-ph"
+    },
+    {
+      "id": 15,
+      "text": "DHonciucMenendez\n\t\t\n\t\t\n\t\t\tARay\n\t\t\n\t\t\n\t\t\tMVasmer\n\t\t\n\t\n\t\n\t\tImplementing fault-tolerant non-Clifford gates using the\n\t\t\n\t\t\t2024\n\t\t\t109\n\t\t\t62438\n\t\t\n\t\n\t8,3,2]] color code"
+    },
+    {
+      "id": 16,
+      "text": "Heterogeneously error-corrected QRAMs\n\t\t\n\t\t\tASingal\n\t\t\n\t\t\n\t\t\tKNSmith\n\t\t\n\t\tarXiv:2504.21687\n\t\t\n\t\t\t2025\n\t\t\n\t\n\tquant-ph"
+    },
+    {
+      "id": 17,
+      "text": "DGottesman\n\t\t\n\t\tarXiv:quant-ph/9807006\n\t\tThe Heisenberg Representation of Quantum Computers\n\t\t\n\t\t\t1998"
+    },
+    {
+      "id": 18,
+      "text": "On Clifford groups in quantum computing\n\t\t\n\t\t\tJTolar\n\t\t\n\t\n\t\n\t\tJournal of Physics: Conference Series\n\t\t\n\t\t\t1071\n\t\t\t1\n\t\t\t12022\n\t\t\t2018"
+    },
+    {
+      "id": 19,
+      "text": "Improved simulation of stabilizer circuits\n\t\t\n\t\t\tScottAaronson\n\t\t\n\t\t\n\t\t\tDanielGottesman\n\t\t\n\t\t10.1103/physreva.70.052328\n\t\tarXiv:2008.12694\n\t\n\t\n\t\tPhysical Review A\n\t\tPhys. Rev. A\n\t\t1050-2947\n\t\t1094-1622\n\t\t\n\t\t\t70\n\t\t\t5\n\t\t\t52328\n\t\t\t2004. 2020\n\t\t\tAmerican Physical Society (APS)\n\t\t\n\t\n\tmath.LO"
+    },
+    {
+      "id": 20,
+      "text": "Quantum computing from graphs\n\t\t\n\t\t\tABKhesin\n\t\t\n\t\tarXiv:2501.17959\n\t\t\n\t\t\t2025\n\t\t\n\t\n\tquant-ph"
+    },
+    {
+      "id": 21,
+      "text": "The logical strength of König's edge coloring theorem\n\t\t\n\t\t\tCMummert"
+    },
+    {
+      "id": 22,
+      "text": "Large coherent states formed from disordered k-regular random graphs\n\t\t\n\t\t\tGDScholes\n\t\t\n\t\n\t\n\t\tEntropy\n\t\t\n\t\t\t25\n\t\t\t11\n\t\t\t1519\n\t\t\t2023"
+    },
+    {
+      "id": 23,
+      "text": "AJavadi-Abhari\n\t\t\n\t\t\n\t\t\tMTreinish\n\t\t\n\t\t\n\t\t\tKKrsulich\n\t\t\n\t\t\n\t\t\tCJWood\n\t\t\n\t\t\n\t\t\tJLishman\n\t\t\n\t\t\n\t\t\tJGacon\n\t\t\n\t\t\n\t\t\tSMartiel\n\t\t\n\t\t\n\t\t\tPDNation\n\t\t\n\t\t\n\t\t\tLSBishop\n\t\t\n\t\t\n\t\t\tAWCross\n\t\t\n\t\t\n\t\t\tBRJohnson\n\t\t\n\t\t\n\t\t\tJMGambetta\n\t\t\n\t\tarXiv:2405.08810\n\t\tQuantum computing with Qiskit\n\t\t\n\t\t\t2024\n\t\t\n\t\n\tquant-ph"
+    },
+    {
+      "id": 24,
+      "text": "Quantum error correction below the surface code threshold\n\t\t\n\t\t\tGoogleQuantum\n\t\t\n\t\t\n\t\t\tAI\n\t\t\n\t\t\n\t\t\tCollaborators\n\t\t\n\t\n\t\n\t\tNature\n\t\t\n\t\t\t638\n\t\t\t8044\n\t\t\t\n\t\t\t2025"
+    },
+    {
+      "id": 25,
+      "text": "How IBM will build the world's first large-scale, fault-tolerant quantum computer\n\t\n\t\n\t\tIBM Quantum Computing Blog\n\t\t\n\t\t\t2025"
+    },
+    {
+      "id": 26,
+      "text": "Google Willow Chip, A Closer Look At The Tech Giant's Push into Quantum Computing\n\t\t\n\t\t\tKD\n\t\t\n\t\n\t\n\t\tQuantum Zeitgeist\n\t\t\n\t\t\t2025"
+    },
+    {
+      "id": 27,
+      "text": "An introduction into fault-tolerant quantum computing\n\t\t\n\t\t\tAlexandruPaler\n\t\t\n\t\t\n\t\t\tSimonJDevitt\n\t\t\n\t\t10.1145/2744769.2747911\n\t\tArticle No. 60\n\t\n\t\n\t\tProceedings of the 52nd Annual Design Automation Conference\n\t\tthe 52nd Annual Design Automation ConferenceNew York, NY, USA\n\t\t\n\t\t\tACM\n\t\t\t2015"
+    },
+    {
+      "id": 28,
+      "text": "Experimental demonstration of logical magic state distillation\n\t\t\n\t\t\tPSRodriguez\n\t\t\n\t\t\n\t\t\tJMRobinson\n\t\t\n\t\t\n\t\t\tPNJepsen\n\t\t\n\t\t\n\t\t\tZHe\n\t\t\n\t\t\n\t\t\tCDuckering\n\t\t\n\t\t\n\t\t\tCZhao\n\t\t\n\t\t\n\t\t\tK.-HWu\n\t\t\n\t\t\n\t\t\tJCampo\n\t\t\n\t\t\n\t\t\tKBagnall\n\t\t\n\t\t\n\t\t\tMKwon\n\t\t\n\t\t\n\t\t\tTKarolyshyn\n\t\t\n\t\t\n\t\t\tPWeinberg\n\t\t\n\t\t\n\t\t\tMCain\n\t\t\n\t\t\n\t\t\tSJEvered\n\t\t\n\t\t\n\t\t\tAAGeim\n\t\t\n\t\t\n\t\t\tMKalinowski\n\t\t\n\t\t\n\t\t\tSHLi\n\t\t\n\t\t\n\t\t\tTManovitz\n\t\t\n\t\t\n\t\t\tJAmato-Grill\n\t\t\n\t\t\n\t\t\tJIBasham\n\t\t\n\t\tarXiv:2412.15165\n\t\t\n\t\t\t2024\n\t\t\n\t\n\tquant-ph"
+    },
+    {
+      "id": 29,
+      "text": "A walk through of time series analysis on quantum computers\n\t\t\n\t\t\tADaskin\n\t\t\n\t\tarXiv:2205.00986\n\t\t\n\t\t\t2022\n\t\t\n\t\n\tquant-ph"
+    },
+    {
+      "id": 30,
+      "text": "Quantum LFSR Structure for Random Number Generation Using QCA Multilayered Shift Register for Cryptographic Purposes\n\t\t\n\t\t\tHyun-IlKim\n\t\t\n\t\t\n\t\t\tJun-CheolJeon\n\t\t\t0000-0002-0243-9063\n\t\t\n\t\t10.3390/s22093541\n\t\n\t\n\t\tSensors\n\t\tSensors\n\t\t1424-8220\n\t\t\n\t\t\t22\n\t\t\t9\n\t\t\t3541\n\t\t\t2022\n\t\t\tMDPI AG"
+    },
+    {
+      "id": 31,
+      "text": "A Low-Power Parallel Architecture for Linear Feedback Shift Registers\n\t\t\n\t\t\tXinmiaoZhang\n\t\t\t0000-0002-8289-2377\n\t\t\n\t\t10.1109/tcsii.2018.2860934\n\t\n\t\n\t\tIEEE Transactions on Circuits and Systems II: Express Briefs\n\t\tIEEE Trans. Circuits Syst. II\n\t\t1549-7747\n\t\t1558-3791\n\t\t\n\t\t\t66\n\t\t\t3\n\t\t\t\n\t\t\t2019\n\t\t\tInstitute of Electrical and Electronics Engineers (IEEE)"
+    },
+    {
+      "id": 32,
+      "text": "Inference of dynamical gene regulatory networks from single-cell data with physics informed neural networks\n\t\t\n\t\t\tMMircea\n\t\t\n\t\t\n\t\t\tDGarlaschelli\n\t\t\n\t\t\n\t\t\tSSemrau\n\t\t\n\t\tarXiv:2401.07379[q-bio.MN\n\t\t\n\t\t\t2024"
+    },
+    {
+      "id": 33,
+      "text": "A fast quantum mechanical algorithm for database search\n\t\t\n\t\t\tLKGrover\n\t\t\n\t\n\t\n\t\tProceedings of the twenty-eighth annual ACM symposium on Theory of computing\n\t\tthe twenty-eighth annual ACM symposium on Theory of computing\n\t\t\n\t\t\t1996"
+    },
+    {
+      "id": 34,
+      "text": "Solving Large‐Scale Linear Systems of Equations by a Quantum Hybrid Algorithm\n\t\t\n\t\t\tMRPerelshtein\n\t\t\n\t\t\n\t\t\tAIPakhomchik\n\t\t\n\t\t\n\t\t\tAAMelnikov\n\t\t\n\t\t\n\t\t\tAANovikov\n\t\t\n\t\t\n\t\t\tAGlatz\n\t\t\n\t\t\n\t\t\tGSParaoanu\n\t\t\n\t\t\n\t\t\tVMVinokur\n\t\t\t0000-0002-0977-3515\n\t\t\n\t\t\n\t\t\tGBLesovik\n\t\t\n\t\t10.1002/andp.202200082\n\t\n\t\n\t\tAnnalen der Physik\n\t\tAnnalen der Physik\n\t\t0003-3804\n\t\t1521-3889\n\t\t\n\t\t\t534\n\t\t\t7\n\t\t\t2200082\n\t\t\t2022\n\t\t\tWiley"
+    },
+    {
+      "id": 35,
+      "text": "Quantum Algorithm for Linear Systems of Equations\n\t\t\n\t\t\tAramWHarrow\n\t\t\n\t\t\n\t\t\tAvinatanHassidim\n\t\t\n\t\t\n\t\t\tSethLloyd\n\t\t\n\t\t10.1103/physrevlett.103.150502\n\t\n\t\n\t\tPhysical Review Letters\n\t\tPhys. Rev. Lett.\n\t\t0031-9007\n\t\t1079-7114\n\t\t\n\t\t\t103\n\t\t\t15\n\t\t\t150502\n\t\t\t2009\n\t\t\tAmerican Physical Society (APS)"
+    },
+    {
+      "id": 36,
+      "text": "Improvements to Quantum Interior Point Method for Linear Optimization\n\t\t\n\t\t\tMMohammadhossein\n\t\t\n\t\t\n\t\t\tZWu\n\t\t\n\t\t\n\t\t\tBAugustino\n\t\t\n\t\t\n\t\t\tACarr\n\t\t\n\t\t\n\t\t\tTTerlaky\n\t\t\n\t\n\t\n\t\tACM Transactions on Quantum Computing\n\t\t\n\t\t\t6\n\t\t\t1\n\t\t\t2025"
+    },
+    {
+      "id": 37,
+      "text": "Mod2VQLS: A variational quantum algorithm for solving systems of linear equations modulo 2\n\t\t\n\t\t\tWAboumrad\n\t\t\n\t\t\n\t\t\tDWiddows\n\t\t\n\t\tarXiv:2311.12771\n\t\t\n\t\t\t2023\n\t\t\n\t\n\tquant-ph"
+    },
+    {
+      "id": 38,
+      "text": "Logical quantum processor based on reconfigurable atom arrays\n\t\t\n\t\t\tDolevBluvstein\n\t\t\t0000-0002-9934-9530\n\t\t\n\t\t\n\t\t\tSimonJEvered\n\t\t\t0000-0001-8986-1103\n\t\t\n\t\t\n\t\t\tAlexandraAGeim\n\t\t\t0000-0001-5294-4941\n\t\t\n\t\t\n\t\t\tSophieHLi\n\t\t\n\t\t\n\t\t\tHengyunZhou\n\t\t\t0000-0002-2148-8856\n\t\t\n\t\t\n\t\t\tTomManovitz\n\t\t\t0000-0003-3470-1369\n\t\t\n\t\t\n\t\t\tSepehrEbadi\n\t\t\n\t\t\n\t\t\tMadelynCain\n\t\t\t0000-0002-5298-3112\n\t\t\n\t\t\n\t\t\tMarcinKalinowski\n\t\t\t0000-0003-0605-8791\n\t\t\n\t\t\n\t\t\tDominikHangleiter\n\t\t\t0000-0002-4766-7967\n\t\t\n\t\t\n\t\t\tJPabloBonilla Ataides\n\t\t\n\t\t\n\t\t\tNishadMaskara\n\t\t\t0000-0001-5775-9542\n\t\t\n\t\t\n\t\t\tIrisCong\n\t\t\t0000-0001-7706-5927\n\t\t\n\t\t\n\t\t\tXunGao\n\t\t\n\t\t\n\t\t\tPedroSales Rodriguez\n\t\t\t0009-0002-8337-0762\n\t\t\n\t\t\n\t\t\tThomasKarolyshyn\n\t\t\n\t\t\n\t\t\tGiuliaSemeghini\n\t\t\n\t\t\n\t\t\tMichaelJGullans\n\t\t\t0000-0003-3974-2987\n\t\t\n\t\t\n\t\t\tMarkusGreiner\n\t\t\t0000-0002-2935-2363\n\t\t\n\t\t\n\t\t\tVladanVuletić\n\t\t\t0000-0002-9786-0538\n\t\t\n\t\t\n\t\t\tMikhailDLukin\n\t\t\t0000-0002-8658-1007\n\t\t\n\t\t10.1038/s41586-023-06927-3\n\t\n\t\n\t\tNature\n\t\tNature\n\t\t0028-0836\n\t\t1476-4687\n\t\t\n\t\t\t626\n\t\t\t7997\n\t\t\t\n\t\t\t2024\n\t\t\tSpringer Science and Business Media LLC"
+    },
+    {
+      "id": 39,
+      "text": "Realization of a Programmable Multipurpose Photonic Quantum Memory with Over-Thousand Qubit Manipulations\n\t\t\n\t\t\tShengZhang\n\t\t\n\t\t\n\t\t\tJixuanShi\n\t\t\n\t\t\n\t\t\tZhaibinCui\n\t\t\t0009-0003-9545-5031\n\t\t\n\t\t\n\t\t\tYeWang\n\t\t\n\t\t\n\t\t\tYukaiWu\n\t\t\n\t\t\n\t\t\tLumingDuan\n\t\t\n\t\t\n\t\t\tYunfeiPu\n\t\t\t0000-0002-5317-4966\n\t\t\n\t\t10.1103/physrevx.14.021018\n\t\n\t\n\t\tPhysical Review X\n\t\tPhys. Rev. X\n\t\t2160-3308\n\t\t\n\t\t\t14\n\t\t\t2\n\t\t\t21018\n\t\t\t2024\n\t\t\tAmerican Physical Society (APS)"
+    },
+    {
+      "id": 40,
+      "text": "Quantum random access memory with transmon-controlled phonon routing\n\t\t\n\t\t\tZWang\n\t\t\n\t\t\n\t\t\tHQiao\n\t\t\n\t\t\n\t\t\tANCleland\n\t\t\n\t\t\n\t\t\tLJiang\n\t\t\n\t\n\t\n\t\tPhys. Rev. Lett\n\t\t\n\t\t\t134\n\t\t\t21\n\t\t\t210601\n\t\t\t2024"
+    },
+    {
+      "id": 41,
+      "text": "ZLi\n\t\t\n\t\t\n\t\t\tEGupta\n\t\t\n\t\t\n\t\t\tFZhao\n\t\t\n\t\t\n\t\t\tRBanerjee\n\t\t\n\t\t\n\t\t\tYLu\n\t\t\n\t\t\n\t\t\tTRoy\n\t\t\n\t\t\n\t\t\tAOriani\n\t\t\n\t\t\n\t\t\tAVrajitoarea\n\t\t\n\t\t\n\t\t\tSChakram\n\t\t\n\t\t\n\t\t\tDISchuster\n\t\t\n\t\tarXiv:2503.13953\n\t\tA Cascaded Random Access Quantum Memory\n\t\t\n\t\t\t2025\n\t\t\n\t\n\tquant-ph"
+    },
+    {
+      "id": 42,
+      "text": "Implementation of a quantum addressable router using superconducting qubits\n\t\t\n\t\t\tCMiao\n\t\t\n\t\t\n\t\t\tSLéger\n\t\t\n\t\t\n\t\t\tZLi\n\t\t\n\t\t\n\t\t\tGLee\n\t\t\n\t\t\n\t\t\tLJiang\n\t\t\n\t\t\n\t\t\tDISchuster\n\t\t\n\t\tarXiv:2503.04295\n\t\t\n\t\t\t2025\n\t\t\n\t\n\tquant-ph"
+    },
+    {
+      "id": 43,
+      "text": "Experimental realization of the bucket-brigade quantum random access memory\n\t\t\n\t\t\tFShen\n\t\t\n\t\t\n\t\t\tYJi\n\t\t\n\t\t\n\t\t\tDXiang\n\t\t\n\t\t\n\t\t\tYWang\n\t\t\n\t\t\n\t\t\tKWang\n\t\t\n\t\t\n\t\t\tCZhang\n\t\t\n\t\t\n\t\t\tAZhang\n\t\t\n\t\t\n\t\t\tYZou\n\t\t\n\t\t\n\t\t\tYGao\n\t\t\n\t\t\n\t\t\tZCui\n\t\t\n\t\tarXiv:2506.16682\n\t\t\n\t\t\t2025\n\t\t\n\t\n\tquant-ph"
+    },
+    {
+      "id": 44,
+      "text": "SZhang\n\t\t\n\t\t\n\t\t\tY.-JWang\n\t\t\n\t\t\n\t\t\tPWang\n\t\t\n\t\t\n\t\t\tR.-ZZhao\n\t\t\n\t\t\n\t\t\tX.-YYang\n\t\t\n\t\t\n\t\t\tZ.-AZhao\n\t\t\n\t\t\n\t\t\tT.-LWang\n\t\t\n\t\t\n\t\t\tH.-FZhang\n\t\t\n\t\t\n\t\t\tZ.-FLi\n\t\t\n\t\t\n\t\t\tYWu\n\t\t\n\t\tarXiv:2505.13958\n\t\tDemonstrating Coherent Quantum Routers for Bucket-Brigade Quantum Random Access Memory on a Superconducting Processor\n\t\t\n\t\t\t2025\n\t\t\n\t\n\tquant-ph"
+    },
+    {
+      "id": 45,
+      "text": "Hardware-efficient quantum random access memory with hybrid quantum acoustic systems\n\t\t\n\t\t\tCTHann\n\t\t\n\t\t\n\t\t\tC.-LZou\n\t\t\n\t\t\n\t\t\tYZhang\n\t\t\n\t\t\n\t\t\tYChu\n\t\t\n\t\t\n\t\t\tRJSchoelkopf\n\t\t\n\t\t\n\t\t\tSMGirvin\n\t\t\n\t\t\n\t\t\tLJiang\n\t\t\n\t\n\t\n\t\tPhys. Rev. Lett\n\t\t\n\t\t\t123\n\t\t\t250501\n\t\t\t2019"
+    },
+    {
+      "id": 46,
+      "text": "Resilience of Quantum Random Access Memory to Generic Noise\n\t\t\n\t\t\tConnorTHann\n\t\t\t0000-0003-0665-7161\n\t\t\n\t\t\n\t\t\tGideonLee\n\t\t\t0000-0003-3306-9189\n\t\t\n\t\t\n\t\t\tSMGirvin\n\t\t\t0000-0002-6470-5494\n\t\t\n\t\t\n\t\t\tLiangJiang\n\t\t\n\t\t10.1103/prxquantum.2.020311\n\t\n\t\n\t\tPRX Quantum\n\t\tPRX Quantum\n\t\t2691-3399\n\t\t\n\t\t\t2\n\t\t\t2\n\t\t\t20311\n\t\t\t2021\n\t\t\tAmerican Physical Society (APS)"
+    },
+    {
+      "id": 47,
+      "text": "A superconducting quantum simulator based on a photonic-bandgap metamaterial\n\t\t\n\t\t\tXZhang\n\t\t\n\t\t\n\t\t\tEKim\n\t\t\n\t\t\n\t\t\tDKMark\n\t\t\n\t\t\n\t\t\tSChoi\n\t\t\n\t\t\n\t\t\tOPainter\n\t\t\n\t\n\t\n\t\tScience\n\t\t\n\t\t\t379\n\t\t\t6629\n\t\t\t\n\t\t\t2023"
+    },
+    {
+      "id": 48,
+      "text": "10-qubit entanglement and parallel logic operations with a superconducting circuit\n\t\t\n\t\t\tCSong\n\t\t\n\t\t\n\t\t\tKXu\n\t\t\n\t\t\n\t\t\tWLiu\n\t\t\n\t\t\n\t\t\tC-P. Yang\n\t\t\n\t\t\n\t\t\tS.-BZheng\n\t\t\n\t\t\n\t\t\tHDeng\n\t\t\n\t\t\n\t\t\tQXie\n\t\t\n\t\t\n\t\t\tKHuang\n\t\t\n\t\t\n\t\t\tQGuo\n\t\t\n\t\t\n\t\t\tLZhang\n\t\t\n\t\n\t\n\t\tPhysical Review Letters\n\t\t\n\t\t\t119\n\t\t\t18\n\t\t\t180511\n\t\t\t2017"
+    },
+    {
+      "id": 49,
+      "text": "Modular Quantum Processor with an All-to-All Reconfigurable Router\n\t\t\n\t\t\tXuntaoWu\n\t\t\t0009-0005-8064-9815\n\t\t\n\t\t\n\t\t\tHaoxiongYan\n\t\t\t0000-0002-4797-9733\n\t\t\n\t\t\n\t\t\tGustavAndersson\n\t\t\t0000-0003-1442-2573\n\t\t\n\t\t\n\t\t\tAlexanderAnferov\n\t\t\t0009-0006-3753-6863\n\t\t\n\t\t\n\t\t\tMing-HanChou\n\t\t\n\t\t\n\t\t\tChristopherRConner\n\t\t\t0000-0002-6875-2298\n\t\t\n\t\t\n\t\t\tJoelGrebel\n\t\t\t0000-0002-5272-5260\n\t\t\n\t\t\n\t\t\tYashJJoshi\n\t\t\n\t\t\n\t\t\tShihengLi\n\t\t\t0009-0007-0539-5872\n\t\t\n\t\t\n\t\t\tJacobMMiller\n\t\t\t0000-0001-9956-994X\n\t\t\n\t\t\n\t\t\tRhysGPovey\n\t\t\t0000-0002-3382-3287\n\t\t\n\t\t\n\t\t\tHongQiao\n\t\t\t0000-0002-3349-5754\n\t\t\n\t\t\n\t\t\tAndrewNCleland\n\t\t\t0000-0003-4981-4294\n\t\t\n\t\t10.1103/physrevx.14.041030\n\t\n\t\n\t\tPhysical Review X\n\t\tPhys. Rev. X\n\t\t2160-3308\n\t\t\n\t\t\t14\n\t\t\t4\n\t\t\t41030\n\t\t\t2024\n\t\t\tAmerican Physical Society (APS)"
+    },
+    {
+      "id": 50,
+      "text": "Randomized benchmarking of a high-fidelity remote CNOT gate over a meter-scale microwave interconnect\n\t\t\n\t\t\tKHeya\n\t\t\n\t\t\n\t\t\tTPhung\n\t\t\n\t\t\n\t\t\tMMalekakhlagh\n\t\t\n\t\t\n\t\t\tRSteiner\n\t\t\n\t\t\n\t\t\tMTurchetti\n\t\t\n\t\t\n\t\t\tWShanks\n\t\t\n\t\t\n\t\t\tJMamin\n\t\t\n\t\t\n\t\t\tW.-SLu\n\t\t\n\t\t\n\t\t\tYPKandel\n\t\t\n\t\t\n\t\t\tNSundaresan\n\t\t\n\t\tarXiv:2502.15034\n\t\t\n\t\t\t2025\n\t\t\n\t\n\tquant-ph"
+    },
+    {
+      "id": 51,
+      "text": "Realizing all-to-all couplings among detachable quantum modules using a microwave quantum state router\n\t\t\n\t\t\tChaoZhou\n\t\t\t0009-0009-6828-148X\n\t\t\n\t\t\n\t\t\tPinleiLu\n\t\t\t0000-0002-8582-074X\n\t\t\n\t\t\n\t\t\tMatthieuPraquin\n\t\t\t0009-0009-4546-7994\n\t\t\n\t\t\n\t\t\tTzu-ChiaoChien\n\t\t\t0000-0002-6788-140X\n\t\t\n\t\t\n\t\t\tRyanKaufman\n\t\t\n\t\t\n\t\t\tXiCao\n\t\t\n\t\t\n\t\t\tMingkangXia\n\t\t\t0009-0004-2759-1506\n\t\t\n\t\t\n\t\t\tRogerS KMong\n\t\t\t0009-0000-7182-5681\n\t\t\n\t\t\n\t\t\tWolfgangPfaff\n\t\t\t0000-0003-4303-0819\n\t\t\n\t\t\n\t\t\tDavidPekker\n\t\t\n\t\t\n\t\t\tMichaelHatridge\n\t\t\n\t\t10.1038/s41534-023-00723-7\n\t\n\t\n\t\tnpj Quantum Information\n\t\tnpj Quantum Inf\n\t\t2056-6387\n\t\t\n\t\t\t9\n\t\t\t1\n\t\t\t54\n\t\t\t2023\n\t\t\tSpringer Science and Business Media LLC"
+    },
+    {
+      "id": 52,
+      "text": "Measurement-based quantum computation on cluster states\n\t\t\n\t\t\tRobertRaussendorf\n\t\t\n\t\t\n\t\t\tDanielEBrowne\n\t\t\n\t\t\n\t\t\tHansJBriegel\n\t\t\n\t\t10.1103/physreva.68.022312\n\t\n\t\n\t\tPhysical Review A\n\t\tPhys. Rev. A\n\t\t1050-2947\n\t\t1094-1622\n\t\t\n\t\t\t68\n\t\t\t2\n\t\t\t22312\n\t\t\t2003\n\t\t\tAmerican Physical Society (APS)"
+    },
+    {
+      "id": 53,
+      "text": "Quantum computing with multidimensional continuous-variable cluster states in a scalable photonic platform\n\t\t\n\t\t\tB.-HWu\n\t\t\n\t\t\n\t\t\tRNAlexander\n\t\t\n\t\t\n\t\t\tSLiu\n\t\t\n\t\t\n\t\t\tZZhang\n\t\t\n\t\n\t\n\t\tPhys. Rev. Research\n\t\t\n\t\t\t2\n\t\t\t23138\n\t\t\t2020"
+    },
+    {
+      "id": 54,
+      "text": "Generation of time-domain-multiplexed two-dimensional cluster state\n\t\t\n\t\t\tWaritAsavanant\n\t\t\t0000-0002-3722-3676\n\t\t\n\t\t\n\t\t\tYuShiozawa\n\t\t\t0000-0003-4505-032X\n\t\t\n\t\t\n\t\t\tShotaYokoyama\n\t\t\t0000-0001-6708-3785\n\t\t\n\t\t\n\t\t\tBarameeCharoensombutamon\n\t\t\t0000-0002-8317-0632\n\t\t\n\t\t\n\t\t\tHirokiEmura\n\t\t\t0000-0003-0545-037X\n\t\t\n\t\t\n\t\t\tRafaelNAlexander\n\t\t\t0000-0002-7462-4516\n\t\t\n\t\t\n\t\t\tShuntaroTakeda\n\t\t\t0000-0003-2818-5564\n\t\t\n\t\t\n\t\t\tJun-IchiYoshikawa\n\t\t\t0000-0001-5344-4949\n\t\t\n\t\t\n\t\t\tNicolasCMenicucci\n\t\t\t0000-0002-3964-233X\n\t\t\n\t\t\n\t\t\tHidehiroYonezawa\n\t\t\t0000-0002-5522-1439\n\t\t\n\t\t\n\t\t\tAkiraFurusawa\n\t\t\t0000-0002-6176-6742\n\t\t\n\t\t10.1126/science.aay2645\n\t\n\t\n\t\tScience\n\t\tScience\n\t\t0036-8075\n\t\t1095-9203\n\t\t\n\t\t\t366\n\t\t\t6463\n\t\t\t\n\t\t\t2019\n\t\t\tAmerican Association for the Advancement of Science (AAAS)"
+    },
+    {
+      "id": 55,
+      "text": "Deterministic generation of a two-dimensional cluster state\n\t\t\n\t\t\tMVLarsen\n\t\t\n\t\t\n\t\t\tXGuo\n\t\t\n\t\t\n\t\t\tCRBreum\n\t\t\n\t\t\n\t\t\tJSNeergaard-Nielsen\n\t\t\n\t\t\n\t\t\tULAndersen\n\t\t\n\t\n\t\n\t\tScience\n\t\t\n\t\t\t366\n\t\t\t\n\t\t\t2019"
+    },
+    {
+      "id": 56,
+      "text": "Continuous-variable multipartite entanglement in an integrated microcomb\n\t\t\n\t\t\tXinyuJia\n\t\t\n\t\t\n\t\t\tChonghaoZhai\n\t\t\n\t\t\n\t\t\tXuezhiZhu\n\t\t\t0009-0001-9319-0856\n\t\t\n\t\t\n\t\t\tChangYou\n\t\t\t0009-0002-2791-768X\n\t\t\n\t\t\n\t\t\tYunyunCao\n\t\t\n\t\t\n\t\t\tXuguangZhang\n\t\t\t0009-0008-6512-4238\n\t\t\n\t\t\n\t\t\tYunZheng\n\t\t\t0009-0004-7974-6573\n\t\t\n\t\t\n\t\t\tZhaorongFu\n\t\t\t0000-0002-6575-4589\n\t\t\n\t\t\n\t\t\tJunMao\n\t\t\t0000-0002-4043-2313\n\t\t\n\t\t\n\t\t\tTianxiangDai\n\t\t\t0000-0001-9735-8006\n\t\t\n\t\t\n\t\t\tLinChang\n\t\t\t0000-0003-4312-5850\n\t\t\n\t\t\n\t\t\tXiaolongSu\n\t\t\t0000-0002-7073-7679\n\t\t\n\t\t\n\t\t\tQihuangGong\n\t\t\t0000-0003-4974-6244\n\t\t\n\t\t\n\t\t\tJianweiWang\n\t\t\t0000-0003-1313-9266\n\t\t\n\t\t10.1038/s41586-025-08602-1\n\t\n\t\n\t\tNature\n\t\tNature\n\t\t0028-0836\n\t\t1476-4687\n\t\t\n\t\t\t639\n\t\t\t8054\n\t\t\t\n\t\t\t2025\n\t\t\tSpringer Science and Business Media LLC"
+    },
+    {
+      "id": 57,
+      "text": "Quantum computing in the NISQ era and beyond\n\t\t\n\t\t\tJPreskill\n\t\t\n\t\t\n\t\t\t2018\n\t\t\t2\n\t\t\t79"
+    },
+    {
+      "id": 58,
+      "text": "Optimized QUBO formulation methods for quantum computing\n\t\t\n\t\t\tDDeSantis\n\t\t\n\t\t\n\t\t\tSTirone\n\t\t\n\t\t\n\t\t\tSMarmi\n\t\t\n\t\t\n\t\t\tVGiovannetti\n\t\t\n\t\tarXiv:2406.07681\n\t\t\n\t\t\t2024\n\t\t\n\t\n\tquant-ph"
+    },
+    {
+      "id": 59,
+      "text": "Nonlinear classification capability of quantum neural networks due to emergent quantum metastability\n\t\t\n\t\t\tMarioBoneberg\n\t\t\t0000-0003-0103-6075\n\t\t\n\t\t\n\t\t\tFedericoCarollo\n\t\t\t0000-0002-6961-7143\n\t\t\n\t\t\n\t\t\tIgorLesanovsky\n\t\t\t0000-0001-9660-9467\n\t\t\n\t\t10.1103/physreva.111.062405\n\t\tarXiv:2408.10765\n\t\n\t\n\t\tPhysical Review A\n\t\tPhys. Rev. A\n\t\t2469-9926\n\t\t2469-9934\n\t\t\n\t\t\t111\n\t\t\t6\n\t\t\t2024\n\t\t\tAmerican Physical Society (APS)\n\t\t\n\t\n\tquant-ph"
+    }
+  ],
+  "formulas": [
+    {
+      "id": "FORMULA_1",
+      "raw": "|B n | = 2 2 n"
+    },
+    {
+      "id": "FORMULA_2",
+      "raw": "f (x) = Ax + b, where A ∈ F m×n 2 and b ∈ F m 2 ,"
+    },
+    {
+      "id": "FORMULA_3",
+      "raw": "C f = m j=1     k:A j,k =1 CNOT(x k , d j )   X bj dj   ."
+    },
+    {
+      "id": "FORMULA_4",
+      "raw": "E = {(x k , d j ) ∈ V addr × V data | A j,k = 1}."
+    },
+    {
+      "id": "FORMULA_5",
+      "raw": "∆ = max    max k j A j,k , max j k A j,k   "
+    },
+    {
+      "id": "FORMULA_6",
+      "raw": "D logic = ∆ + 1"
+    }
+  ]
+}

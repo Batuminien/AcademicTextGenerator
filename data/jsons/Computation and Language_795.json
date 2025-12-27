@@ -1,0 +1,483 @@
+{
+  "title": "ERGO: Efficient High-Resolution Visual Understanding for Vision-Language Models",
+  "authors": [
+    {
+      "firstname": "Jewon",
+      "surname": "Lee",
+      "email": "jewon.lee@nota.ai"
+    },
+    {
+      "firstname": "Wooksu",
+      "surname": "Shin",
+      "email": "wooksu.shin@nota.ai"
+    },
+    {
+      "firstname": "Seungmin",
+      "surname": "Yang",
+      "email": "seungmin.yang@nota.ai"
+    },
+    {
+      "firstname": "Ki-Ung",
+      "surname": "Song",
+      "email": "ki-ung.song@nota.ai"
+    },
+    {
+      "firstname": "Donguk",
+      "surname": "Lim",
+      "email": "donguk.lim@nota.ai"
+    },
+    {
+      "firstname": "Jaeyeon",
+      "surname": "Kim",
+      "email": "jaeyeon.kimthkim@nota.ai"
+    },
+    {
+      "firstname": "Tae-Ho",
+      "surname": "Kim",
+      "email": ""
+    },
+    {
+      "firstname": "Bo-Kyeong",
+      "surname": "Kim",
+      "email": "bokyeong.kim@nota.ai"
+    }
+  ],
+  "abstract": "Efficient processing of high-resolution images is crucial for real-world vision-language applications. However, existing Large Vision-Language Models (LVLMs) incur substantial computational overhead due to the large number of vision tokens. With the advent of \"thinking with images\" models, reasoning now extends beyond text to the visual domain. This capability motivates our two-stage \"coarse-tofine\" reasoning pipeline: first, a downsampled image is analyzed to identify task-relevant regions; then, only these regions are cropped at full resolution and processed in a subsequent reasoning stage. This approach reduces computational cost while preserving fine-grained visual details where necessary. A major challenge lies in inferring which regions are truly relevant to a given query. Recent related methods often fail in the first stage after input-image downsampling, due to perception-driven reasoning, where clear visual information is required for effective reasoning. To address this issue, we propose ERGO (Efficient Reasoning & Guided Observation) that performs reasoning-driven perception-leveraging multimodal context to determine where to focus. Our model can account for perceptual uncertainty, expanding the cropped region to cover visually ambiguous areas for answering questions. To this end, we develop simple yet effective reward components in a reinforcement learning framework for coarse-to-fine perception. Across multiple datasets, our approach delivers higher accuracy than the original model and competitive methods, with greater efficiency. For instance, ERGO surpasses Qwen2.5-VL-7B on the V* benchmark by 4.7 points while using only 23% of the vision tokens, achieving a 3× inference speedup. The code and models can be found at: https://github.com/nota-github/ERGO.",
+  "sections": [
+    {
+      "title": "Introduction",
+      "paragraphs": [
+        "High-resolution image processing is crucial to achieve strong performance in real-world applications with large vision-language models (LVLMs) (Liu et al., 2024a;Wang et al., 2024a;Vasu et al., 2025). Recent reinforcement learning (RL)-based post-training approaches (Wang et al., 2025a;Zheng et al., 2025b) have explored the idea of \"thinking with images\" (OpenAI, 2025), enabling LVLMs to reason not only through text, but also within the visual modality itself. By reasoning over cropped image features with bounding-box coordinates, these models can attend to local high-fidelity objects and capture fine-grained details, leading to significant improvements in high-resolution benchmarks.",
+        "Despite these advances, processing high-resolution input remains a major challenge. LVLMs must handle a massive number of vision tokens, resulting in prohibitive computational costs. A straightforward solution (Zhou et al., 2025;Yang et al., 2025), is to reduce the input resolution, which results in fewer vision tokens but inevitably discards fine-grained details critical to reasoning. The two-stage \"coarse-to-fine\" pipeline embodies this principle: it first queries the model with a coarse-grained image for initial reasoning over task-relevant regions; and then selectively localizes and re-encodes sub-images at higher resolution with finer granularity for subsequent reasoning. Crucially, discovering",
+        "The zoom-in tool confirms that the straws are indeed white... The color of the straw is white."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "What is the color of the straw?",
+      "paragraphs": [
+        "What is the color of the straw?",
+        "Looking at the image, we focus on the coffee cups and straws.",
+        "The signs are colorful, and there are straws visible in the image. The straws appear to be white.",
+        "What is the color of the straw?",
+        "... The straws are likely located near the coffee cups on the table ... Zoom in the region near the coffee cups ... ... the image shows that the straws are black.",
+        "The straw is visible in the enlarged subimage near the coffee cup on the table. The straw appears to be black... Powerful, but too much of computation cost from massive image tokens.",
+        "The reasoning led to where the straws is."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Crop at high-resolution",
+      "paragraphs": [
+        "The straw is indiscernible by downsampling The straw is tiny but still discernible.",
+        "The model used coarse cues (coffee cup, table) to locate the straw.",
+        "Successfully located the straw"
+      ],
+      "subsections": []
+    },
+    {
+      "title": "(a) Accurate Reasoning Vision Token Efficiency (b) Vision Token Efficiency Accurate Reasoning (c) Vision Token Efficiency Accurate Reasoning",
+      "paragraphs": [
+        "The model fails to find the straw and reasons over false object.",
+        "Failed to solve the task with downsampled image. relevant regions from downsampled image input is fundamental to overall performance, as it guides the model to focus its capacity on informative areas."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Crop at high-resolution",
+      "paragraphs": [
+        "Fig. 1 illustrates this challenge and our solution. In Fig. 1(a), Zheng et al. (2025b) performs well when the target object remains clearly visible (i.e., correctly identifying a straw in the high-resolution image), but it requires processing a large number of vision tokens. Relevant models (Wang et al., 2025a;Su et al., 2025a;Zheng et al., 2025b) are typically designed in this perception-driven reasoning paradigm, where the model first localizes a tightly bounded target and then reasons over it. As a result, their training tends to overlook downsampled visual inputs. While effective at full resolution, this paradigm becomes a bottleneck in efficiency-oriented scenarios.",
+        "After input-image downsampling for a smaller number of vision tokens (see Fig. 1(b)), the straw becomes indistinguishable, causing Zheng et al. (2025b) to miss it and incorrectly focus on more discernible objects. In contrast, under such pixel-constrained conditions, our approach (Fig. 1(c)) highlights that reasoning-driven perception (i.e., including contextually inferable regions such as straws near coffee cups on tables) is far more beneficial, since selecting the correct region enables recovery of the original resolution in that area.",
+        "We introduce ERGO (Efficient Reasoning & Guided Observation), whose training objective is explicitly aligned with vision-processing efficiency in a reinforcement learning (RL) framework. It rewards the inclusion of all task-relevant regions, while implicitly incentivizing the incorporation of auxiliary context. This design enables the model to handle ambiguity without being restricted to precise localization, learning that exact identification of individual objects is not always optimal and that reasoning with contextual knowledge is often more beneficial. By aligning visual exploration with efficiency objectives, our approach enables LVLMs to achieve improved efficiency without sacrificing fine-grained reasoning ability. Our key contributions can be summarized as follows.",
+        "• Efficient coarse-to-fine pipeline. We introduce a two-stage reasoning pipeline that first processes low-resolution inputs to identify task-relevant regions and then re-encodes them at higher resolution. The pipeline reduces computational cost while preserving essential information. • Reward for reasoning-driven perception. With our proposed reward, the policy model learns that relying solely on accurate object localization is not always optimal and that contextual knowledge can often be more beneficial. To"
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Crop",
+      "paragraphs": [
+        "is not used for the ."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Policy Model",
+      "paragraphs": [
+        "Policy Model : Trainable : Frozen our knowledge, we are the first to demonstrate the significance of this insight for high-resolution visual processing in LVLMs.",
+        "• State-of-the-art performance with fewer vision tokens. ERGO surpasses competitive methods (Huang et al., 2025b;Yang et al., 2025;Zheng et al., 2025b;Wang et al., 2025a;Su et al., 2025a) in accuracy on multiple high-resolution benchmarks, while reducing vision token counts and delivering practical speedups."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Motivation",
+      "paragraphs": [
+        "Pixel const. We examine whether appending a critical high-resolution sub-image to a low-resolution image input can enhance model performance.",
+        "For the experiments, we used Qwen2.5-VL (Bai et al., 2025) with pixel constraints to resize input images. Specifically, a setting of N ×28×28 in its image processor caps the maximum number of vision tokens at N . We varied the input resolution by controlling N and included the ground-truth (GT) original-resolution sub-image as an auxiliary input. Tab. 1 shows that using the GT full-fidelity sub-image does not degrade performance, even when the model has not been explicitly trained under such conditions. This finding indicates that high-resolution access to task-relevant regions is sufficient, whereas redundant tokens merely reduce efficiency.",
+        "Now that we have shown the effectiveness of task-relevant regions, the next question is whether existing models can autonomously identify such regions. A straightforward strategy might integrate a powerful \"thinking with images\" model (Zheng et al., 2025b;Su et al., 2025a;Huang et al., 2025b;Wang et al., 2025a) into the coarse-to-fine pipeline, predicting grounded coordinates and cropping the corresponding high-resolution sub-images. However, our results show that existing RL-trained reasoning models struggle to perform this task under low-resolution inputs (see Tab. 2). This highlights the need for approaches that can robustly identify informative regions even when coarse visual cues are the only available signals, rather than relying solely on clearly discernible objects."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Proposed Method",
+      "paragraphs": [
+        "Our objective is to develop remarkable reasoning-driven perception models that can reason over where to focus. Fig. 2 presents our RL-based training pipeline, whose forward process is as follows:",
+        "• Given a pair of original image I orig and text query q, the policy model π θ produces output o region ∼ π θ (• | I orig , q), which includes candidate bounding-box coordinates (indicating the region relevant to the query) and a thinking trace. • Next, the image I region corresponding to the bounding box is cropped from the original image I orig to feed into the reward model:",
+        "based on both the past interaction (i.e., original image I orig and predicted bounding box o region ) and the current query pair (i.e., cropped region I region and text query q).",
+        "The strength of ERGO lies in well-designed reward components for coarse-to-fine vision-grounded reasoning, detailed as follows.",
+        "3.1 Reward Design"
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Proposed Reward",
+      "paragraphs": [
+        "Region-verification reward. In many thinking-with-images studies (Huang et al., 2025b;Su et al., 2025a;Zheng et al., 2025b), a reward model R takes the original image together with the cropped region and query, producing its output o RM ∼ R(•|I orig , I region , q) to guide the policy model. However, we argue that feeding the original image I orig into the reward model is sub-optimal: the model may rely on the original image instead of the cropped region, introducing unnecessary hints to the query and thereby weakening the objective of self-contained cropping (i.e., ensuring the cropped region alone provides sufficient cues). This issue is particularly problematic for coarse-to-fine visual grounded reasoning, which we adopt for efficiency, because low-resolution input images contain little evidence (as target objects are often indiscernible), making self-contained crops essential for question answering.",
+        "To address this issue, we propose the region-verification reward r region , where task performance is evaluated using only the cropped region and the query, without access to the original image. If the reward model's prediction matches the GT answer o GT , the policy model receives a reward: This design encourages the policy model to identify informative, task-relevant regions that preserve sufficient information for accurate reasoning, without the need for additional annotations.",
+        "In practice, we use a frozen reward model, Qwen2.5-VL-72B-Instruct (Bai et al., 2025).",
+        "Box adjustment reward. Although the region reward effectively encourages task-guided cropping, a key challenge emerges during early training: the policy model may exploit a trivial strategy by consistently selecting the entire image. While this would be a reasonable shortcut for maximum region reward, since the whole image is necessarily self-contained for the task, it limits efficient inference due to excessive token costs from processing the full-resolution image.",
+        "To mitigate this issue, we introduce a complementary reward signal that regularizes the size of the selected region. Specifically, the box adjustment reward r box is computed with a step function that penalizes overly large crops based on the area ratio of the selected region to the original image; it effectively prevents the model from consistently grounding the entire image:",
+        "Determining an ideal value of γ is crucial for our approach: low enough to prevent degenerate solutions (e.g., selecting the full image as the crop) during training, yet high enough to allow flexibility in region selection. To this end, we examined the training split of popular LVLM reasoning-related datasets with answer-aligned bounding box annotations (e.g., TreeVGR (Wang et al., 2025a), VisCoT (Shao et al., 2024a), V* (Wu and Xie, 2023), VGR (Wang et al., 2025b)). Fig. 3 shows that most GT regions relevant to question answering occupy less than 60% of the full image. Based on this analysis, we set γ = 0.6 for efficient and effective bounding box adjustment.",
+        "Task-driven contextual exploration (TCE) reward. Based on the collaborative nature of the region reward and box adjustment reward, we combine them to form our main reward r TCE :",
+        "Here, α and β are weighting coefficients, set to α = 1 and β = 0.5. This enables the policy model to learn robust and efficient region selection strategies for vision-grounded reasoning."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Conventional Reward",
+      "paragraphs": [
+        "Accuracy reward. The TCE reward is effective to guiding the policy model to select task-relevant regions. However, it only indirectly promotes correct question-answering, creating a potential mismatch between the training objective and the final evaluation. To bridge this gap, we use an accuracy reward (DeepSeek-AI et al., 2025), which is assigned when the policy model's output o acc matches the GT answer:",
+        ". This component complements the TCE reward by directly optimizing for question-answering accuracy.",
+        "Format reward. This reward enforces the adhesion to a predefined output structure using special tags (DeepSeek-AI et al., 2025). A reward is given if the reasoning is correctly enclosed within <think></think> tags, the final answer within <answer></answer> tags, and a <zoom></zoom> tag is included when region selection is performed:",
+        "This mechanism encourages the model to maintain well-formed outputs that can be reliably parsed and evaluated throughout training and inference."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Final Reward Formulation",
+      "paragraphs": [
+        "The overall reward function is defined as a linear combination of three components (i.e., the TCE reward, the accuracy reward, and the format reward): R = r TCE + r acc + r format ."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Learning Algorithm",
+      "paragraphs": [
+        "We adopt Grouped Reward Policy Optimization (GRPO) (Shao et al., 2024b) as our RL framework, leveraging its sample-efficient optimization in grouped feedback settings (see the pseudo-code in Sect. A for details). Through this effective RL training, ERGO acquires reasoning-driven perception capabilities when presented with low-resolution, target-indiscernible inputs."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Experimental Setup",
+      "paragraphs": [
+        "Training setup. We use Qwen2.5-VL-7B-Instruct (Bai et al., 2025) as the policy model and Qwen2.5-VL-72B-Instruct (Bai et al., 2025) as the frozen reward model. Our training data consists of a subset of ArxivQA (Li et al., 2024) and the V* training set (Wu and Xie, 2023), following Zheng et al. (2025b). Training was conducted with a global batch size of 128, using 8 rollouts per example on 4 H100 GPUs. See Sect. B for full details.",
+        "Baselines. We compare our approach against two categories of RL-based post-training methods:",
+        "• Efficiency-oriented models share our objective of efficient high-resolution vision-language understanding. MGPO (Huang et al., 2025b) directly leveraged the multi-turn pipeline but with a single reasoning stage. VisionThink (Yang et al., 2025) does not select a sub-region of the original image; instead, it employs a mechanism whereby the model, given a downsampled image, determines whether the full high-resolution image should be processed for the task. • Non-efficiency-oriented models are considered due to their strong grounding capabilities, which could still benefit the coarse-to-fine pipeline. DeepEyes (Zheng et al., 2025b) and PixelReasoner (Su et al., 2025a) are not trained for efficiency, but can be adapted to coarse-to-fine scenarios. Though TreeVGR (Wang et al., 2025a) is inherently incompatible with coarse-to-fine settings, as it performs text-only reasoning over bounding-box coordinates rather than visual re-encoding, we include it as a baseline for its strong grounding performance. † denotes reproduction with their code using our data, while ‡ denotes inference with their original pipeline.",
+        "Benchmarks. We utilize high-resolution visual question answering (VQA) benchmarks including V* (Wu and Xie, 2023), HR-Bench (Wang et al., 2024b), and MME-RWL (Zhang et al., 2024), as our objective is efficient high-resolution image understanding. To assess potential trade-offs introduced by training, we also consider conventional multimodal benchmarks: CV-Bench (Tong et al., 2024a) and MMVP (Tong et al., 2024b) as vision-centric benchmarks; Hallusion-Bench (Guan et al., 2024), POPE (Li et al., 2023), and MMBench (Liu et al., 2024b) as general-purpose VQA tasks; and AI2D (Kembhavi et al., 2016) and ChartQA (Masry et al., 2022) for chart understanding.",
+        "5 Results and Analysis"
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Main Results",
+      "paragraphs": [
+        "High-resolution reasoning with efficient visual processing. To measure performance under efficiency-considered scenarios, we considered two different pixel constraints-640×28×28 and 1280×28×28-corresponding to vision token limits of 640 and 1280, respectively. Following the coarse-to-fine reasoning principle, we consistently downsampled the images according to the fixed pixel constraints and cropped them at the original resolution. Tab. 2 shows that, because the average resolution of input images exceeds these limits, many baseline models cannot accurately reason over images, leading to performance degradation. In contrast, ERGO consistently outperforms all baselines across benchmarks. In particular, compared to Qwen2.5-VL-7B, only ERGO achieves a higher score for every benchmark we evaluated, even under the strictest 640×28×28 pixel constraint. Qualitative results are presented in Fig. 1 and Sect. C.",
+        "Fig. 4 shows that ERGO lies in the Pareto-optimal region, achieving higher scores with fewer vision tokens. We evaluate ERGO with multiple pixel constraints {320, 640, 1280}×28×28, corresponding to {579, 1026, 1632} total vision tokens per sample, whereas competing baselines are evaluated at {640, 1280, 2560, 3072}×28×28. Tab. 3 also shows that with the coarse-to-fine pipeline under the 1280×28×28 constraint, ERGO achieves the highest score within the same constraint group. Remarkably, at 640×28×28, ERGO outperforms all baselines while using fewer vision tokens than others evaluated at 1280×28×28. These results demonstrate that our model achieves highly efficient utilization of the vision token, as the pixel constraints can be flexibly regulated at test-time.",
+        "Practical latency improvements. To demonstrate that our method not only reduces vision token usage, but also provides practical benefits in real-world deployment, we conducted a latency comparison with the original Qwen2.5-VL-7B model. The evaluation was performed using the production grade vLLM engine (Kwon et al., 2023) on a single   H100 GPU with a batch size of 16, measuring the time to produce a final answer for an image-query pair. As shown in Tab. 4, our approach achieves faster latency while simultaneously surpassing the accuracy on the V* benchmark. Leveraging contextual information for VQA. We show that the superior performance of our model arises from its ability to identify task-relevant regions even when target objects become visually indiscernible (see Fig. 1)."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "In-depth Analysis",
+      "paragraphs": [
+        "To quantify this ability, we analyze whether the predicted region covers the GT target object, by defining Target Coverage Score =",
+        "where B pred is the set of predicted bounding boxes per sample and B gt is the set of GT bounding boxes per sample. We evaluate scores separately for cases where the object is completely masked (bounding box overlaid with black) and where it remains discernible. Since masking removes explicit visual representations of the object, models can only succeed by leveraging contextual information such as surrounding visual context or textual cues. Fig. 5 shows that ERGO achieves the most robust performance in the masked condition, consistent with its stronger ability to exploit such contextual signals.",
+        "Bias-free region prediction with the box adjustment constant. We employ a fixed box adjustment constant (i.e., γ is used in r box of Eq. 2) to facilitate efficient training; in principle, the model could be guided to predict the largest region permitted by the constant. However, Fig. 6 shows that ERGO infers regions with flexible areas that reflect the underlying characteristics of the data: in MMVP (Tong et al., 2024b), objects often occupy the full frame, whereas in MME-RWL (Zhang et al., 2024), objects are relatively small. This indicates that the box adjustment constant does not bias ERGO toward fixed-size predictions.",
+        "Results on conventional multimodal benchmarks. We evaluated ERGO on a broad set of multimodal benchmarks, including general VQA, vision-centric VQA, and document understanding. As shown in Tab. 5, ERGO not only maintains the abilities of the base model but also achieves improvements on several benchmarks. We attribute these gains to the improved ability of the model to reason in semantically relevant regions."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Ablation Studies",
+      "paragraphs": [
+        "The TCE reward is more effective than the accuracy reward. In Tab. 6(a), D ⃝ relies solely on the TCE reward, without generating task answers during training, whereas A ⃝ relies solely on the accuracy reward, without evaluating the quality of the cropped region. Remarkably, although the final performance is measured by answer accuracy, D ⃝-which was never explicitly trained to answer the task-still outperforms A",
+        "⃝. The results highlight the effectiveness of the TCE reward design, because improving the quality of the selected region with task-relevant evidence is critical to performance in the coarse-to-fine pipeline. Regularizing the prioritization of the box adjustment reward is beneficial. For C ⃝ in Tab. 6(a), we set α = 1 and β = 1 in Eq. 3. For D ⃝, we reduced the weight of the box adjustment reward to β = 0.5 to prevent the policy from overly prioritizing this term over more critical rewards. This coordination of the weights results in higher average scores, which confirms our intended effect. Our reward design plays a critical role regardless of reward model size. We observe the impact of the reward model size by varying Qwen2.5-VL-Instruct (Bai et al., 2025) from 72B to 7B and 3B. Tab. 6(b) shows that performance does not collapse but remains robust, even when employing a smaller reward model, with only limited sensitivity to its scale. We attribute this robustness to the nature of our proxy task for assessing cropped image quality. Specifically, evaluating a reward model's answer with a given image crop and query is a fundamentally straightforward task, allowing even reward models with lower capacity to perform it reliably.",
+        "Data driven selection of γ is effective. Tab. 6(c) supports our strategy for selecting the box adjustment constant γ in Eq. 2. By setting γ based on the data statistics, we effectively guide the model's training behavior. A large γ would fail to penalize the trivial solution of cropping excessively large regions. Conversely, a small γ would restrict the model's ability to explore and identify the most relevant visual areas. Our data-driven approach strikes a balance, encouraging focused exploration while maintaining training stability."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Related Work",
+      "paragraphs": [
+        "LVLMs reasoning on vision spaces. The remarkable reasoning capabilities of RL post-trained Large Language Models (LLMs) have significantly advanced problem-solving. Approaches such as GRPO (Shao et al., 2024b) demonstrate that grouped reward signals can effectively induce complex reasoning. Building on these advancements in text-only LLMs, substantial efforts have been made to extend similar reasoning schemes to LVLMs. Early efforts (Shen et al., 2025;Huang et al., 2025a) integrated vision inputs for reasoning, using GRPO-like techniques to improve LVLM reasoning with text-only exploration. More recently, the concept of \"thinking with images\" (Su et al., 2025b), exemplified by models such as OpenAI-o3 (OpenAI, 2025), has gained traction, emphasizing visual-space reasoning. While reasoning LVLMs (Zheng et al., 2025b;Wang et al., 2025a) have been widely studied to boost performance, their use for efficient inference remains under-explored. Our work addresses this by showing that ERGO with grounded region supervision can achieve both higher efficiency and greater task-solving ability.",
+        "Efficient LVLMs with vision token pruning. The efficiency bottleneck lies in the rapid growth of vision token count as input image resolution increases. Vision token pruning (Chen et al., 2024;Wen et al., 2025b;Lee et al., 2025) mitigates this by selectively removing tokens to reduce computation. However, these methods often rely on layer-specific inference schemes, making them unsuitable for production-grade engines (Kwon et al., 2023;Zheng et al., 2024) that lack support for dynamic sequence lengths across layers. As noted by Wen et al. (2025a), such pruning often yields theoretical FLOPs reductions, which rarely translate into real inference-time speedups. Their focus is largely on compensating accuracy loss rather than achieving performance gains. In contrast, ERGO provides both performance gains and practical latency improvements within production-grade LLM engines.",
+        "Efficient LVLMs with RL. RL has been explored as a method to improve the efficiency of LVLMs. While moderating image resolution is a straightforward approach, it comes with the trade-off of reducing visual information. To address this, some RL-trained methods empower the model to manage resolution itself. For instance, VisionThink (Yang et al., 2025) trains models to request higher resolution when an image is too ambiguous to answer a question. However, this approach remains redundant, as it reprocesses the entire image at a higher resolution rather than focusing on task-relevant regions. In contrast, MGPO Huang et al. (2025b) trains models with downsampled images and high-resolution cropped regions, rewarding final answer accuracy. However, by neglecting the quality of the selected regions, MGPO fails to surpass methods without an efficiency objective. By assessing predicted regions with efficiency-oriented objective, ERGO achieves the best efficiency in high-resolution visual understanding."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Conclusion",
+      "paragraphs": [
+        "Our study reveals a critical limitation of existing perception-driven reasoning models: their performance substantially degrades under low-resolution inputs in coarse-to-fine reasoning scenarios. These models rely heavily on clearly discernible visual anchors to localize objects; when such cues are lost due to downsampling, their ability to identify task-relevant regions deteriorates, causing errors in reasoning and question answering. This underscores the need for approaches that capture coarse cues while selectively attending to semantically salient regions. Our ERGO conducts reasoning-driven perception, maintaining both efficiency and accuracy even when high-fidelity object information is lost, thereby overcoming the efficiency shortcomings of prior methods.  Models. We adopted Qwen2.5-VL-7B-Instruct (Bai et al., 2025) as the base model for RL training, owing to its strong vision-language reasoning ability and object-level referring detection, which enable effective grounding without coldstart initialization. Moreover, Qwen2.5-VL has been widely used in prior RL-based studies, ensuring fair comparison with related work. For the reward model, we used Qwen2.5-VL-72B-Instruct, one of the most powerful open-sourced LVLMs, to provide a reliable and precise reward signal."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "B Training Details",
+      "paragraphs": [
+        "Data. We followed the setup of DeepEyes (Zheng et al., 2025b), reusing their curated training data for RL posttraining. This choice isolates the contribution of our method from dataset curation effects, allowing us to demonstrate improvements independently of data filtering, though such filtering remains a valid and complementary approach.",
+        "Other training details. Training was performed on a cluster node with 4 H100 GPUs. The global batch size was 128.",
+        "For accuracy rewards, half of each mini-batch was allocated to longer rollouts to avoid VRAM bottlenecks. Sixteen rollouts were sampled per training example. The learning rate was fixed at 1 × 10 -6 throughout training. We employed standard GRPO, as alternative variants such as DR. GRPO Liu et al. (2025) and GSPO (Zheng et al., 2025a) did not yield significant improvements in preliminary trials."
+      ],
+      "subsections": []
+    }
+  ],
+  "body_paragraphs": [
+    "High-resolution image processing is crucial to achieve strong performance in real-world applications with large vision-language models (LVLMs) (Liu et al., 2024a;Wang et al., 2024a;Vasu et al., 2025). Recent reinforcement learning (RL)-based post-training approaches (Wang et al., 2025a;Zheng et al., 2025b) have explored the idea of \"thinking with images\" (OpenAI, 2025), enabling LVLMs to reason not only through text, but also within the visual modality itself. By reasoning over cropped image features with bounding-box coordinates, these models can attend to local high-fidelity objects and capture fine-grained details, leading to significant improvements in high-resolution benchmarks.",
+    "Despite these advances, processing high-resolution input remains a major challenge. LVLMs must handle a massive number of vision tokens, resulting in prohibitive computational costs. A straightforward solution (Zhou et al., 2025;Yang et al., 2025), is to reduce the input resolution, which results in fewer vision tokens but inevitably discards fine-grained details critical to reasoning. The two-stage \"coarse-to-fine\" pipeline embodies this principle: it first queries the model with a coarse-grained image for initial reasoning over task-relevant regions; and then selectively localizes and re-encodes sub-images at higher resolution with finer granularity for subsequent reasoning. Crucially, discovering",
+    "The zoom-in tool confirms that the straws are indeed white... The color of the straw is white.",
+    "What is the color of the straw?",
+    "Looking at the image, we focus on the coffee cups and straws.",
+    "The signs are colorful, and there are straws visible in the image. The straws appear to be white.",
+    "What is the color of the straw?",
+    "... The straws are likely located near the coffee cups on the table ... Zoom in the region near the coffee cups ... ... the image shows that the straws are black.",
+    "The straw is visible in the enlarged subimage near the coffee cup on the table. The straw appears to be black... Powerful, but too much of computation cost from massive image tokens.",
+    "The reasoning led to where the straws is.",
+    "The straw is indiscernible by downsampling The straw is tiny but still discernible.",
+    "The model used coarse cues (coffee cup, table) to locate the straw.",
+    "Successfully located the straw",
+    "The model fails to find the straw and reasons over false object.",
+    "Failed to solve the task with downsampled image. relevant regions from downsampled image input is fundamental to overall performance, as it guides the model to focus its capacity on informative areas.",
+    "Fig. 1 illustrates this challenge and our solution. In Fig. 1(a), Zheng et al. (2025b) performs well when the target object remains clearly visible (i.e., correctly identifying a straw in the high-resolution image), but it requires processing a large number of vision tokens. Relevant models (Wang et al., 2025a;Su et al., 2025a;Zheng et al., 2025b) are typically designed in this perception-driven reasoning paradigm, where the model first localizes a tightly bounded target and then reasons over it. As a result, their training tends to overlook downsampled visual inputs. While effective at full resolution, this paradigm becomes a bottleneck in efficiency-oriented scenarios.",
+    "After input-image downsampling for a smaller number of vision tokens (see Fig. 1(b)), the straw becomes indistinguishable, causing Zheng et al. (2025b) to miss it and incorrectly focus on more discernible objects. In contrast, under such pixel-constrained conditions, our approach (Fig. 1(c)) highlights that reasoning-driven perception (i.e., including contextually inferable regions such as straws near coffee cups on tables) is far more beneficial, since selecting the correct region enables recovery of the original resolution in that area.",
+    "We introduce ERGO (Efficient Reasoning & Guided Observation), whose training objective is explicitly aligned with vision-processing efficiency in a reinforcement learning (RL) framework. It rewards the inclusion of all task-relevant regions, while implicitly incentivizing the incorporation of auxiliary context. This design enables the model to handle ambiguity without being restricted to precise localization, learning that exact identification of individual objects is not always optimal and that reasoning with contextual knowledge is often more beneficial. By aligning visual exploration with efficiency objectives, our approach enables LVLMs to achieve improved efficiency without sacrificing fine-grained reasoning ability. Our key contributions can be summarized as follows.",
+    "• Efficient coarse-to-fine pipeline. We introduce a two-stage reasoning pipeline that first processes low-resolution inputs to identify task-relevant regions and then re-encodes them at higher resolution. The pipeline reduces computational cost while preserving essential information. • Reward for reasoning-driven perception. With our proposed reward, the policy model learns that relying solely on accurate object localization is not always optimal and that contextual knowledge can often be more beneficial. To",
+    "is not used for the .",
+    "Policy Model : Trainable : Frozen our knowledge, we are the first to demonstrate the significance of this insight for high-resolution visual processing in LVLMs.",
+    "• State-of-the-art performance with fewer vision tokens. ERGO surpasses competitive methods (Huang et al., 2025b;Yang et al., 2025;Zheng et al., 2025b;Wang et al., 2025a;Su et al., 2025a) in accuracy on multiple high-resolution benchmarks, while reducing vision token counts and delivering practical speedups.",
+    "Pixel const. We examine whether appending a critical high-resolution sub-image to a low-resolution image input can enhance model performance.",
+    "For the experiments, we used Qwen2.5-VL (Bai et al., 2025) with pixel constraints to resize input images. Specifically, a setting of N ×28×28 in its image processor caps the maximum number of vision tokens at N . We varied the input resolution by controlling N and included the ground-truth (GT) original-resolution sub-image as an auxiliary input. Tab. 1 shows that using the GT full-fidelity sub-image does not degrade performance, even when the model has not been explicitly trained under such conditions. This finding indicates that high-resolution access to task-relevant regions is sufficient, whereas redundant tokens merely reduce efficiency.",
+    "Now that we have shown the effectiveness of task-relevant regions, the next question is whether existing models can autonomously identify such regions. A straightforward strategy might integrate a powerful \"thinking with images\" model (Zheng et al., 2025b;Su et al., 2025a;Huang et al., 2025b;Wang et al., 2025a) into the coarse-to-fine pipeline, predicting grounded coordinates and cropping the corresponding high-resolution sub-images. However, our results show that existing RL-trained reasoning models struggle to perform this task under low-resolution inputs (see Tab. 2). This highlights the need for approaches that can robustly identify informative regions even when coarse visual cues are the only available signals, rather than relying solely on clearly discernible objects.",
+    "Our objective is to develop remarkable reasoning-driven perception models that can reason over where to focus. Fig. 2 presents our RL-based training pipeline, whose forward process is as follows:",
+    "• Given a pair of original image I orig and text query q, the policy model π θ produces output o region ∼ π θ (• | I orig , q), which includes candidate bounding-box coordinates (indicating the region relevant to the query) and a thinking trace. • Next, the image I region corresponding to the bounding box is cropped from the original image I orig to feed into the reward model:",
+    "based on both the past interaction (i.e., original image I orig and predicted bounding box o region ) and the current query pair (i.e., cropped region I region and text query q).",
+    "The strength of ERGO lies in well-designed reward components for coarse-to-fine vision-grounded reasoning, detailed as follows.",
+    "3.1 Reward Design",
+    "Region-verification reward. In many thinking-with-images studies (Huang et al., 2025b;Su et al., 2025a;Zheng et al., 2025b), a reward model R takes the original image together with the cropped region and query, producing its output o RM ∼ R(•|I orig , I region , q) to guide the policy model. However, we argue that feeding the original image I orig into the reward model is sub-optimal: the model may rely on the original image instead of the cropped region, introducing unnecessary hints to the query and thereby weakening the objective of self-contained cropping (i.e., ensuring the cropped region alone provides sufficient cues). This issue is particularly problematic for coarse-to-fine visual grounded reasoning, which we adopt for efficiency, because low-resolution input images contain little evidence (as target objects are often indiscernible), making self-contained crops essential for question answering.",
+    "To address this issue, we propose the region-verification reward r region , where task performance is evaluated using only the cropped region and the query, without access to the original image. If the reward model's prediction matches the GT answer o GT , the policy model receives a reward: This design encourages the policy model to identify informative, task-relevant regions that preserve sufficient information for accurate reasoning, without the need for additional annotations.",
+    "In practice, we use a frozen reward model, Qwen2.5-VL-72B-Instruct (Bai et al., 2025).",
+    "Box adjustment reward. Although the region reward effectively encourages task-guided cropping, a key challenge emerges during early training: the policy model may exploit a trivial strategy by consistently selecting the entire image. While this would be a reasonable shortcut for maximum region reward, since the whole image is necessarily self-contained for the task, it limits efficient inference due to excessive token costs from processing the full-resolution image.",
+    "To mitigate this issue, we introduce a complementary reward signal that regularizes the size of the selected region. Specifically, the box adjustment reward r box is computed with a step function that penalizes overly large crops based on the area ratio of the selected region to the original image; it effectively prevents the model from consistently grounding the entire image:",
+    "Determining an ideal value of γ is crucial for our approach: low enough to prevent degenerate solutions (e.g., selecting the full image as the crop) during training, yet high enough to allow flexibility in region selection. To this end, we examined the training split of popular LVLM reasoning-related datasets with answer-aligned bounding box annotations (e.g., TreeVGR (Wang et al., 2025a), VisCoT (Shao et al., 2024a), V* (Wu and Xie, 2023), VGR (Wang et al., 2025b)). Fig. 3 shows that most GT regions relevant to question answering occupy less than 60% of the full image. Based on this analysis, we set γ = 0.6 for efficient and effective bounding box adjustment.",
+    "Task-driven contextual exploration (TCE) reward. Based on the collaborative nature of the region reward and box adjustment reward, we combine them to form our main reward r TCE :",
+    "Here, α and β are weighting coefficients, set to α = 1 and β = 0.5. This enables the policy model to learn robust and efficient region selection strategies for vision-grounded reasoning.",
+    "Accuracy reward. The TCE reward is effective to guiding the policy model to select task-relevant regions. However, it only indirectly promotes correct question-answering, creating a potential mismatch between the training objective and the final evaluation. To bridge this gap, we use an accuracy reward (DeepSeek-AI et al., 2025), which is assigned when the policy model's output o acc matches the GT answer:",
+    ". This component complements the TCE reward by directly optimizing for question-answering accuracy.",
+    "Format reward. This reward enforces the adhesion to a predefined output structure using special tags (DeepSeek-AI et al., 2025). A reward is given if the reasoning is correctly enclosed within <think></think> tags, the final answer within <answer></answer> tags, and a <zoom></zoom> tag is included when region selection is performed:",
+    "This mechanism encourages the model to maintain well-formed outputs that can be reliably parsed and evaluated throughout training and inference.",
+    "The overall reward function is defined as a linear combination of three components (i.e., the TCE reward, the accuracy reward, and the format reward): R = r TCE + r acc + r format .",
+    "We adopt Grouped Reward Policy Optimization (GRPO) (Shao et al., 2024b) as our RL framework, leveraging its sample-efficient optimization in grouped feedback settings (see the pseudo-code in Sect. A for details). Through this effective RL training, ERGO acquires reasoning-driven perception capabilities when presented with low-resolution, target-indiscernible inputs.",
+    "Training setup. We use Qwen2.5-VL-7B-Instruct (Bai et al., 2025) as the policy model and Qwen2.5-VL-72B-Instruct (Bai et al., 2025) as the frozen reward model. Our training data consists of a subset of ArxivQA (Li et al., 2024) and the V* training set (Wu and Xie, 2023), following Zheng et al. (2025b). Training was conducted with a global batch size of 128, using 8 rollouts per example on 4 H100 GPUs. See Sect. B for full details.",
+    "Baselines. We compare our approach against two categories of RL-based post-training methods:",
+    "• Efficiency-oriented models share our objective of efficient high-resolution vision-language understanding. MGPO (Huang et al., 2025b) directly leveraged the multi-turn pipeline but with a single reasoning stage. VisionThink (Yang et al., 2025) does not select a sub-region of the original image; instead, it employs a mechanism whereby the model, given a downsampled image, determines whether the full high-resolution image should be processed for the task. • Non-efficiency-oriented models are considered due to their strong grounding capabilities, which could still benefit the coarse-to-fine pipeline. DeepEyes (Zheng et al., 2025b) and PixelReasoner (Su et al., 2025a) are not trained for efficiency, but can be adapted to coarse-to-fine scenarios. Though TreeVGR (Wang et al., 2025a) is inherently incompatible with coarse-to-fine settings, as it performs text-only reasoning over bounding-box coordinates rather than visual re-encoding, we include it as a baseline for its strong grounding performance. † denotes reproduction with their code using our data, while ‡ denotes inference with their original pipeline.",
+    "Benchmarks. We utilize high-resolution visual question answering (VQA) benchmarks including V* (Wu and Xie, 2023), HR-Bench (Wang et al., 2024b), and MME-RWL (Zhang et al., 2024), as our objective is efficient high-resolution image understanding. To assess potential trade-offs introduced by training, we also consider conventional multimodal benchmarks: CV-Bench (Tong et al., 2024a) and MMVP (Tong et al., 2024b) as vision-centric benchmarks; Hallusion-Bench (Guan et al., 2024), POPE (Li et al., 2023), and MMBench (Liu et al., 2024b) as general-purpose VQA tasks; and AI2D (Kembhavi et al., 2016) and ChartQA (Masry et al., 2022) for chart understanding.",
+    "5 Results and Analysis",
+    "High-resolution reasoning with efficient visual processing. To measure performance under efficiency-considered scenarios, we considered two different pixel constraints-640×28×28 and 1280×28×28-corresponding to vision token limits of 640 and 1280, respectively. Following the coarse-to-fine reasoning principle, we consistently downsampled the images according to the fixed pixel constraints and cropped them at the original resolution. Tab. 2 shows that, because the average resolution of input images exceeds these limits, many baseline models cannot accurately reason over images, leading to performance degradation. In contrast, ERGO consistently outperforms all baselines across benchmarks. In particular, compared to Qwen2.5-VL-7B, only ERGO achieves a higher score for every benchmark we evaluated, even under the strictest 640×28×28 pixel constraint. Qualitative results are presented in Fig. 1 and Sect. C.",
+    "Fig. 4 shows that ERGO lies in the Pareto-optimal region, achieving higher scores with fewer vision tokens. We evaluate ERGO with multiple pixel constraints {320, 640, 1280}×28×28, corresponding to {579, 1026, 1632} total vision tokens per sample, whereas competing baselines are evaluated at {640, 1280, 2560, 3072}×28×28. Tab. 3 also shows that with the coarse-to-fine pipeline under the 1280×28×28 constraint, ERGO achieves the highest score within the same constraint group. Remarkably, at 640×28×28, ERGO outperforms all baselines while using fewer vision tokens than others evaluated at 1280×28×28. These results demonstrate that our model achieves highly efficient utilization of the vision token, as the pixel constraints can be flexibly regulated at test-time.",
+    "Practical latency improvements. To demonstrate that our method not only reduces vision token usage, but also provides practical benefits in real-world deployment, we conducted a latency comparison with the original Qwen2.5-VL-7B model. The evaluation was performed using the production grade vLLM engine (Kwon et al., 2023) on a single   H100 GPU with a batch size of 16, measuring the time to produce a final answer for an image-query pair. As shown in Tab. 4, our approach achieves faster latency while simultaneously surpassing the accuracy on the V* benchmark. Leveraging contextual information for VQA. We show that the superior performance of our model arises from its ability to identify task-relevant regions even when target objects become visually indiscernible (see Fig. 1).",
+    "To quantify this ability, we analyze whether the predicted region covers the GT target object, by defining Target Coverage Score =",
+    "where B pred is the set of predicted bounding boxes per sample and B gt is the set of GT bounding boxes per sample. We evaluate scores separately for cases where the object is completely masked (bounding box overlaid with black) and where it remains discernible. Since masking removes explicit visual representations of the object, models can only succeed by leveraging contextual information such as surrounding visual context or textual cues. Fig. 5 shows that ERGO achieves the most robust performance in the masked condition, consistent with its stronger ability to exploit such contextual signals.",
+    "Bias-free region prediction with the box adjustment constant. We employ a fixed box adjustment constant (i.e., γ is used in r box of Eq. 2) to facilitate efficient training; in principle, the model could be guided to predict the largest region permitted by the constant. However, Fig. 6 shows that ERGO infers regions with flexible areas that reflect the underlying characteristics of the data: in MMVP (Tong et al., 2024b), objects often occupy the full frame, whereas in MME-RWL (Zhang et al., 2024), objects are relatively small. This indicates that the box adjustment constant does not bias ERGO toward fixed-size predictions.",
+    "Results on conventional multimodal benchmarks. We evaluated ERGO on a broad set of multimodal benchmarks, including general VQA, vision-centric VQA, and document understanding. As shown in Tab. 5, ERGO not only maintains the abilities of the base model but also achieves improvements on several benchmarks. We attribute these gains to the improved ability of the model to reason in semantically relevant regions.",
+    "The TCE reward is more effective than the accuracy reward. In Tab. 6(a), D ⃝ relies solely on the TCE reward, without generating task answers during training, whereas A ⃝ relies solely on the accuracy reward, without evaluating the quality of the cropped region. Remarkably, although the final performance is measured by answer accuracy, D ⃝-which was never explicitly trained to answer the task-still outperforms A",
+    "⃝. The results highlight the effectiveness of the TCE reward design, because improving the quality of the selected region with task-relevant evidence is critical to performance in the coarse-to-fine pipeline. Regularizing the prioritization of the box adjustment reward is beneficial. For C ⃝ in Tab. 6(a), we set α = 1 and β = 1 in Eq. 3. For D ⃝, we reduced the weight of the box adjustment reward to β = 0.5 to prevent the policy from overly prioritizing this term over more critical rewards. This coordination of the weights results in higher average scores, which confirms our intended effect. Our reward design plays a critical role regardless of reward model size. We observe the impact of the reward model size by varying Qwen2.5-VL-Instruct (Bai et al., 2025) from 72B to 7B and 3B. Tab. 6(b) shows that performance does not collapse but remains robust, even when employing a smaller reward model, with only limited sensitivity to its scale. We attribute this robustness to the nature of our proxy task for assessing cropped image quality. Specifically, evaluating a reward model's answer with a given image crop and query is a fundamentally straightforward task, allowing even reward models with lower capacity to perform it reliably.",
+    "Data driven selection of γ is effective. Tab. 6(c) supports our strategy for selecting the box adjustment constant γ in Eq. 2. By setting γ based on the data statistics, we effectively guide the model's training behavior. A large γ would fail to penalize the trivial solution of cropping excessively large regions. Conversely, a small γ would restrict the model's ability to explore and identify the most relevant visual areas. Our data-driven approach strikes a balance, encouraging focused exploration while maintaining training stability.",
+    "LVLMs reasoning on vision spaces. The remarkable reasoning capabilities of RL post-trained Large Language Models (LLMs) have significantly advanced problem-solving. Approaches such as GRPO (Shao et al., 2024b) demonstrate that grouped reward signals can effectively induce complex reasoning. Building on these advancements in text-only LLMs, substantial efforts have been made to extend similar reasoning schemes to LVLMs. Early efforts (Shen et al., 2025;Huang et al., 2025a) integrated vision inputs for reasoning, using GRPO-like techniques to improve LVLM reasoning with text-only exploration. More recently, the concept of \"thinking with images\" (Su et al., 2025b), exemplified by models such as OpenAI-o3 (OpenAI, 2025), has gained traction, emphasizing visual-space reasoning. While reasoning LVLMs (Zheng et al., 2025b;Wang et al., 2025a) have been widely studied to boost performance, their use for efficient inference remains under-explored. Our work addresses this by showing that ERGO with grounded region supervision can achieve both higher efficiency and greater task-solving ability.",
+    "Efficient LVLMs with vision token pruning. The efficiency bottleneck lies in the rapid growth of vision token count as input image resolution increases. Vision token pruning (Chen et al., 2024;Wen et al., 2025b;Lee et al., 2025) mitigates this by selectively removing tokens to reduce computation. However, these methods often rely on layer-specific inference schemes, making them unsuitable for production-grade engines (Kwon et al., 2023;Zheng et al., 2024) that lack support for dynamic sequence lengths across layers. As noted by Wen et al. (2025a), such pruning often yields theoretical FLOPs reductions, which rarely translate into real inference-time speedups. Their focus is largely on compensating accuracy loss rather than achieving performance gains. In contrast, ERGO provides both performance gains and practical latency improvements within production-grade LLM engines.",
+    "Efficient LVLMs with RL. RL has been explored as a method to improve the efficiency of LVLMs. While moderating image resolution is a straightforward approach, it comes with the trade-off of reducing visual information. To address this, some RL-trained methods empower the model to manage resolution itself. For instance, VisionThink (Yang et al., 2025) trains models to request higher resolution when an image is too ambiguous to answer a question. However, this approach remains redundant, as it reprocesses the entire image at a higher resolution rather than focusing on task-relevant regions. In contrast, MGPO Huang et al. (2025b) trains models with downsampled images and high-resolution cropped regions, rewarding final answer accuracy. However, by neglecting the quality of the selected regions, MGPO fails to surpass methods without an efficiency objective. By assessing predicted regions with efficiency-oriented objective, ERGO achieves the best efficiency in high-resolution visual understanding.",
+    "Our study reveals a critical limitation of existing perception-driven reasoning models: their performance substantially degrades under low-resolution inputs in coarse-to-fine reasoning scenarios. These models rely heavily on clearly discernible visual anchors to localize objects; when such cues are lost due to downsampling, their ability to identify task-relevant regions deteriorates, causing errors in reasoning and question answering. This underscores the need for approaches that capture coarse cues while selectively attending to semantically salient regions. Our ERGO conducts reasoning-driven perception, maintaining both efficiency and accuracy even when high-fidelity object information is lost, thereby overcoming the efficiency shortcomings of prior methods.  Models. We adopted Qwen2.5-VL-7B-Instruct (Bai et al., 2025) as the base model for RL training, owing to its strong vision-language reasoning ability and object-level referring detection, which enable effective grounding without coldstart initialization. Moreover, Qwen2.5-VL has been widely used in prior RL-based studies, ensuring fair comparison with related work. For the reward model, we used Qwen2.5-VL-72B-Instruct, one of the most powerful open-sourced LVLMs, to provide a reliable and precise reward signal.",
+    "Data. We followed the setup of DeepEyes (Zheng et al., 2025b), reusing their curated training data for RL posttraining. This choice isolates the contribution of our method from dataset curation effects, allowing us to demonstrate improvements independently of data filtering, though such filtering remains a valid and complementary approach.",
+    "Other training details. Training was performed on a cluster node with 4 H100 GPUs. The global batch size was 128.",
+    "For accuracy rewards, half of each mini-batch was allocated to longer rollouts to avoid VRAM bottlenecks. Sixteen rollouts were sampled per training example. The learning rate was fixed at 1 × 10 -6 throughout training. We employed standard GRPO, as alternative variants such as DR. GRPO Liu et al. (2025) and GSPO (Zheng et al., 2025a) did not yield significant improvements in preliminary trials.",
+    "on V* using the vLLM engine. Latency represents the average duration to produce a final answer for each image-query pair."
+  ],
+  "references": [
+    {
+      "id": 1,
+      "text": "ShuaiBai\n\t\t\n\t\t\n\t\t\tKeqinChen\n\t\t\n\t\t\n\t\t\tXuejingLiu\n\t\t\n\t\t\n\t\t\tJialinWang\n\t\t\n\t\t\n\t\t\tWenbinGe\n\t\t\n\t\t\n\t\t\tSiboSong\n\t\t\n\t\t\n\t\t\tKaiDang\n\t\t\n\t\t\n\t\t\tPengWang\n\t\t\n\t\t\n\t\t\tShijieWang\n\t\t\n\t\t\n\t\t\tJunTang\n\t\t\n\t\t\n\t\t\tHumenZhong\n\t\t\n\t\t\n\t\t\tYuanzhiZhu\n\t\t\n\t\t\n\t\t\tMingkunYang\n\t\t\n\t\t\n\t\t\tZhaohaiLi\n\t\t\n\t\t\n\t\t\tJianqiangWan\n\t\t\n\t\t\n\t\t\tPengfeiWang\n\t\t\n\t\t\n\t\t\tWeiDing\n\t\t\n\t\t\n\t\t\tZherenFu\n\t\t\n\t\t\n\t\t\tYihengXu\n\t\t\n\t\t\n\t\t\tJiaboYe\n\t\t\n\t\t\n\t\t\tXiZhang\n\t\t\n\t\t\n\t\t\tTianbaoXie\n\t\t\n\t\t\n\t\t\tZesenCheng\n\t\t\n\t\t\n\t\t\tHangZhang\n\t\t\n\t\t\n\t\t\tZhiboYang\n\t\t\n\t\t\n\t\t\tHaiyangXu\n\t\t\n\t\t\n\t\t\tJunyangLin\n\t\t\n\t\t\n\t\tQwen2.5-vl technical report\n\t\t\n\t\t\t2025"
+    },
+    {
+      "id": 2,
+      "text": "An Image is Worth 1/2 Tokens After Layer 2: Plug-and-Play Inference Acceleration for Large Vision-Language Models\n\t\t\n\t\t\tLiangChen\n\t\t\n\t\t\n\t\t\tHaozheZhao\n\t\t\n\t\t\n\t\t\tTianyuLiu\n\t\t\n\t\t\n\t\t\tShuaiBai\n\t\t\n\t\t\n\t\t\tJunyangLin\n\t\t\n\t\t\n\t\t\tChangZhou\n\t\t\n\t\t\n\t\t\tBaobaoChang\n\t\t\n\t\t10.1007/978-3-031-73004-7_2\n\t\t\n\t\n\t\n\t\tLecture Notes in Computer Science\n\t\t\n\t\t\tSpringer Nature Switzerland\n\t\t\t2024"
+    },
+    {
+      "id": 3,
+      "text": "Deepseek-Ai\n\t\t\n\t\t\n\t\t\tDayaGuo\n\t\t\n\t\t\n\t\t\tDejianYang\n\t\t\n\t\t\n\t\t\tHaoweiZhang\n\t\t\n\t\t\n\t\t\tJunxiaoSong\n\t\t\n\t\t\n\t\t\tRuoyuZhang\n\t\t\n\t\t\n\t\t\tRunxinXu\n\t\t\n\t\t\n\t\t\tQihaoZhu\n\t\t\n\t\t\n\t\t\tShirongMa\n\t\t\n\t\t\n\t\t\tPeiyiWang\n\t\t\n\t\t\n\t\t\tXiaoBi\n\t\t\n\t\t\n\t\t\tXiaokangZhang\n\t\t\n\t\t\n\t\t\tXingkaiYu\n\t\t\n\t\t\n\t\t\tYuWu\n\t\t\n\t\t\n\t\t\tZFWu\n\t\t\n\t\t\n\t\t\tZhibinGou\n\t\t\n\t\t\n\t\t\tZhihongShao\n\t\t\n\t\t\n\t\t\tZhuoshuLi\n\t\t\n\t\t\n\t\t\tZiyiGao\n\t\t\n\t\t\n\t\t\tAixinLiu\n\t\t\n\t\t\n\t\t\tBingXue\n\t\t\n\t\t\n\t\t\tBingxuanWang\n\t\t\n\t\t\n\t\t\tBochaoWu\n\t\t\n\t\t\n\t\t\tBeiFeng\n\t\t\n\t\t\n\t\t\tChengdaLu\n\t\t\n\t\t\n\t\t\tChenggangZhao\n\t\t\n\t\t\n\t\t\tChengqiDeng\n\t\t\n\t\t\n\t\t\tChenyuZhang\n\t\t\n\t\t\n\t\t\tChongRuan\n\t\t\n\t\t\n\t\t\tDamaiDai\n\t\t\n\t\t\n\t\t\tDeliChen\n\t\t\n\t\t\n\t\t\tDongjieJi\n\t\t\n\t\t\n\t\t\tErhangLi\n\t\t\n\t\t\n\t\t\tFangyunLin\n\t\t\n\t\t\n\t\t\tFucongDai\n\t\t\n\t\t\n\t\t\tFuliLuo\n\t\t\n\t\t\n\t\t\tGuangboHao\n\t\t\n\t\t\n\t\t\tGuantingChen\n\t\t\n\t\t\n\t\t\tGuoweiLi\n\t\t\n\t\t\n\t\t\tHZhang\n\t\t\n\t\t\n\t\t\tHanBao\n\t\t\n\t\t\n\t\t\tHanweiXu\n\t\t\n\t\t\n\t\t\tHaochengWang\n\t\t\n\t\t\n\t\t\tHonghuiDing\n\t\t\n\t\t\n\t\t\tHuajianXin\n\t\t\n\t\t\n\t\t\tHuazuoGao\n\t\t\n\t\t\n\t\t\tHuiQu\n\t\t\n\t\t\n\t\t\tHuiLi\n\t\t\n\t\t\n\t\t\tJianzhongGuo\n\t\t\n\t\t\n\t\t\tJiashiLi\n\t\t\n\t\t\n\t\t\tJiaweiWang\n\t\t\n\t\t\n\t\t\tJingchangChen\n\t\t\n\t\t\n\t\t\tJingyangYuan\n\t\t\n\t\t\n\t\t\tJunjieQiu\n\t\t\n\t\t\n\t\t\tJunlongLi\n\t\t\n\t\t\n\t\t\tJLCai\n\t\t\n\t\t\n\t\t\tJiaqiNi\n\t\t\n\t\t\n\t\t\tJianLiang\n\t\t\n\t\t\n\t\t\tJinChen\n\t\t\n\t\t\n\t\t\tKaiDong\n\t\t\n\t\t\n\t\t\tKaiHu\n\t\t\n\t\t\n\t\t\tKaigeGao\n\t\t\n\t\t\n\t\t\tKexinKang Guan\n\t\t\n\t\t\n\t\t\tKuaiHuang\n\t\t\n\t\t\n\t\t\tLeanYu\n\t\t\n\t\t\n\t\t\tLecongWang\n\t\t\n\t\t\n\t\t\tLiangZhang\n\t\t\n\t\t\n\t\t\tLitongZhao\n\t\t\n\t\t\n\t\t\tLiyueWang\n\t\t\n\t\t\n\t\t\tLeiZhang\n\t\t\n\t\t\n\t\t\tLeyiXu\n\t\t\n\t\t\n\t\t\tMingchuanXia\n\t\t\n\t\t\n\t\t\tMinghuaZhang\n\t\t\n\t\t\n\t\t\tMinghuiZhang\n\t\t\n\t\t\n\t\t\tMengTang\n\t\t\n\t\t\n\t\t\tMiaojunLi\n\t\t\n\t\t\n\t\t\tMingmingWang\n\t\t\n\t\t\n\t\t\tNingLi\n\t\t\n\t\t\n\t\t\tPanpanTian\n\t\t\n\t\t\n\t\t\tPengHuang\n\t\t\n\t\t\n\t\t\tQianchengZhang\n\t\t\n\t\t\n\t\t\tQinyuWang\n\t\t\n\t\t\n\t\t\tQiushiChen\n\t\t\n\t\t\n\t\t\tRuiqiDu\n\t\t\n\t\t\n\t\t\tRuisongGe\n\t\t\n\t\t\n\t\t\tRuizheZhang\n\t\t\n\t\t\n\t\t\tRunjiPan\n\t\t\n\t\t\n\t\t\tRJWang\n\t\t\n\t\t\n\t\t\tRLChen\n\t\t\n\t\t\n\t\t\tRuyiJin\n\t\t\n\t\t\n\t\t\tShanghaoChen\n\t\t\n\t\t\n\t\t\tShangyanLu\n\t\t\n\t\t\n\t\t\tShanhuangZhou\n\t\t\n\t\t\n\t\t\tShengfengChen\n\t\t\n\t\t\n\t\t\tShiyuYe\n\t\t\n\t\t\n\t\t\tShuipingWang\n\t\t\n\t\t\n\t\t\tShunfengYu\n\t\t\n\t\t\n\t\t\tZhou\n\t\t\n\t\t\n\t\t\tSSShuting Pan\n\t\t\n\t\t\n\t\t\tShuangLi\n\t\t\n\t\t\n\t\t\tShaoqingZhou\n\t\t\n\t\t\n\t\t\tShengfengWu\n\t\t\n\t\t\n\t\t\tTaoYe\n\t\t\n\t\t\n\t\t\tTianYun\n\t\t\n\t\t\n\t\t\tTianyuPei\n\t\t\n\t\t\n\t\t\tTSun\n\t\t\n\t\t\n\t\t\tWangdingWang\n\t\t\n\t\t\n\t\t\tWanjiaZeng\n\t\t\n\t\t\n\t\t\tWenZhao\n\t\t\n\t\t\n\t\t\tWenfengLiu\n\t\t\n\t\t\n\t\t\tWenjunLiang\n\t\t\n\t\t\n\t\t\tWenqinGao\n\t\t\n\t\t\n\t\t\tWentaoYu\n\t\t\n\t\t\n\t\t\tWLZhang\n\t\t\n\t\t\n\t\t\tWeiXiao\n\t\t\n\t\t\n\t\t\tXiaodongAn\n\t\t\n\t\t\n\t\t\tXiaohanLiu\n\t\t\n\t\t\n\t\t\tXiaokangWang\n\t\t\n\t\t\n\t\t\tXiaotaoChen\n\t\t\n\t\t\n\t\t\tXinNie\n\t\t\n\t\t\n\t\t\tXinCheng\n\t\t\n\t\t\n\t\t\tXinLiu\n\t\t\n\t\t\n\t\t\tXingchaoXie\n\t\t\n\t\t\n\t\t\tXinyuLiu\n\t\t\n\t\t\n\t\t\tXinyuanYang\n\t\t\n\t\t\n\t\t\tXuechengLi\n\t\t\n\t\t\n\t\t\tXuhengSu\n\t\t\n\t\t\n\t\t\tXQLin\n\t\t\n\t\t\n\t\t\tXiangyueLi\n\t\t\n\t\t\n\t\t\tXiaojinJin\n\t\t\n\t\t\n\t\t\tXiaoshaShen\n\t\t\n\t\t\n\t\t\tXiaowenChen\n\t\t\n\t\t\n\t\t\tXiaoxiangSun\n\t\t\n\t\t\n\t\t\tXinnanWang\n\t\t\n\t\t\n\t\t\tXinyiSong\n\t\t\n\t\t\n\t\t\tXianzuZhou\n\t\t\n\t\t\n\t\t\tXinxiaWang\n\t\t\n\t\t\n\t\t\tYKShan\n\t\t\n\t\t\n\t\t\tYQLi\n\t\t\n\t\t\n\t\t\tYXWang\n\t\t\n\t\t\n\t\t\tYangWei\n\t\t\n\t\t\n\t\t\tYanhongZhang\n\t\t\n\t\t\n\t\t\tYaoXu\n\t\t\n\t\t\n\t\t\tYaoLi\n\t\t\n\t\t\n\t\t\tYaofengZhao\n\t\t\n\t\t\n\t\t\tYaohuiSun\n\t\t\n\t\t\n\t\t\tYiWang\n\t\t\n\t\t\n\t\t\tYichaoYu\n\t\t\n\t\t\n\t\t\tYifanZhang\n\t\t\n\t\t\n\t\t\tYiliangShi\n\t\t\n\t\t\n\t\t\tYingXiong\n\t\t\n\t\t\n\t\t\tYishiHe\n\t\t\n\t\t\n\t\t\tYisongPiao\n\t\t\n\t\t\n\t\t\tYixuanWang\n\t\t\n\t\t\n\t\t\tYiyangTan\n\t\t\n\t\t\n\t\t\tYiyuanMa\n\t\t\n\t\t\n\t\t\tYongqiangLiu\n\t\t\n\t\t\n\t\t\tYuanGuo\n\t\t\n\t\t\n\t\t\tYuduanOu\n\t\t\n\t\t\n\t\t\tYueWang\n\t\t\n\t\t\n\t\t\tYuhengGong\n\t\t\n\t\t\n\t\t\tYujiaZou\n\t\t\n\t\t\n\t\t\tYunfanHe\n\t\t\n\t\t\n\t\t\tYuxiangXiong\n\t\t\n\t\t\n\t\t\tYuxiangLuo\n\t\t\n\t\t\n\t\t\tYuxuanYou\n\t\t\n\t\t\n\t\t\tYuyangLiu\n\t\t\n\t\t\n\t\t\tYXZhou\n\t\t\n\t\t\n\t\t\tYanhongZhu\n\t\t\n\t\t\n\t\t\tYanpingXu\n\t\t\n\t\t\n\t\t\tYaohuiHuang\n\t\t\n\t\t\n\t\t\tYiLi\n\t\t\n\t\t\n\t\t\tYuchenZheng\n\t\t\n\t\t\n\t\t\tYunxianZhu\n\t\t\n\t\t\n\t\t\tYingMa\n\t\t\n\t\t\n\t\t\tYukunTang\n\t\t\n\t\t\n\t\t\tYutingZha\n\t\t\n\t\t\n\t\t\tZZYan\n\t\t\n\t\t\n\t\t\tZehuiRen\n\t\t\n\t\t\n\t\t\tZhangliRen\n\t\t\n\t\t\n\t\t\tZheSha\n\t\t\n\t\t\n\t\t\tZheanFu\n\t\t\n\t\t\n\t\t\tZhendaXu\n\t\t\n\t\t\n\t\t\tZhengyanXie\n\t\t\n\t\t\n\t\t\tZhewenZhang\n\t\t\n\t\t\n\t\t\tZhichengHao\n\t\t\n\t\t\n\t\t\tZhigangMa\n\t\t\n\t\t\n\t\t\tZhiyuYan\n\t\t\n\t\t\n\t\t\tZihuiWu\n\t\t\n\t\t\n\t\t\tZijiaGu\n\t\t\n\t\t\n\t\t\tZijunZhu\n\t\t\n\t\t\n\t\t\tZilinLiu\n\t\t\n\t\t\n\t\t\tZiweiLi\n\t\t\n\t\t\n\t\t\tXie\n\t\t\n\t\t\n\t\t\n\t\t\t2025\n\t\t\tZiyang Song, Zizheng Pan\n\t\t\n\t\n\tZhen Huang, Zhipeng Xu, Zhongyu Zhang, and Zhen Zhang. Deepseek-r1: Incentivizing reasoning capability in llms via reinforcement learning"
+    },
+    {
+      "id": 4,
+      "text": "Hallusionbench: An advanced diagnostic suite for entangled language hallucination and visual illusion in large vision-language models\n\t\t\n\t\t\tFuxiaoTianrui Guan\n\t\t\n\t\t\n\t\t\tXiyangLiu\n\t\t\n\t\t\n\t\t\tRuiqiWu\n\t\t\n\t\t\n\t\t\tZongxiaXian\n\t\t\n\t\t\n\t\t\tXiaoyuLi\n\t\t\n\t\t\n\t\t\tXijunLiu\n\t\t\n\t\t\n\t\t\tLichangWang\n\t\t\n\t\t\n\t\t\tFurongChen\n\t\t\n\t\t\n\t\t\tYaserHuang\n\t\t\n\t\t\n\t\t\tDineshYacoob\n\t\t\n\t\t\n\t\t\tTianyiManocha\n\t\t\n\t\t\n\t\t\tZhou\n\t\t\n\t\t\n\t\t\n\t\t\t2024"
+    },
+    {
+      "id": 5,
+      "text": "Vision-r1: Incentivizing reasoning capability in multimodal large language models\n\t\t\n\t\t\tWenxuanHuang\n\t\t\n\t\t\n\t\t\tBohanJia\n\t\t\n\t\t\n\t\t\tZijieZhai\n\t\t\n\t\t\n\t\t\tShaoshengCao\n\t\t\n\t\t\n\t\t\tZheyuYe\n\t\t\n\t\t\n\t\t\tFeiZhao\n\t\t\n\t\t\n\t\t\tZheXu\n\t\t\n\t\t\n\t\t\tYaoHu\n\t\t\n\t\t\n\t\t\tShaohuiLin\n\t\t\n\t\t\n\t\t\n\t\t\t2025"
+    },
+    {
+      "id": 6,
+      "text": "High-resolution visual reasoning via multi-turn grounding-based reinforcement learning\n\t\t\n\t\t\tXinyuHuang\n\t\t\n\t\t\n\t\t\tYuhaoDong\n\t\t\n\t\t\n\t\t\tWeiweiTian\n\t\t\n\t\t\n\t\t\tBoLi\n\t\t\n\t\t\n\t\t\tRuiFeng\n\t\t\n\t\t\n\t\t\tZiweiLiu\n\t\t\n\t\t\n\t\t\n\t\t\t2025"
+    },
+    {
+      "id": 7,
+      "text": "A Diagram is Worth a Dozen Images\n\t\t\n\t\t\tAniruddhaKembhavi\n\t\t\n\t\t\n\t\t\tMikeSalvato\n\t\t\n\t\t\n\t\t\tEricKolve\n\t\t\n\t\t\n\t\t\tMinjoonSeo\n\t\t\n\t\t\n\t\t\tHannanehHajishirzi\n\t\t\n\t\t\n\t\t\tAliFarhadi\n\t\t\n\t\t10.1007/978-3-319-46493-0_15\n\t\t\n\t\n\t\n\t\tLecture Notes in Computer Science\n\t\t\n\t\t\tSpringer International Publishing\n\t\t\t2016"
+    },
+    {
+      "id": 8,
+      "text": "Efficient memory management for large language model serving with pagedattention\n\t\t\n\t\t\tWoosukKwon\n\t\t\n\t\t\n\t\t\tZhuohanLi\n\t\t\n\t\t\n\t\t\tSiyuanZhuang\n\t\t\n\t\t\n\t\t\tYingSheng\n\t\t\n\t\t\n\t\t\tLianminZheng\n\t\t\n\t\t\n\t\t\tCodyHaoYu\n\t\t\n\t\t\n\t\t\tJosephEGonzalez\n\t\t\n\t\t\n\t\t\tHaoZhang\n\t\t\n\t\t\n\t\t\tIonStoica\n\t\t\n\t\t\n\t\t\n\t\t\t2023"
+    },
+    {
+      "id": 9,
+      "text": "Efficient llama-3.2-vision by trimming cross-attended visual features\n\t\t\n\t\t\tJewonLee\n\t\t\n\t\t\n\t\t\tKi-UngSong\n\t\t\n\t\t\n\t\t\tSeungminYang\n\t\t\n\t\t\n\t\t\tDongukLim\n\t\t\n\t\t\n\t\t\tJaeyeonKim\n\t\t\n\t\t\n\t\t\tWooksuShin\n\t\t\n\t\t\n\t\t\tBo-KyeongKim\n\t\t\n\t\t\n\t\t\tYong\n\t\t\n\t\t\n\t\t\tJaeLee\n\t\t\n\t\t\n\t\t\tTae-HoKim\n\t\t\n\t\t\n\t\t\n\t\t\t2025"
+    },
+    {
+      "id": 10,
+      "text": "Multimodal ArXiv: A Dataset for Improving Scientific Comprehension of Large Vision-Language Models\n\t\t\n\t\t\tLeiLi\n\t\t\n\t\t\n\t\t\tYuqiWang\n\t\t\n\t\t\n\t\t\tRunxinXu\n\t\t\n\t\t\n\t\t\tPeiyiWang\n\t\t\n\t\t\n\t\t\tXiachongFeng\n\t\t\n\t\t\n\t\t\tLingpengKong\n\t\t\n\t\t\n\t\t\tQiLiu\n\t\t\n\t\t10.18653/v1/2024.acl-long.775\n\t\t\n\t\n\t\n\t\tProceedings of the 62nd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers)\n\t\tthe 62nd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers)\n\t\t\n\t\t\tAssociation for Computational Linguistics\n\t\t\t2024"
+    },
+    {
+      "id": 11,
+      "text": "Evaluating Object Hallucination in Large Vision-Language Models\n\t\t\n\t\t\tYifanLi\n\t\t\n\t\t\n\t\t\tYifanDu\n\t\t\n\t\t\n\t\t\tKunZhou\n\t\t\n\t\t\n\t\t\tJinpengWang\n\t\t\n\t\t\n\t\t\tXinZhao\n\t\t\n\t\t\n\t\t\tJi-RongWen\n\t\t\n\t\t10.18653/v1/2023.emnlp-main.20\n\t\t\n\t\n\t\n\t\tProceedings of the 2023 Conference on Empirical Methods in Natural Language Processing\n\t\tthe 2023 Conference on Empirical Methods in Natural Language Processing\n\t\t\n\t\t\tAssociation for Computational Linguistics\n\t\t\t2023"
+    },
+    {
+      "id": 12,
+      "text": "Improved Baselines with Visual Instruction Tuning\n\t\t\n\t\t\tHaotianLiu\n\t\t\n\t\t\n\t\t\tChunyuanLi\n\t\t\n\t\t\n\t\t\tYuhengLi\n\t\t\n\t\t\n\t\t\tYongJaeLee\n\t\t\n\t\t10.1109/cvpr52733.2024.02484\n\t\t\n\t\n\t\n\t\t2024 IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)\n\t\t\n\t\t\tIEEE\n\t\t\t2024"
+    },
+    {
+      "id": 13,
+      "text": "MMBench: Is Your Multi-modal Model an All-Around Player?\n\t\t\n\t\t\tYuanLiu\n\t\t\n\t\t\n\t\t\tHaodongDuan\n\t\t\n\t\t\n\t\t\tYuanhanZhang\n\t\t\n\t\t\n\t\t\tBoLi\n\t\t\n\t\t\n\t\t\tSongyangZhang\n\t\t\n\t\t\n\t\t\tWangboZhao\n\t\t\n\t\t\n\t\t\tYikeYuan\n\t\t\n\t\t\n\t\t\tJiaqiWang\n\t\t\n\t\t\n\t\t\tConghuiHe\n\t\t\n\t\t\n\t\t\tZiweiLiu\n\t\t\n\t\t\n\t\t\tKaiChen\n\t\t\n\t\t\n\t\t\tDahuaLin\n\t\t\n\t\t10.1007/978-3-031-72658-3_13\n\t\t\n\t\n\t\n\t\tLecture Notes in Computer Science\n\t\t\n\t\t\tSpringer Nature Switzerland\n\t\t\t2024"
+    },
+    {
+      "id": 14,
+      "text": "Understanding r1-zero-like training: A critical perspective\n\t\t\n\t\t\tZichenLiu\n\t\t\n\t\t\n\t\t\tChangyuChen\n\t\t\n\t\t\n\t\t\tWenjunLi\n\t\t\n\t\t\n\t\t\tPenghuiQi\n\t\t\n\t\t\n\t\t\tTianyuPang\n\t\t\n\t\t\n\t\t\tChaoDu\n\t\t\n\t\t\n\t\t\tWeeSun Lee\n\t\t\n\t\t\n\t\t\tMinLin\n\t\t\n\t\t\n\t\t\n\t\t\t2025"
+    },
+    {
+      "id": 15,
+      "text": "ChartQA: A Benchmark for Question Answering about Charts with Visual and Logical Reasoning\n\t\t\n\t\t\tAhmedMasry\n\t\t\n\t\t\n\t\t\tDoLong\n\t\t\n\t\t\n\t\t\tJiaQingTan\n\t\t\n\t\t\n\t\t\tShafiqJoty\n\t\t\n\t\t\n\t\t\tEnamulHoque\n\t\t\n\t\t10.18653/v1/2022.findings-acl.177\n\t\t\n\t\n\t\n\t\tFindings of the Association for Computational Linguistics: ACL 2022\n\t\t\n\t\t\tAssociation for Computational Linguistics\n\t\t\t2022"
+    },
+    {
+      "id": 16,
+      "text": "Index 189\n\t\t\n\t\t\tOpenai\n\t\t\n\t\t10.3726/978-3-0353-0299-8/14\n\t\t\n\t\n\t\n\t\tThinking Images\n\t\t\n\t\t\tPeter Lang\n\t\t\t2025"
+    },
+    {
+      "id": 17,
+      "text": "Visual cot: Advancing multi-modal language models with a comprehensive dataset and benchmark for chain-of-thought reasoning\n\t\t\n\t\t\tHaoShao\n\t\t\n\t\t\n\t\t\tShengjuQian\n\t\t\n\t\t\n\t\t\tHanXiao\n\t\t\n\t\t\n\t\t\tGuangluSong\n\t\t\n\t\t\n\t\t\tZhuofanZong\n\t\t\n\t\t\n\t\t\tLetianWang\n\t\t\n\t\t\n\t\t\tYuLiu\n\t\t\n\t\t\n\t\t\tHongshengLi\n\t\t\n\t\t\n\t\t\n\t\t\t2024"
+    },
+    {
+      "id": 18,
+      "text": "Deepseekmath: Pushing the limits of mathematical reasoning in open language models\n\t\t\n\t\t\tZhihongShao\n\t\t\n\t\t\n\t\t\tPeiyiWang\n\t\t\n\t\t\n\t\t\tQihaoZhu\n\t\t\n\t\t\n\t\t\tRunxinXu\n\t\t\n\t\t\n\t\t\tJunxiaoSong\n\t\t\n\t\t\n\t\t\tXiaoBi\n\t\t\n\t\t\n\t\t\tHaoweiZhang\n\t\t\n\t\t\n\t\t\tMingchuanZhang\n\t\t\n\t\t\n\t\t\tYKLi\n\t\t\n\t\t\n\t\t\tYWu\n\t\t\n\t\t\n\t\t\tDayaGuo\n\t\t\n\t\t\n\t\t\n\t\t\t2024"
+    },
+    {
+      "id": 19,
+      "text": "Vlm-r1: A stable and generalizable r1-style large vision-language model\n\t\t\n\t\t\tHaozhanShen\n\t\t\n\t\t\n\t\t\tPengLiu\n\t\t\n\t\t\n\t\t\tJingchengLi\n\t\t\n\t\t\n\t\t\tChunxinFang\n\t\t\n\t\t\n\t\t\tYiboMa\n\t\t\n\t\t\n\t\t\tJiajiaLiao\n\t\t\n\t\t\n\t\t\tQiaoliShen\n\t\t\n\t\t\n\t\t\tZilunZhang\n\t\t\n\t\t\n\t\t\tKangjiaZhao\n\t\t\n\t\t\n\t\t\tQianqianZhang\n\t\t\n\t\t\n\t\t\tRuochenXu\n\t\t\n\t\t\n\t\t\tTianchengZhao\n\t\t\n\t\t\n\t\t\n\t\t\t2025"
+    },
+    {
+      "id": 20,
+      "text": "Pixel reasoner: Incentivizing pixel-space reasoning with curiosity-driven reinforcement learning\n\t\t\n\t\t\tAlexSu\n\t\t\n\t\t\n\t\t\tHaozheWang\n\t\t\n\t\t\n\t\t\tWeimingRen\n\t\t\n\t\t\n\t\t\tFangzhenLin\n\t\t\n\t\t\n\t\t\tWenhuChen\n\t\t\n\t\t\n\t\t\n\t\t\t2025"
+    },
+    {
+      "id": 21,
+      "text": "ZhaochenSu\n\t\t\n\t\t\n\t\t\tPengXia\n\t\t\n\t\t\n\t\t\tHangyuGuo\n\t\t\n\t\t\n\t\t\tZhenhuaLiu\n\t\t\n\t\t\n\t\t\tYanMa\n\t\t\n\t\t\n\t\t\tXiaoyeQu\n\t\t\n\t\t\n\t\t\tJiaqiLiu\n\t\t\n\t\t\n\t\t\tYanshuLi\n\t\t\n\t\t\n\t\t\tKaideZeng\n\t\t\n\t\t\n\t\t\tZhengyuanYang\n\t\t\n\t\t\n\t\t\tLinjieLi\n\t\t\n\t\t\n\t\t\tYuCheng\n\t\t\n\t\t\n\t\t\tHengJi\n\t\t\n\t\t\n\t\t\tJunxianHe\n\t\t\n\t\t\n\t\t\tYiRFung\n\t\t\n\t\t\n\t\tThinking with images for multimodal reasoning: Foundations, methods, and future frontiers, 2025b"
+    },
+    {
+      "id": 22,
+      "text": "Cambrian-1: A fully open, vision-centric exploration of multimodal llms\n\t\t\n\t\t\tShengbangTong\n\t\t\n\t\t\n\t\t\tEllisBrown\n\t\t\n\t\t\n\t\t\tPenghaoWu\n\t\t\n\t\t\n\t\t\tSanghyunWoo\n\t\t\n\t\t\n\t\t\tManojMiddepogu\n\t\t\n\t\t\n\t\t\tCharithaSai\n\t\t\n\t\t\n\t\t\tJihanAkula\n\t\t\n\t\t\n\t\t\tShushengYang\n\t\t\n\t\t\n\t\t\tAdithyaYang\n\t\t\n\t\t\n\t\t\tXichenIyer\n\t\t\n\t\t\n\t\t\tZitengPan\n\t\t\n\t\t\n\t\t\tRobWang\n\t\t\n\t\t\n\t\t\tYannFergus\n\t\t\n\t\t\n\t\t\tSainingLecun\n\t\t\n\t\t\n\t\t\tXie\n\t\t\n\t\t\n\t\t\n\t\t\t2024"
+    },
+    {
+      "id": 23,
+      "text": "Eyes Wide Shut? Exploring the Visual Shortcomings of Multimodal LLMs\n\t\t\n\t\t\tShengbangTong\n\t\t\n\t\t\n\t\t\tZhuangLiu\n\t\t\n\t\t\n\t\t\tYuexiangZhai\n\t\t\n\t\t\n\t\t\tYiMa\n\t\t\n\t\t\n\t\t\tYannLecun\n\t\t\n\t\t\n\t\t\tSainingXie\n\t\t\n\t\t10.1109/cvpr52733.2024.00914\n\t\t\n\t\n\t\n\t\t2024 IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)\n\t\t\n\t\t\tIEEE\n\t\t\t2024"
+    },
+    {
+      "id": 24,
+      "text": "Fastvlm: Efficient vision encoding for vision language models\n\t\t\n\t\t\tPavanKumar\n\t\t\n\t\t\n\t\t\tAnasosaluVasu\n\t\t\n\t\t\n\t\t\tFartashFaghri\n\t\t\n\t\t\n\t\t\tChun-LiangLi\n\t\t\n\t\t\n\t\t\tCemKoc\n\t\t\n\t\t\n\t\t\tNateTrue\n\t\t\n\t\t\n\t\t\tAlbertAntony\n\t\t\n\t\t\n\t\t\tGokulSanthanam\n\t\t\n\t\t\n\t\t\tJamesGabriel\n\t\t\n\t\t\n\t\t\tPeterGrasch\n\t\t\n\t\t\n\t\t\tOncelTuzel\n\t\t\n\t\t\n\t\t\tHadiPouransari\n\t\t\n\t\t\n\t\t\n\t\t\t2025"
+    },
+    {
+      "id": 25,
+      "text": "Traceable evidence enhanced visual grounded reasoning: Evaluation and methodology\n\t\t\n\t\t\tHaochenWang\n\t\t\n\t\t\n\t\t\tXiangtaiLi\n\t\t\n\t\t\n\t\t\tZilongHuang\n\t\t\n\t\t\n\t\t\tAnranWang\n\t\t\n\t\t\n\t\t\tJiacongWang\n\t\t\n\t\t\n\t\t\tTaoZhang\n\t\t\n\t\t\n\t\t\tJianiZheng\n\t\t\n\t\t\n\t\t\tSuleBai\n\t\t\n\t\t\n\t\t\tZijianKang\n\t\t\n\t\t\n\t\t\tJiashiFeng\n\t\t\n\t\t\n\t\t\tZhuochenWang\n\t\t\n\t\t\n\t\t\tZhaoxiangZhang\n\t\t\n\t\t\n\t\t\n\t\t\t2025"
+    },
+    {
+      "id": 26,
+      "text": "Vgr: Visual grounded reasoning\n\t\t\n\t\t\tJiacongWang\n\t\t\n\t\t\n\t\t\tZijianKang\n\t\t\n\t\t\n\t\t\tHaochenWang\n\t\t\n\t\t\n\t\t\tHaiyongJiang\n\t\t\n\t\t\n\t\t\tJiawenLi\n\t\t\n\t\t\n\t\t\tBohongWu\n\t\t\n\t\t\n\t\t\tYaWang\n\t\t\n\t\t\n\t\t\tJiaoRan\n\t\t\n\t\t\n\t\t\tXiaoLiang\n\t\t\n\t\t\n\t\t\tChaoFeng\n\t\t\n\t\t\n\t\t\tJunXiao\n\t\t\n\t\t\n\t\t\n\t\t\t2025"
+    },
+    {
+      "id": 27,
+      "text": "Qwen2-vl: Enhancing vision-language model's perception of the world at any resolution\n\t\t\n\t\t\tPengWang\n\t\t\n\t\t\n\t\t\tShuaiBai\n\t\t\n\t\t\n\t\t\tSinanTan\n\t\t\n\t\t\n\t\t\tShijieWang\n\t\t\n\t\t\n\t\t\tZhihaoFan\n\t\t\n\t\t\n\t\t\tJinzeBai\n\t\t\n\t\t\n\t\t\tKeqinChen\n\t\t\n\t\t\n\t\t\tXuejingLiu\n\t\t\n\t\t\n\t\t\tJialinWang\n\t\t\n\t\t\n\t\t\tWenbinGe\n\t\t\n\t\t\n\t\t\tYangFan\n\t\t\n\t\t\n\t\t\tKaiDang\n\t\t\n\t\t\n\t\t\tMengfeiDu\n\t\t\n\t\t\n\t\t\tXuanchengRen\n\t\t\n\t\t\n\t\t\tRuiMen\n\t\t\n\t\t\n\t\t\tDayihengLiu\n\t\t\n\t\t\n\t\t\tChangZhou\n\t\t\n\t\t\n\t\t\tJingrenZhou\n\t\t\n\t\t\n\t\t\tJunyangLin\n\t\t\n\t\t\n\t\t\n\t\t\t2024"
+    },
+    {
+      "id": 28,
+      "text": "Divide, conquer and combine: A training-free framework for high-resolution image perception in multimodal large language models\n\t\t\n\t\t\tWenbinWang\n\t\t\n\t\t\n\t\t\tLiangDing\n\t\t\n\t\t\n\t\t\tMinyanZeng\n\t\t\n\t\t\n\t\t\tXiabinZhou\n\t\t\n\t\t\n\t\t\tLiShen\n\t\t\n\t\t\n\t\t\tYongLuo\n\t\t\n\t\t\n\t\t\tDachengTao\n\t\t\n\t\t\n\t\t\n\t\t\t2024"
+    },
+    {
+      "id": 29,
+      "text": "Token Pruning in Multimodal Large Language Models: Are We Solving the Right Problem?\n\t\t\n\t\t\tZichenWen\n\t\t\n\t\t\n\t\t\tYifengGao\n\t\t\n\t\t\n\t\t\tWeijiaLi\n\t\t\n\t\t\n\t\t\tConghuiHe\n\t\t\n\t\t\n\t\t\tLinfengZhang\n\t\t\n\t\t10.18653/v1/2025.findings-acl.802\n\t\t\n\t\n\t\n\t\tFindings of the Association for Computational Linguistics: ACL 2025\n\t\t\n\t\t\tAssociation for Computational Linguistics\n\t\t\t2025"
+    },
+    {
+      "id": 30,
+      "text": "Stop looking for important tokens in multimodal language models: Duplication matters more\n\t\t\n\t\t\tZichenWen\n\t\t\n\t\t\n\t\t\tYifengGao\n\t\t\n\t\t\n\t\t\tShaoboWang\n\t\t\n\t\t\n\t\t\tJunyuanZhang\n\t\t\n\t\t\n\t\t\tQintongZhang\n\t\t\n\t\t\n\t\t\tWeijiaLi\n\t\t\n\t\t\n\t\t\tConghuiHe\n\t\t\n\t\t\n\t\t\tLinfengZhang\n\t\t\n\t\t\n\t\t\n\t\t\t2025"
+    },
+    {
+      "id": 31,
+      "text": "V*: Guided Visual Search as a Core Mechanism in Multimodal LLMs\n\t\t\n\t\t\tPenghaoWu\n\t\t\n\t\t\n\t\t\tSainingXie\n\t\t\n\t\t10.1109/cvpr52733.2024.01243\n\t\t\n\t\n\t\n\t\t2024 IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)\n\t\t\n\t\t\tIEEE\n\t\t\t2023"
+    },
+    {
+      "id": 32,
+      "text": "Visionthink: Smart and efficient vision language model via reinforcement learning\n\t\t\n\t\t\tSenqiaoYang\n\t\t\n\t\t\n\t\t\tJunyiLi\n\t\t\n\t\t\n\t\t\tXinLai\n\t\t\n\t\t\n\t\t\tBeiYu\n\t\t\n\t\t\n\t\t\tHengshuangZhao\n\t\t\n\t\t\n\t\t\tJiayaJia\n\t\t\n\t\t\n\t\t\n\t\t\t2025"
+    },
+    {
+      "id": 33,
+      "text": "Mme-realworld: Could your multimodal llm challenge high-resolution realworld scenarios that are difficult for humans?\n\t\t\n\t\t\tYi-FanZhang\n\t\t\n\t\t\n\t\t\tHuanyuZhang\n\t\t\n\t\t\n\t\t\tHaochenTian\n\t\t\n\t\t\n\t\t\tChaoyouFu\n\t\t\n\t\t\n\t\t\tShuangqingZhang\n\t\t\n\t\t\n\t\t\tJunfeiWu\n\t\t\n\t\t\n\t\t\tFengLi\n\t\t\n\t\t\n\t\t\tKunWang\n\t\t\n\t\t\n\t\t\tQingsongWen\n\t\t\n\t\t\n\t\t\tZhangZhang\n\t\t\n\t\t\n\t\t\n\t\t\t2024"
+    },
+    {
+      "id": 34,
+      "text": "ChujieZheng\n\t\t\n\t\t\n\t\t\tShixuanLiu\n\t\t\n\t\t\n\t\t\tMingzeLi\n\t\t\n\t\t\n\t\t\tXiong-HuiChen\n\t\t\n\t\t\n\t\t\tBowenYu\n\t\t\n\t\t\n\t\t\tChangGao\n\t\t\n\t\t\n\t\t\tKaiDang\n\t\t\n\t\t\n\t\t\tYuqiongLiu\n\t\t\n\t\t\n\t\t\tRuiMen\n\t\t\n\t\t\n\t\t\tAnYang\n\t\t\n\t\t\n\t\t\tJingrenZhou\n\t\t\n\t\t\n\t\t\tJunyangLin\n\t\t\n\t\t\n\t\tGroup sequence policy optimization, 2025a"
+    },
+    {
+      "id": 35,
+      "text": "Sglang: Efficient execution of structured language model programs\n\t\t\n\t\t\tLianminZheng\n\t\t\n\t\t\n\t\t\tLiangshengYin\n\t\t\n\t\t\n\t\t\tZhiqiangXie\n\t\t\n\t\t\n\t\t\tChuyueSun\n\t\t\n\t\t\n\t\t\tJeffHuang\n\t\t\n\t\t\n\t\t\tCodyHao Yu\n\t\t\n\t\t\n\t\t\tShiyiCao\n\t\t\n\t\t\n\t\t\tChristosKozyrakis\n\t\t\n\t\t\n\t\t\tIonStoica\n\t\t\n\t\t\n\t\t\tJosephEGonzalez\n\t\t\n\t\t\n\t\t\tClarkBarrett\n\t\t\n\t\t\n\t\t\tYingSheng\n\t\t\n\t\t\n\t\t\n\t\t\t2024"
+    },
+    {
+      "id": 36,
+      "text": "Deepeyes: Incentivizing \"thinking with images\" via reinforcement learning\n\t\t\n\t\t\tZiweiZheng\n\t\t\n\t\t\n\t\t\tMichaelYang\n\t\t\n\t\t\n\t\t\tJackHong\n\t\t\n\t\t\n\t\t\tChenxiaoZhao\n\t\t\n\t\t\n\t\t\tGuohaiXu\n\t\t\n\t\t\n\t\t\tLeYang\n\t\t\n\t\t\n\t\t\tChaoShen\n\t\t\n\t\t\n\t\t\tXingYu\n\t\t\n\t\t\n\t\t\n\t\t\t2025"
+    },
+    {
+      "id": 37,
+      "text": "Dynrsl-vlm: Enhancing autonomous driving perception with dynamic resolution vision-language models\n\t\t\n\t\t\tXiruiZhou\n\t\t\n\t\t\n\t\t\tLianleiShan\n\t\t\n\t\t\n\t\t\tXiaolinGui\n\t\t\n\t\t\n\t\t\n\t\t\t2025"
+    }
+  ],
+  "formulas": [
+    {
+      "id": "FORMULA_1",
+      "raw": "I region ← crop(I orig , o region ). • Then, the policy π θ generates an answer o acc ∼ π θ (• | [I region , q], [I orig , o region ]) in a multi-turn conditioned setting,"
+    },
+    {
+      "id": "FORMULA_2",
+      "raw": "o RM ∼ R(•|I region , q), r region = ⊮[match(o RM , o GT )] .(1)"
+    },
+    {
+      "id": "FORMULA_3",
+      "raw": "r box = ⊮ Area(I region ) Area(I orig ) ≤ γ .(2)"
+    },
+    {
+      "id": "FORMULA_4",
+      "raw": "r TCE = α • r region + β • r box .(3)"
+    },
+    {
+      "id": "FORMULA_5",
+      "raw": "r acc = ⊮[match(o acc , o GT )]"
+    },
+    {
+      "id": "FORMULA_6",
+      "raw": "r format = ⊮[ o region , o acc follow expected format ]."
+    },
+    {
+      "id": "FORMULA_7",
+      "raw": "1 |Bgt| |Bgt| i=1 max |bp∩bg| |bg| b p ∈ B pred , b g ∈ B gt"
+    }
+  ]
+}

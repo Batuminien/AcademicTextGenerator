@@ -1,0 +1,764 @@
+{
+  "title": "VideoNSA: Native Sparse Attention Scales Video Understanding VIDEONSA: NATIVE SPARSE ATTENTION SCALES VIDEO UNDERSTANDING",
+  "authors": [
+    {
+      "firstname": "Enxin",
+      "surname": "Song",
+      "email": ""
+    },
+    {
+      "firstname": "Wenhao",
+      "surname": "Chai",
+      "email": ""
+    },
+    {
+      "firstname": "Shusheng",
+      "surname": "Yang",
+      "email": ""
+    },
+    {
+      "firstname": "Ethan",
+      "surname": "Armand",
+      "email": ""
+    },
+    {
+      "firstname": "Xiaojun",
+      "surname": "Shan",
+      "email": ""
+    },
+    {
+      "firstname": "Haiyang",
+      "surname": "Xu",
+      "email": ""
+    },
+    {
+      "firstname": "Jianwen",
+      "surname": "Xie",
+      "email": ""
+    },
+    {
+      "firstname": "Zhuowen",
+      "surname": "Tu",
+      "email": ""
+    }
+  ],
+  "abstract": "Video understanding in multimodal language models remains limited by context length: models often miss key transition frames and struggle to maintain coherence across long time scales. To address this, we adapt Native Sparse Attention (NSA) to video-language models. Our method, VideoNSA, adapts Qwen2.5-VL through end-to-end training on a 216K video instruction dataset. We employ a hardware-aware hybrid approach to attention, preserving dense attention for text, while employing NSA for video. Compared to token-compression and training-free sparse baselines, VideoNSA achieves improved performance on long-video understanding, temporal reasoning, and spatial benchmarks. Further ablation analysis reveals four key findings: (1) reliable scaling to 128K tokens; (2) an optimal global-local attention allocation at a fixed budget; (3) task-dependent branch usage patterns; and (4) the learnable combined sparse attention help induce dynamic attention sinks.",
+  "sections": [
+    {
+      "title": "INTRODUCTION",
+      "paragraphs": [
+        "Key moments of a video can occur at any time, exemplified by soccer where game deciding moments typically span seconds of a 90 minute game. Within those game deciding moments split second actions define the outcome: an assist, a missed tackle, the movement of the keeper. Multimodal large language models (MLLMs) (Team, 2025;Team et al., 2025b;a) have achieved substantial progress in vision-language perception and reasoning, but still cannot match humans ability to extract and reason about salient moments in videos. While humans naturally sample color visuals around 60hz, (Kalloniatis & Luu, 2007) across large contexts, existing VLMs often sample a single frame per second. Intuitively, increasing the context for these models by sampling more frames improves accuracy (Cai et al., 2024;Wu et al., 2024), particularly for long videos and complex reasoning tasks. However, this approach pays for improvement with additional tokens, increasing computational complexity and pushing against fundamental limits of model context.",
+        "To address these challenges, many approaches (Wang et al., 2024;Li et al., 2024b;Jin et al., 2024;Wang et al., 2025a;Yang et al., 2024) adopt token compression to reduce redundancy and increase informative context. However, when applied to complex reasoning tasks, these compression-based models perform worse compared to full-token methods (Song et al., 2025a). Moreover, compression strategies often limit generalization through reduced perception and reasoning capacity (Wen et al., 2025). In contrast, sparse attention mechanisms preserve tokens, but focus the models capabilities on relevant dependencies between tokens. Numerous sparse attention methods have already been employed in large language models (LLMs), but most are inadequate for video complexity (detailed in Appendix A). Therefore, we present VideoNSA, which adopts Native Sparse Attention (Yuan et al., 2025b), a learnable hardware-aware sparse attention mechanism proven to be effective in longcontext modeling. VideoNSA is the first learnable and hardware-aware sparse attention framework tailored for video understanding, effectively scaling to ultra-long vision-text context. We apply the learnable sparse attention to video token sequences, while preserving grouped-query attention for text tokens. Following this pattern, our experiments show that using only 3.6% of the attention budget on 128K context length while improving performance on various tasks We further conduct massive experiments and analyses of VideoNSA , revealing several important findings: (1) VideoNSA extrapolates effectively to contexts beyond its training length, and the optimal balance between temporal density and spatial resolution is highly task dependent.",
+        "(2) VideoNSA is also sensitive by attention scaling, with results remaining strongest near the training configuration. (3) The gating distribution evolves dynamically across layers, and the selection and sliding-window branches gradually lose importance in deeper layers. (4) The compression branch emerges as the main computational bottleneck. (5)Moreover, the learned sparse attention weights remain beneficial even under dense attention settings. (6) Learnable sparse attention induces distinctive attention sink behaviors across branches, with very few sinks in the selection branch and periodic sink formation in the compression branch.",
+        "In particular, our paper makes the following contributions:",
+        "• We propose VideoNSA, a hardware-aware native sparse attention mechanism, and systematically investigate its effectiveness for video understanding, scaling up to a 128K vision context length.",
+        "• We introduce hybrid sparse attention in VideoNSA, enabling flexible allocation of information and attention budgets to achieve optimal performance across diverse task.",
+        "• We dynamically combine global and local attention through three complementary branches, which effectively reduce attention sinks in long vision contexts."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "VIDEONSA",
+      "paragraphs": [
+        "2.1 PRELIMINARIES Native sparse attention.",
+        "Existing training-free sparse attention methods are rarely hardware aligned, and typically don't increase training efficiency. Native Sparse Attention (Yuan et al., 2025b) (NSA) avoids computing attention between all key-value pairs (K t , V t ), instead, for each query q t , NSA dynamically constructs an information-dense KV cache subset. NSA combines three complementary cache branches with a learnable gate g c t adaptively weighting each branch yielding o t :",
+        "Token Compression (CMP) branch aggregates sequential blocks of keys into more coarse-grained, single block-level representations Kcmp t via a learnable MLP φ:",
+        "where m is the block length, d is the stride.",
+        "Token Selection (SLC) branch preserves the most salient key-value blocks by computing importance scores p slc' t and selecting the indices of the top-n blocks:",
+        "The final set of selected keys is formed by concatenating these top-ranked blocks:",
+        "where I t is the set of selected indices, n is the number of blocks to retain.",
+        "Sliding Window (SWA) branch simply applies the standard sliding window attention, which retains the fixed w most recent key-value pairs: Video frames are encoded into frame-level KV blocks. VideoNSA utilizes three sparse attention branches during prefilling stage: compression branch reduces redundancy via token averaging, selection branch identifies top-k important tokens, and sliding window branch enforces local temporal coverage. The outputs are combined through dynamic gating before integration with text tokens for LLM decoding.",
+        "Grouped query attention. In Multi-Head Attention (MHA), each query head has dedicated keyvalue (KV) projections, which makes the KV cache scale with the number of heads and increases inference cost. Grouped-Query Attention (GQA) (Ainslie et al., 2023) mitigates this by letting multiple query heads share fewer KV heads. For each input {x i } L i=1 , GQA partitions the h query heads into g groups (1 ≤ g ≤ h). At a given timestep t, the output o (s) t for the s-th query head with group index m(s) = ⌈sg/h⌉ is computed by applying attention to the shared keys and values as:",
+        ". The outputs o t from all heads are concatenated by",
+        ". VideoNSA utilizes Qwen2.5-VL-7B (Bai et al., 2025) as the backbone, with Qwen2.5-7B (Qwen et al., 2025) as the LLM decoder, which employs GQA for efficient KV cache utilization using 28 query heads and 4 shared key/value heads."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "ARCHITECTURE",
+      "paragraphs": [
+        "Existing token compression methods (Yang et al., 2025d;Zhang et al., 2025c;Hyun et al., 2025;Zhang et al., 2025h) suffer from irreversible information loss on complex tasks and don't address computational and latency bottlenecks in LLM video understanding. From the perspective of attention as a message passing in a Graph Neural Network (Joshi, 2025; Pappone, 2025), it's clear this bottleneck is fundamental. Standard attention propagates information between nodes (tokens) through edges (attention weights), with each token being updated by aggregating features from its neighbors, weighted by attention scores. Training-free sparse attention often imposes a static adjacency matrix whose fixed subgraph connectivity restricts information flow. Conversely, NSA (Yuan et al., 2025b) provides data-dependent sparsity that preserves edges necessary for a particular task.",
+        "We build VideoNSA upon Qwen2.5-VL-7B (Qwen et al., 2025), which incorporates a vision encoder and adopts Qwen2.5-7B (Bai et al., 2025) as the LLM. As illustrated in Figure 1, VideoNSA introduces a hybrid attention mechanism in the LLM across different modalities. At each layer l, we split the input tokens X (l-1) into vision tokens X (l-1) V and text tokens X (l-1) T according to their position IDs. For vision tokens, VideoNSA applies NSA (Yuan et al., 2025b) with a dedicated gate g c t on each head. We set the block size s equal to the token number per frame, and obtain the block-level representation by averaging all tokens within the block. The vision attention output o V is dynamically weighted by the compression, selection, and sliding window branches as:",
+        "where g c t is implemented as a two-layer MLP with a sigmoid activation.",
+        "The text attention output o (l)",
+        "T is computed using standard GQA (Ainslie et al., 2023) to preserve instruction following capabilities. We obtain the final output o (l) of the layer l by concatenating:"
+      ],
+      "subsections": []
+    },
+    {
+      "title": "TRAINING RECIPE",
+      "paragraphs": [
+        "We conduct end-to-end training to adapt vision features for data-dependent sparse connectivity in the language model. The training dataset of VideoNSA is constructed from LLaVA-Video-178K (Zhang et al., 2024c) by filtering for question answer pairs at 4 fps and retaining videos with 350-550 frames, for a subset of 216K pairs. To emphasize sparse attention for temporal redundancy, we constrain the maximum pixels per frame to 50,176, and the maximum context length per training instance to 36K tokens. In VideoNSA, block size s is set to 64, block b is set to 32, and sliding window size w is set to 256. We trained using SWIFT (Zhao et al., 2024), adapting the NSA (Yuan et al., 2025b) implementation from FLA (Yang & Zhang, 2024) and (Pai et al., 2025b). The complete training process requires 4600 H100 GPU hours. More training details including hyper-parameters selection can be found in Appendix B."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "EXPERIMENTS",
+      "paragraphs": [],
+      "subsections": []
+    },
+    {
+      "title": "EFFECTIVENESS ON VIDEO UNDERSTANDING",
+      "paragraphs": [
+        "Baselines Our primary baseline is Qwen2.5-VL-7B (Qwen et al., 2025) with dense FlashAttention (Dao, 2023). We compare VideoNSA against several strong baselines, including the quantization model AWQ (Team, 2024), training-free token compression models (Yang et al., 2025c;Zhang et al., 2025b;Chen et al., 2024a), and training-free sparse attention methods (Jiang et al., 2024;Xu et al., 2025a;Lai et al., 2025;Li et al., 2024c). All methods employ their official configuration without additional training and using Qwen2.5-VL-7B (Qwen et al., 2025) as a base. For token compression baselines, we use the token kept ratio and sampling fps from the original papers that yield the best accuracy, while for sparse attention baselines, we use the same configuration as VideoNSA. In addition, we fine-tune Qwen2.5-VL-7B (Qwen et al., 2025) using the same training dataset as VideoNSA to serve as a competitive baseline. We also include models with different backbones for a broad comparison.",
+        "We evaluate VideoNSA across three domains including long video understanding, temporal reasoning, and spatial understanding using LMMs-Eval (Zhang et al., 2024a) and VLMEvalKit (Duan et al., 2024). Table 1 indicates that sparse attention methods consistently outperform token compression approaches. We empirically evaluate the effectiveness of VideoNSA based on several popular long video understanding benchmarks, including LongVideoBench (Wu et al., 2024), MLVU (Zhou et al., 2024), TimeScope (Zohar et al., 2025) and LongTimeScope (Zohar et al., 2025). VideoNSA achieves competitive results, narrowing the gap with state-of-the-art methods. We observe that VideoNSA shows clear advantages on tasks involving order-sensitive temporal reasoning and ultra-long video settings (10 hours in LongTimeScope (Zohar et al., 2025)). To evaluate the visual temporal reasoning capbility of VideoNSA, we evaluate VideoNSA on Tomato (Shangguan et al., 2024), a benchmark spanning six reasoning types and three video scenarios. VideoNSA attains the highest accuracy on Tomato (Shangguan et al., 2024), substantially outperforming compression-based methods, underscoring their limitations in fine-grained temporal inference. VSIBench (Yang et al., 2025a) focuses on spatial reasoning allowing us to test whether efficient models can preserve local fidelity while achieving efficiency. VideoNSA matches the strongest sparse attention baselines and significantly surpasses token compression methods in spatial understanding, confirming that it preserves spatial fidelity. All detailed evaluation settings and subset results can be found in Appendix C, Appendix D, Appendix E, and Appendix F."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "ABLATION STUDY",
+      "paragraphs": [
+        "To further analyze the components of VideoNSA, we visualize attention pattern in each branch in Appendix G and assess the effectiveness of different branches. Table 2 shows that single-branch models suffer significant degradation, and even two-branch combinations remain inferior to the full VideoNSA, highlighting the necessity of integrating all three branches with dynamic gating. Detailed results of different branch combination can be found in Appendix H."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "SCALING ANALYSIS AND FINDINGS",
+      "paragraphs": [
+        "Finding 1. Do learned sparse attention weights remain beneficial in dense attention settings?  We further examine whether the learned QKV weights of VideoNSA can imrpove performance in dense attention inference. Table 3 reports the relative performance change over the Qwen2.5-VL-7B (Qwen et al., 2025). Due to the limited quality of the training data, our fine-tuned Qwen2.5-VL-7B (Dense-SFT) exhibits slight performance drops on most benchmarks. We observe that the transferred model (Dense-NSA) allows the dense variant to recover and surpass the baseline on several benchmarks suggesting that sparse-trained weights provides inductive bias towards more effective attention distributions. However, the effect remains limited on LongVideoBench (Wu et al., 2024). VideoNSA significantly outperforms Dense-NSA on most tasks, highlighting the importance of runtime sparsity and dynamic gating.",
+        "Finding 2. How far can VideoNSA scale in context length?",
+        "The effective vision context length L is jointly determined by the number of vision tokens per frame T and the total number of input frames F . VideoNSA is trained with a maximum context length of L = 36K tokens, corresponding to T = 64 tokens per frame. We conduct an information budget study under a fixed context length, by varying tokens per frame and frame rate. We then scale up the context length beyond the training budget, evaluating up to the maximum 128K tokens supported by the language model. As observed in Figure 2, the model consistently achieves higher performance when scaled to longer contexts beyond its training length across benchmarks. However, the ideal allocation of same token budget is highly task-dependent. LongVideoBench (Wu et al., 2024) favors allocating more tokens per frame, while Tomato (Shangguan et al., 2024) and TimeScope (Zohar et al., 2025) benefit more from increasing the number of frames, emphasizing temporal coverage.",
+        "VSIBench (Yang et al., 2025a) shows mixed preferences depending on context length, reflecting a balance between spatial and temporal sampling. Additional results on information scaling are reported in Appendix I.",
+        "Finding 3. How to allocate the attention budget? edges, the fraction of attention used γ is",
+        "To determine the optimal attention allocation, we first fix the total sequence length L, the attention budget K vis , and the block size S = 64, while systematically varying the local attention ratio α = w Kattn . We then employ the optimal allocation ratio α ⋆ for attention budget scaling. As shown in Figure 3, scatter points denote different allocation strategies, with their size and color reflecting performance. We highlight the point corresponding to the training configuration, connect equal-budget settings with solid orange lines, and extend the best-performing configuration with dashed lines, where the annotated values indicate the fraction of attention used γ. Results show that model performance is highly sensitive to attention allocation. Although the optimal ratio between global and local attention varies across tasks, configurations close to the training allocation generally yield better results. Under the same budget, fine-tuning around the training setting often improves performance, whereas simply enlarging the overall budget does not consistently bring further gains. Moreover, across most benchmarks, increasing global attention (enlarging the block count) tends to outperform increasing local attention (enlarging the sliding window). Remarkably, VideoNSA achieves leading performance using only 3.6% of the full attention budget. More results are in Appendix J. We analyze the gating distribution of VideoNSA across Tomato (Shangguan et al., 2024), VSI-Bench (Yang et al., 2025a), and LongVideoBench (Wu et al., 2024), and aggregate the average routing gate weights over 100 examples from each. As illustrated in Figure 4, where shaded bars denote the interquartile range and horizontal lines represent mean values, each head in VideoNSA exhibits distinct and diverse preferences across branches throughout its full depth. The diversity allows different layers to specialize in distinct modes of the context-dependent information flow. The compres-VideoNSA: Native Sparse Attention Scales Video Understanding   sion branch maintains relatively high average weights across most layers, underscoring its primary role in reducing redundancy while preserving salient features. The selection and sliding window gates fluctuate more strongly, occasionally surpassing the compression branch in early and middle layers. However, their contributions diminish in the final layers (e.g., L22-L26), demonstrating that the focus shifts towards aggregating high-level features. We also note strange behavior in the last layer, where all three branches are fully active despite selection and sliding window being inactive in the layers before. Full gate values distribution in Appendix K.",
+        "We further dive into the inter-head gate similarity of each layer in Figure 5. In the middle layers, both selection and sliding window gates exhibit pronounced increases in inter-head similarity. This indicates that multiple mid-layer heads converge to highly consistent gating behaviors when the model performs block selection and local temporal integration. However, the compression gate shows consistently low inter-head similarity, indicating that it operates largely in a head-independent manner. At both the initial and final layers of VideoNSA, inter-head similarity remains weak across all gates, reflecting the need to maintain diversity in early representations and to support mixing information in higher-level abstractions. More inter-head gate similarites visualization in Appendix L.",
+        "Finding 5. Where does the efficiency bottleneck come from? We measure the inference latency of each branch in VideoNSA using wall-clock time across varying context lengths from 1K to 128K. The compression branch dominates runtime as the context grows, while the selection and sliding window branches contribute relatively little at longer contexts. Ideally, the compression branch grows approximately linearly with L, and the sliding window branch has a complexity of O(L • w), which results in linear scaling for a fixed window size w. The selection branch requires computing importance scores over all L/b blocks per query, leading to a computational complexity of O(L 2 /b). However, wall-clock latency deviates from these estimates due to hardware parallelism, memory access patterns, and kernel launch overheads. Overall, the compression branch emerges as the primary bottleneck, highlighting the need for further optimization of its kernel design and memory efficiency.",
+        "Finding 6. Do learnable sparse mechanisms induce dynamic attention sinks?",
+        "In decoder-only transformers, a disproportionate amount of attention is often allocated to the first few tokens, which act as attention sinks and absorb excessive attention mass as a byproduct of softmax normalization. Prior studies (Gu et al., 2024;Xiao et al., 2023) show that attention sinks arise from massive activations and unusually small key and value norms, so attention directed to these tokens contributes little to the residual state. This raises an important question in learnable sparse attention: whether sparsity patterns amplify or mitigate such sinks.   We follow the attention sink defination in (Pai et al., 2025a):",
+        "where α is the average attention score received by the key, and ∥v∥ is the value norm of the token.",
+        "Figure 7 illustrates the average distribution of attention sinks across the three branches of VideoNSA. Each frame is encoded into 256 tokens, and we adopt the same sparse attention configuration as used during training. The three branches exhibit markedly different sink behaviors. The compression branch produces the most sinks, with distinct banded concentrations along the value norm axis caused by token merging that amplifies some token norms while suppressing others. Conversely, the selection branch yields almost no sinks, as its top-k block filtering mechanism enforces a smoother value norm distribution. Notably, the sliding window branch demonstrates a clearer separation between sink and non-sink tokens along the value norm axis. Critically, dynamic gating allows VideoNSA to counteract the negative effects of the compression branch, achieving a stable model with a low overall sink ratio of 0.3%.",
+        "Figure 8 indicates that VideoNSA maintains low sink ratios overall, with only minor fluctuations across layers. However, Flash Attention exhibits a gradual increase in sink ratios toward deeper layers. The compression branch maintains relatively high sink levels across most layers. The selection branch remains consistently close to zero, while the sliding window branch occasionally shows higher peaks in the middle-to-late layers, indicating that locality constraints may still introduce bias in long-sequence settings. From the perspective of positional distribution in Figure 9, Flash Attention produces sinks that are uniformly spread across the entire sequence due to its fully connected dense attention. Under dynamic gating,VideoNSA achieves smoother temporal coverage, alleviating over-reliance on early positions while avoiding the global diffusion characteristic of dense attention. In contrast, the compression branch exhibits strong accumulation at the beginning with an even steeper decay, indicating that token merging exerts its strongest impact on early-stage representations. The selection branch yields very few sinks across the sequence, while the sliding window branch produces sparse peaks at periodic boundaries of local neighborhoods. More analysis about attention sinks on various sparse attention settings can be found in Appendix M."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "CONCLUSION",
+      "paragraphs": [
+        "In this work, we present VideoNSA, a hybrid hardware-aware sparse attention model that significantly advances video understanding across various tasks. By dynamically fusing block-wise compression, salient block selection, and a sliding window, VideoNSA effectively preserves critical information while achieving near-linear scalability in efficiency and memory. Our experiments demonstrate that VideoNSA consistently outperforms existing methods on key tasks including long video understanding, temporal reasoning, and spatial understanding. While the prefill stage remains the primary bottleneck, our findings confirm that this hybrid sparse approach provides a powerful and scalable framework, paving the way for more capable video foundation models."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "ACKNOWLEDGEMENT",
+      "paragraphs": [
+        "This work is supported by NSF award IIS-2127544 and NSF award IIS-2433768. We thank Lambda, Inc. for their compute resource help on this project."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "ETHICS STATEMENT",
+      "paragraphs": [
+        "This research on video understanding utilizes publicly available datasets, ensuring that all data complies with privacy regulations. We acknowledge the potential biases that can arise in automatic answer generation, particularly concerning gender, race, or other characteristics. We have taken measures to evaluate and minimize such biases, while remaining committed to further improvements. Additionally, we recognize the potential risks of misuse, such as generating misleading answers, and have checked the training dataset with safeguards against such applications."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "REPRODUCIBILITY STATEMENT",
+      "paragraphs": [
+        "We have made several efforts to ensure the reproducibility of our work. All the key implementation details, including the architecture of our model, the training procedures, and hyperparameter settings, are described in supplementary meterial Section B. The settings of the used evaluation benchmarks are in Section C to further support reproducibility."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Appendix",
+      "paragraphs": [
+        "The supplementary material is structured as follows:",
+        "• Iiterature review about the related works in Section A.",
+        "• The training settings for VideoNSA in Section B.",
+        "• The introduction of the used evaluation benchmarks and settings in Section C.",
+        "• More results on long-form video benchmarks in Section D.",
+        "• More results on temporal reasoning benchmarks in Section E.",
+        "• More results on spatial understanding benchmarks in Section F.",
+        "• Visualization of attention pattern in each branch in Section G.",
+        "• More results on branch combination in Section H.",
+        "• More results on information scaling study in Section I.",
+        "• More results on attention scaling study in Section J.",
+        "• Full gate values distribution in Section K.",
+        "• More inter-head gate similarites visualization in Section L.",
+        "• More analysis about attention sinks on various sparse attention settings can be found in Section M.",
+        "• Visualization of attention sinks in dense attention in Section N."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "A RELATED WORK",
+      "paragraphs": [
+        "A.1 EFFICIENT VIDEO UNDERSTANDING Video understanding systems typically convert videos into long sequences of vision tokens, which can easily exceed GPU memory and slow down inference as the video length grows. To address this, existing work mainly address this by token compression, alternative sequence modeling, and KVcache compression. One important line of work emphasizes token compression. Spatial or temporal token merging methods (Wang et al., 2025c;Zhang & Fu, 2025;Li et al., 2025c;Jiang et al., 2025a;Li et al., 2025a;Shao et al., 2025;Song et al., 2024;Chai et al., 2024) progressively discard redundant content, while question-/task-aware strategies (Jiang et al., 2025b;Dong et al., 2025;Yao et al., 2025;Song et al., 2025b) tailor retained tokens to the query. These approaches substantially lower FLOPs but still rely on dense attention once tokens are merged. Beyond pure self-attention, Mamba-based or hybrid architectures (Jiang et al., 2025a;Ren et al., 2025;Xu et al., 2025b) inject state-space or recurrent modules to approach linear-time inference while preserving long-range dependencies. Also, there exists approach to design data efficient systems for further fine-tuning (Li et al., 2025b). Another direction targets the key-value cache during decoding via task-aware sparsification and streaming-friendly memory (Qin et al., 2025a;Ning et al., 2025;Kim et al., 2025;Yang et al., 2025e) reduce memory and improve throughput, yet prefill still scales quadratically with sequence length. In contrast to methods that mostly decide where to drop or compress tokens, our approach systematically probe the effectiveness of native sparse attention (Yuan et al., 2025a) that restructures attention itself to be learnable and sparse from the ground up. VideoNSA attains near-linear scalability up to 128K tokens and processes over 10,000 frames on a single GPU, outperforming compression-only pipelines on long-video understanding, temporal reasoning, and spatial understanding tasks."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "A.2 SPARSE ATTENTION MECHANISM",
+      "paragraphs": [
+        "Sparse attention is a central strategy for efficient long-context modeling in language and multimodal systems. Surveys (Zhang et al., 2025e) categorize approaches into pattern-based vs. dynamic/learned. Pattern-based sparsity. Methods such as Longformer (Beltagy et al., 2020), StreamingLLM (Xiao et al., 2024), and TriangleMix (He et al., 2025) prescribe fixed local/strided patterns that can be applied training-free; recent multimodal works (Zhang et al., 2025d;Yang et al., 2025b) follow similar principles, while hardware-efficient kernels like Flash Sparse Attention (Yan et al., 2025) further reduce prefill latency. InfLLM-V2 (Zhao et al., 2025) uses switchable dense sparse attention to smoothly adapt models from short to long sequences while maintaining consistency and achieving efficient acceleration with high performance. ProxyAttn (Wang et al., 2025b) uses representative heads for fine-grained block importance estimation, enabling faster sparse attention with minimal performance loss. Dynamic and trainable sparsity. Content-or gradientadaptive mechanisms select important connections (e.g., diagonal selection (Tyagi et al., 2025) or lag-relative strategies (Liang et al., 2025)); trainable sparse attention improves long-context reasoning (Gao et al., 2025;Vasylenko et al., 2025;Gao et al., 2024), diffusion-based video generation (Zhang et al., 2025g), and state-space models (Zhan et al., 2025). SLA (Zhang et al., 2025f) decomposes attention weights into critical, marginal, and negligible parts, combining sparse and low-rank acceleration to greatly reduce computation while preserving generation quality. Hybrid approaches such as RocketKV (Behnam et al., 2025) combine token/cache compression with learned sparsity, and MMInference (Li et al., 2025d) accelerates modality-aware sparse prefill for VLMs. Despite these advances, most techniques are optimized for text or short multimodal contexts and do not directly address the ultra-long, highly redundant spatio-temporal structure of videos. VideoNSA unifies block-wise compression, salient block selection, and a sliding-window branch under learnable gates that dynamically allocate computation across three native sparse branches (Yuan et al., 2025a). This end-to-end, data-driven design preserves critical global/local dependencies while scaling nearly linearly in both time and memory."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "B DETAILED TRAINING SETTINGS",
+      "paragraphs": [
+        "Training hyperparameters for VideoNSA are shown in Table 4. We filter a subset of LLaVA-Video-178K (Zhang et al., 2024d) as the training data. For each video, we uniformly sample at 4 frames per second and retain only those with 350-550 frames, resulting in 216K video question-answer pairs from the original 961K pairs in LLaVA-Video-178K (Zhang et al., 2024d)."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "C EVALUATION BENCHMARKS AND SETTINGS",
+      "paragraphs": [
+        "We list all the hyper-parameters and prompt used for evaluation as shown in Table 5."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "D MORE RESULTS ON LONG-FORM VIDEO BENCHMARKS",
+      "paragraphs": [
+        "We take LongVideoBench (Wu et al., 2024)"
+      ],
+      "subsections": []
+    },
+    {
+      "title": "E MORE RESULTS ON TEMPORAL REASONING BENCHMARKS",
+      "paragraphs": [
+        "We take Tomato (Shangguan et al., 2024) as the representative temporal reasoning benchmark and compare against existing token compression and sparse attention methods. As shown in Table 10, VideoNSAachieves comparable performance without specialized designs. Moreover, we observe that VideoNSA significantly outperforms the baselines on subtasks including object counting, shape description, and human actions."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "F MORE RESULTS ON SPATIAL UNDERSTANDING BENCHMARKS",
+      "paragraphs": [
+        "We take VSIBench (Yang et al., 2025a) as the representative spatial understanding benchmark and compare against existing token compression and sparse attention methods. As shown in Table 11, VideoNSA achieves comparable performance without specialized designs. Moreover, we observe that VideoNSA significantly outperforms the baselines on subtasks including object relative direction, route planning, and object size estimation."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "G VISUALIZATION OF ATTENTION PATTERN IN EACH BRANCH",
+      "paragraphs": [
+        "We visualize the attention patterns of the last layer across the three branches in Figure 10, Figure 11, Figure 12, and Figure 13, together with the final attention output, as representative examples. The compression branch reduces redundancy to preserve salient information, the selection branch highlights task-relevant regions with sparse activations, and the sliding window branch enforces local temporal coverage by focusing on short-range dependencies. These complementary roles collectively shape the final attention output."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "H MORE RESULTS ON BRANCH COMBINATION",
+      "paragraphs": [
+        "In this section, we report detailed results of different branch combinations across three domains, including long video understanding (Table 12, Tavke 13, Table 14, and Table 15), temporal reasoning (Table 16), and spatial understanding (Table 17). The corresponding performances are summarized in the table, which highlights how the use of individual branches or their combinations affects downstream tasks."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "I MORE RESULTS ON INFORMATION SCALING STUDY",
+      "paragraphs": [
+        "Figure 15 shows the scaling performance of VideoNSA under different context allocation strategies on LongTimeScope and MLVU. Both benchmarks were trained with a maximum context length of 32K tokens, yet their performance consistently improves when scaled to 64K, beyond the training budget. On LongTimeScope (Zohar et al., 2025), the best results emerge around 512 frames with 128 TPF at 64K tokens, underscoring the dataset's reliance on extended temporal coverage for long-horizon reasoning. In contrast, MLVU (Zhou et al., 2024) also peaks at 64K with the same allocation, but its contours are smoother, and competitive performance extends across a broader range of frame-token trade-offs. This suggests that while LongTimeScope demands aggressive temporal scaling, MLVU benefits from a more balanced distribution of temporal and spatial information.",
+        "In addition to the overall scaling trends, we further report detailed subtask-level results under different allocation settings in Table 18, Table 19, Table 20, Table 21, Table 22, and Table 23."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "J MORE RESULTS ON ATTENTION SCALING STUDY",
+      "paragraphs": [
+        "Figure 15 evaluates the scaling behavior of VideoNSA under different attention allocation strategies, where the x-axis denotes the sliding window size (log scale), the y-axis shows the block count, and the size and color of each marker reflect performance, with the dashed blue curve indicating configurations of equal attention budget and arrows marking the training setting as well as reduced-budget configurations (3.6% and 1.8%); on LongVideoBench, performance peaks near the training configuration and degrades when allocating excessive budget to local attention through larger sliding windows, while the best configuration achieves strong results with only 3.6% of the full budget, and on TimeScope, performance is even more sensitive, with larger sliding windows quickly reducing accuracy whereas maintaining more global blocks yields superior outcomes, and overall the results confirm that training allocations are well balanced, that prioritizing global attention is consistently more effective than enlarging local windows under equal budget, and that VideoNSA sustains leading performance with as little as 3.6% or less of the full attention cost, demonstrating both efficiency and hardware awareness.",
+        "In addition to the overall scaling trends, we further report detailed subtask-level results under different allocation settings in            Table 22: Ablation study results on information scaling of Tomato (Shangguan et al., 2024). Metrics include overall accuracy and task-specific scores across different steps. # TPF stands for token per frame, and # F stands for sampling frame number.",
+        "Table 23: Ablation study results on information scaling of VSIBench (Yang et al., 2025a). Metrics include overall accuracy and task-specific scores across different steps. # TPF stands for token per frame, and # F stands for sampling frame number."
+      ],
+      "subsections": []
+    }
+  ],
+  "body_paragraphs": [
+    "Key moments of a video can occur at any time, exemplified by soccer where game deciding moments typically span seconds of a 90 minute game. Within those game deciding moments split second actions define the outcome: an assist, a missed tackle, the movement of the keeper. Multimodal large language models (MLLMs) (Team, 2025;Team et al., 2025b;a) have achieved substantial progress in vision-language perception and reasoning, but still cannot match humans ability to extract and reason about salient moments in videos. While humans naturally sample color visuals around 60hz, (Kalloniatis & Luu, 2007) across large contexts, existing VLMs often sample a single frame per second. Intuitively, increasing the context for these models by sampling more frames improves accuracy (Cai et al., 2024;Wu et al., 2024), particularly for long videos and complex reasoning tasks. However, this approach pays for improvement with additional tokens, increasing computational complexity and pushing against fundamental limits of model context.",
+    "To address these challenges, many approaches (Wang et al., 2024;Li et al., 2024b;Jin et al., 2024;Wang et al., 2025a;Yang et al., 2024) adopt token compression to reduce redundancy and increase informative context. However, when applied to complex reasoning tasks, these compression-based models perform worse compared to full-token methods (Song et al., 2025a). Moreover, compression strategies often limit generalization through reduced perception and reasoning capacity (Wen et al., 2025). In contrast, sparse attention mechanisms preserve tokens, but focus the models capabilities on relevant dependencies between tokens. Numerous sparse attention methods have already been employed in large language models (LLMs), but most are inadequate for video complexity (detailed in Appendix A). Therefore, we present VideoNSA, which adopts Native Sparse Attention (Yuan et al., 2025b), a learnable hardware-aware sparse attention mechanism proven to be effective in longcontext modeling. VideoNSA is the first learnable and hardware-aware sparse attention framework tailored for video understanding, effectively scaling to ultra-long vision-text context. We apply the learnable sparse attention to video token sequences, while preserving grouped-query attention for text tokens. Following this pattern, our experiments show that using only 3.6% of the attention budget on 128K context length while improving performance on various tasks We further conduct massive experiments and analyses of VideoNSA , revealing several important findings: (1) VideoNSA extrapolates effectively to contexts beyond its training length, and the optimal balance between temporal density and spatial resolution is highly task dependent.",
+    "(2) VideoNSA is also sensitive by attention scaling, with results remaining strongest near the training configuration. (3) The gating distribution evolves dynamically across layers, and the selection and sliding-window branches gradually lose importance in deeper layers. (4) The compression branch emerges as the main computational bottleneck. (5)Moreover, the learned sparse attention weights remain beneficial even under dense attention settings. (6) Learnable sparse attention induces distinctive attention sink behaviors across branches, with very few sinks in the selection branch and periodic sink formation in the compression branch.",
+    "In particular, our paper makes the following contributions:",
+    "• We propose VideoNSA, a hardware-aware native sparse attention mechanism, and systematically investigate its effectiveness for video understanding, scaling up to a 128K vision context length.",
+    "• We introduce hybrid sparse attention in VideoNSA, enabling flexible allocation of information and attention budgets to achieve optimal performance across diverse task.",
+    "• We dynamically combine global and local attention through three complementary branches, which effectively reduce attention sinks in long vision contexts.",
+    "2.1 PRELIMINARIES Native sparse attention.",
+    "Existing training-free sparse attention methods are rarely hardware aligned, and typically don't increase training efficiency. Native Sparse Attention (Yuan et al., 2025b) (NSA) avoids computing attention between all key-value pairs (K t , V t ), instead, for each query q t , NSA dynamically constructs an information-dense KV cache subset. NSA combines three complementary cache branches with a learnable gate g c t adaptively weighting each branch yielding o t :",
+    "Token Compression (CMP) branch aggregates sequential blocks of keys into more coarse-grained, single block-level representations Kcmp t via a learnable MLP φ:",
+    "where m is the block length, d is the stride.",
+    "Token Selection (SLC) branch preserves the most salient key-value blocks by computing importance scores p slc' t and selecting the indices of the top-n blocks:",
+    "The final set of selected keys is formed by concatenating these top-ranked blocks:",
+    "where I t is the set of selected indices, n is the number of blocks to retain.",
+    "Sliding Window (SWA) branch simply applies the standard sliding window attention, which retains the fixed w most recent key-value pairs: Video frames are encoded into frame-level KV blocks. VideoNSA utilizes three sparse attention branches during prefilling stage: compression branch reduces redundancy via token averaging, selection branch identifies top-k important tokens, and sliding window branch enforces local temporal coverage. The outputs are combined through dynamic gating before integration with text tokens for LLM decoding.",
+    "Grouped query attention. In Multi-Head Attention (MHA), each query head has dedicated keyvalue (KV) projections, which makes the KV cache scale with the number of heads and increases inference cost. Grouped-Query Attention (GQA) (Ainslie et al., 2023) mitigates this by letting multiple query heads share fewer KV heads. For each input {x i } L i=1 , GQA partitions the h query heads into g groups (1 ≤ g ≤ h). At a given timestep t, the output o (s) t for the s-th query head with group index m(s) = ⌈sg/h⌉ is computed by applying attention to the shared keys and values as:",
+    ". The outputs o t from all heads are concatenated by",
+    ". VideoNSA utilizes Qwen2.5-VL-7B (Bai et al., 2025) as the backbone, with Qwen2.5-7B (Qwen et al., 2025) as the LLM decoder, which employs GQA for efficient KV cache utilization using 28 query heads and 4 shared key/value heads.",
+    "Existing token compression methods (Yang et al., 2025d;Zhang et al., 2025c;Hyun et al., 2025;Zhang et al., 2025h) suffer from irreversible information loss on complex tasks and don't address computational and latency bottlenecks in LLM video understanding. From the perspective of attention as a message passing in a Graph Neural Network (Joshi, 2025; Pappone, 2025), it's clear this bottleneck is fundamental. Standard attention propagates information between nodes (tokens) through edges (attention weights), with each token being updated by aggregating features from its neighbors, weighted by attention scores. Training-free sparse attention often imposes a static adjacency matrix whose fixed subgraph connectivity restricts information flow. Conversely, NSA (Yuan et al., 2025b) provides data-dependent sparsity that preserves edges necessary for a particular task.",
+    "We build VideoNSA upon Qwen2.5-VL-7B (Qwen et al., 2025), which incorporates a vision encoder and adopts Qwen2.5-7B (Bai et al., 2025) as the LLM. As illustrated in Figure 1, VideoNSA introduces a hybrid attention mechanism in the LLM across different modalities. At each layer l, we split the input tokens X (l-1) into vision tokens X (l-1) V and text tokens X (l-1) T according to their position IDs. For vision tokens, VideoNSA applies NSA (Yuan et al., 2025b) with a dedicated gate g c t on each head. We set the block size s equal to the token number per frame, and obtain the block-level representation by averaging all tokens within the block. The vision attention output o V is dynamically weighted by the compression, selection, and sliding window branches as:",
+    "where g c t is implemented as a two-layer MLP with a sigmoid activation.",
+    "The text attention output o (l)",
+    "T is computed using standard GQA (Ainslie et al., 2023) to preserve instruction following capabilities. We obtain the final output o (l) of the layer l by concatenating:",
+    "We conduct end-to-end training to adapt vision features for data-dependent sparse connectivity in the language model. The training dataset of VideoNSA is constructed from LLaVA-Video-178K (Zhang et al., 2024c) by filtering for question answer pairs at 4 fps and retaining videos with 350-550 frames, for a subset of 216K pairs. To emphasize sparse attention for temporal redundancy, we constrain the maximum pixels per frame to 50,176, and the maximum context length per training instance to 36K tokens. In VideoNSA, block size s is set to 64, block b is set to 32, and sliding window size w is set to 256. We trained using SWIFT (Zhao et al., 2024), adapting the NSA (Yuan et al., 2025b) implementation from FLA (Yang & Zhang, 2024) and (Pai et al., 2025b). The complete training process requires 4600 H100 GPU hours. More training details including hyper-parameters selection can be found in Appendix B.",
+    "Baselines Our primary baseline is Qwen2.5-VL-7B (Qwen et al., 2025) with dense FlashAttention (Dao, 2023). We compare VideoNSA against several strong baselines, including the quantization model AWQ (Team, 2024), training-free token compression models (Yang et al., 2025c;Zhang et al., 2025b;Chen et al., 2024a), and training-free sparse attention methods (Jiang et al., 2024;Xu et al., 2025a;Lai et al., 2025;Li et al., 2024c). All methods employ their official configuration without additional training and using Qwen2.5-VL-7B (Qwen et al., 2025) as a base. For token compression baselines, we use the token kept ratio and sampling fps from the original papers that yield the best accuracy, while for sparse attention baselines, we use the same configuration as VideoNSA. In addition, we fine-tune Qwen2.5-VL-7B (Qwen et al., 2025) using the same training dataset as VideoNSA to serve as a competitive baseline. We also include models with different backbones for a broad comparison.",
+    "We evaluate VideoNSA across three domains including long video understanding, temporal reasoning, and spatial understanding using LMMs-Eval (Zhang et al., 2024a) and VLMEvalKit (Duan et al., 2024). Table 1 indicates that sparse attention methods consistently outperform token compression approaches. We empirically evaluate the effectiveness of VideoNSA based on several popular long video understanding benchmarks, including LongVideoBench (Wu et al., 2024), MLVU (Zhou et al., 2024), TimeScope (Zohar et al., 2025) and LongTimeScope (Zohar et al., 2025). VideoNSA achieves competitive results, narrowing the gap with state-of-the-art methods. We observe that VideoNSA shows clear advantages on tasks involving order-sensitive temporal reasoning and ultra-long video settings (10 hours in LongTimeScope (Zohar et al., 2025)). To evaluate the visual temporal reasoning capbility of VideoNSA, we evaluate VideoNSA on Tomato (Shangguan et al., 2024), a benchmark spanning six reasoning types and three video scenarios. VideoNSA attains the highest accuracy on Tomato (Shangguan et al., 2024), substantially outperforming compression-based methods, underscoring their limitations in fine-grained temporal inference. VSIBench (Yang et al., 2025a) focuses on spatial reasoning allowing us to test whether efficient models can preserve local fidelity while achieving efficiency. VideoNSA matches the strongest sparse attention baselines and significantly surpasses token compression methods in spatial understanding, confirming that it preserves spatial fidelity. All detailed evaluation settings and subset results can be found in Appendix C, Appendix D, Appendix E, and Appendix F.",
+    "To further analyze the components of VideoNSA, we visualize attention pattern in each branch in Appendix G and assess the effectiveness of different branches. Table 2 shows that single-branch models suffer significant degradation, and even two-branch combinations remain inferior to the full VideoNSA, highlighting the necessity of integrating all three branches with dynamic gating. Detailed results of different branch combination can be found in Appendix H.",
+    "Finding 1. Do learned sparse attention weights remain beneficial in dense attention settings?  We further examine whether the learned QKV weights of VideoNSA can imrpove performance in dense attention inference. Table 3 reports the relative performance change over the Qwen2.5-VL-7B (Qwen et al., 2025). Due to the limited quality of the training data, our fine-tuned Qwen2.5-VL-7B (Dense-SFT) exhibits slight performance drops on most benchmarks. We observe that the transferred model (Dense-NSA) allows the dense variant to recover and surpass the baseline on several benchmarks suggesting that sparse-trained weights provides inductive bias towards more effective attention distributions. However, the effect remains limited on LongVideoBench (Wu et al., 2024). VideoNSA significantly outperforms Dense-NSA on most tasks, highlighting the importance of runtime sparsity and dynamic gating.",
+    "Finding 2. How far can VideoNSA scale in context length?",
+    "The effective vision context length L is jointly determined by the number of vision tokens per frame T and the total number of input frames F . VideoNSA is trained with a maximum context length of L = 36K tokens, corresponding to T = 64 tokens per frame. We conduct an information budget study under a fixed context length, by varying tokens per frame and frame rate. We then scale up the context length beyond the training budget, evaluating up to the maximum 128K tokens supported by the language model. As observed in Figure 2, the model consistently achieves higher performance when scaled to longer contexts beyond its training length across benchmarks. However, the ideal allocation of same token budget is highly task-dependent. LongVideoBench (Wu et al., 2024) favors allocating more tokens per frame, while Tomato (Shangguan et al., 2024) and TimeScope (Zohar et al., 2025) benefit more from increasing the number of frames, emphasizing temporal coverage.",
+    "VSIBench (Yang et al., 2025a) shows mixed preferences depending on context length, reflecting a balance between spatial and temporal sampling. Additional results on information scaling are reported in Appendix I.",
+    "Finding 3. How to allocate the attention budget? edges, the fraction of attention used γ is",
+    "To determine the optimal attention allocation, we first fix the total sequence length L, the attention budget K vis , and the block size S = 64, while systematically varying the local attention ratio α = w Kattn . We then employ the optimal allocation ratio α ⋆ for attention budget scaling. As shown in Figure 3, scatter points denote different allocation strategies, with their size and color reflecting performance. We highlight the point corresponding to the training configuration, connect equal-budget settings with solid orange lines, and extend the best-performing configuration with dashed lines, where the annotated values indicate the fraction of attention used γ. Results show that model performance is highly sensitive to attention allocation. Although the optimal ratio between global and local attention varies across tasks, configurations close to the training allocation generally yield better results. Under the same budget, fine-tuning around the training setting often improves performance, whereas simply enlarging the overall budget does not consistently bring further gains. Moreover, across most benchmarks, increasing global attention (enlarging the block count) tends to outperform increasing local attention (enlarging the sliding window). Remarkably, VideoNSA achieves leading performance using only 3.6% of the full attention budget. More results are in Appendix J. We analyze the gating distribution of VideoNSA across Tomato (Shangguan et al., 2024), VSI-Bench (Yang et al., 2025a), and LongVideoBench (Wu et al., 2024), and aggregate the average routing gate weights over 100 examples from each. As illustrated in Figure 4, where shaded bars denote the interquartile range and horizontal lines represent mean values, each head in VideoNSA exhibits distinct and diverse preferences across branches throughout its full depth. The diversity allows different layers to specialize in distinct modes of the context-dependent information flow. The compres-VideoNSA: Native Sparse Attention Scales Video Understanding   sion branch maintains relatively high average weights across most layers, underscoring its primary role in reducing redundancy while preserving salient features. The selection and sliding window gates fluctuate more strongly, occasionally surpassing the compression branch in early and middle layers. However, their contributions diminish in the final layers (e.g., L22-L26), demonstrating that the focus shifts towards aggregating high-level features. We also note strange behavior in the last layer, where all three branches are fully active despite selection and sliding window being inactive in the layers before. Full gate values distribution in Appendix K.",
+    "We further dive into the inter-head gate similarity of each layer in Figure 5. In the middle layers, both selection and sliding window gates exhibit pronounced increases in inter-head similarity. This indicates that multiple mid-layer heads converge to highly consistent gating behaviors when the model performs block selection and local temporal integration. However, the compression gate shows consistently low inter-head similarity, indicating that it operates largely in a head-independent manner. At both the initial and final layers of VideoNSA, inter-head similarity remains weak across all gates, reflecting the need to maintain diversity in early representations and to support mixing information in higher-level abstractions. More inter-head gate similarites visualization in Appendix L.",
+    "Finding 5. Where does the efficiency bottleneck come from? We measure the inference latency of each branch in VideoNSA using wall-clock time across varying context lengths from 1K to 128K. The compression branch dominates runtime as the context grows, while the selection and sliding window branches contribute relatively little at longer contexts. Ideally, the compression branch grows approximately linearly with L, and the sliding window branch has a complexity of O(L • w), which results in linear scaling for a fixed window size w. The selection branch requires computing importance scores over all L/b blocks per query, leading to a computational complexity of O(L 2 /b). However, wall-clock latency deviates from these estimates due to hardware parallelism, memory access patterns, and kernel launch overheads. Overall, the compression branch emerges as the primary bottleneck, highlighting the need for further optimization of its kernel design and memory efficiency.",
+    "Finding 6. Do learnable sparse mechanisms induce dynamic attention sinks?",
+    "In decoder-only transformers, a disproportionate amount of attention is often allocated to the first few tokens, which act as attention sinks and absorb excessive attention mass as a byproduct of softmax normalization. Prior studies (Gu et al., 2024;Xiao et al., 2023) show that attention sinks arise from massive activations and unusually small key and value norms, so attention directed to these tokens contributes little to the residual state. This raises an important question in learnable sparse attention: whether sparsity patterns amplify or mitigate such sinks.   We follow the attention sink defination in (Pai et al., 2025a):",
+    "where α is the average attention score received by the key, and ∥v∥ is the value norm of the token.",
+    "Figure 7 illustrates the average distribution of attention sinks across the three branches of VideoNSA. Each frame is encoded into 256 tokens, and we adopt the same sparse attention configuration as used during training. The three branches exhibit markedly different sink behaviors. The compression branch produces the most sinks, with distinct banded concentrations along the value norm axis caused by token merging that amplifies some token norms while suppressing others. Conversely, the selection branch yields almost no sinks, as its top-k block filtering mechanism enforces a smoother value norm distribution. Notably, the sliding window branch demonstrates a clearer separation between sink and non-sink tokens along the value norm axis. Critically, dynamic gating allows VideoNSA to counteract the negative effects of the compression branch, achieving a stable model with a low overall sink ratio of 0.3%.",
+    "Figure 8 indicates that VideoNSA maintains low sink ratios overall, with only minor fluctuations across layers. However, Flash Attention exhibits a gradual increase in sink ratios toward deeper layers. The compression branch maintains relatively high sink levels across most layers. The selection branch remains consistently close to zero, while the sliding window branch occasionally shows higher peaks in the middle-to-late layers, indicating that locality constraints may still introduce bias in long-sequence settings. From the perspective of positional distribution in Figure 9, Flash Attention produces sinks that are uniformly spread across the entire sequence due to its fully connected dense attention. Under dynamic gating,VideoNSA achieves smoother temporal coverage, alleviating over-reliance on early positions while avoiding the global diffusion characteristic of dense attention. In contrast, the compression branch exhibits strong accumulation at the beginning with an even steeper decay, indicating that token merging exerts its strongest impact on early-stage representations. The selection branch yields very few sinks across the sequence, while the sliding window branch produces sparse peaks at periodic boundaries of local neighborhoods. More analysis about attention sinks on various sparse attention settings can be found in Appendix M.",
+    "In this work, we present VideoNSA, a hybrid hardware-aware sparse attention model that significantly advances video understanding across various tasks. By dynamically fusing block-wise compression, salient block selection, and a sliding window, VideoNSA effectively preserves critical information while achieving near-linear scalability in efficiency and memory. Our experiments demonstrate that VideoNSA consistently outperforms existing methods on key tasks including long video understanding, temporal reasoning, and spatial understanding. While the prefill stage remains the primary bottleneck, our findings confirm that this hybrid sparse approach provides a powerful and scalable framework, paving the way for more capable video foundation models.",
+    "This work is supported by NSF award IIS-2127544 and NSF award IIS-2433768. We thank Lambda, Inc. for their compute resource help on this project.",
+    "This research on video understanding utilizes publicly available datasets, ensuring that all data complies with privacy regulations. We acknowledge the potential biases that can arise in automatic answer generation, particularly concerning gender, race, or other characteristics. We have taken measures to evaluate and minimize such biases, while remaining committed to further improvements. Additionally, we recognize the potential risks of misuse, such as generating misleading answers, and have checked the training dataset with safeguards against such applications.",
+    "We have made several efforts to ensure the reproducibility of our work. All the key implementation details, including the architecture of our model, the training procedures, and hyperparameter settings, are described in supplementary meterial Section B. The settings of the used evaluation benchmarks are in Section C to further support reproducibility.",
+    "The supplementary material is structured as follows:",
+    "• Iiterature review about the related works in Section A.",
+    "• The training settings for VideoNSA in Section B.",
+    "• The introduction of the used evaluation benchmarks and settings in Section C.",
+    "• More results on long-form video benchmarks in Section D.",
+    "• More results on temporal reasoning benchmarks in Section E.",
+    "• More results on spatial understanding benchmarks in Section F.",
+    "• Visualization of attention pattern in each branch in Section G.",
+    "• More results on branch combination in Section H.",
+    "• More results on information scaling study in Section I.",
+    "• More results on attention scaling study in Section J.",
+    "• Full gate values distribution in Section K.",
+    "• More inter-head gate similarites visualization in Section L.",
+    "• More analysis about attention sinks on various sparse attention settings can be found in Section M.",
+    "• Visualization of attention sinks in dense attention in Section N.",
+    "A.1 EFFICIENT VIDEO UNDERSTANDING Video understanding systems typically convert videos into long sequences of vision tokens, which can easily exceed GPU memory and slow down inference as the video length grows. To address this, existing work mainly address this by token compression, alternative sequence modeling, and KVcache compression. One important line of work emphasizes token compression. Spatial or temporal token merging methods (Wang et al., 2025c;Zhang & Fu, 2025;Li et al., 2025c;Jiang et al., 2025a;Li et al., 2025a;Shao et al., 2025;Song et al., 2024;Chai et al., 2024) progressively discard redundant content, while question-/task-aware strategies (Jiang et al., 2025b;Dong et al., 2025;Yao et al., 2025;Song et al., 2025b) tailor retained tokens to the query. These approaches substantially lower FLOPs but still rely on dense attention once tokens are merged. Beyond pure self-attention, Mamba-based or hybrid architectures (Jiang et al., 2025a;Ren et al., 2025;Xu et al., 2025b) inject state-space or recurrent modules to approach linear-time inference while preserving long-range dependencies. Also, there exists approach to design data efficient systems for further fine-tuning (Li et al., 2025b). Another direction targets the key-value cache during decoding via task-aware sparsification and streaming-friendly memory (Qin et al., 2025a;Ning et al., 2025;Kim et al., 2025;Yang et al., 2025e) reduce memory and improve throughput, yet prefill still scales quadratically with sequence length. In contrast to methods that mostly decide where to drop or compress tokens, our approach systematically probe the effectiveness of native sparse attention (Yuan et al., 2025a) that restructures attention itself to be learnable and sparse from the ground up. VideoNSA attains near-linear scalability up to 128K tokens and processes over 10,000 frames on a single GPU, outperforming compression-only pipelines on long-video understanding, temporal reasoning, and spatial understanding tasks.",
+    "Sparse attention is a central strategy for efficient long-context modeling in language and multimodal systems. Surveys (Zhang et al., 2025e) categorize approaches into pattern-based vs. dynamic/learned. Pattern-based sparsity. Methods such as Longformer (Beltagy et al., 2020), StreamingLLM (Xiao et al., 2024), and TriangleMix (He et al., 2025) prescribe fixed local/strided patterns that can be applied training-free; recent multimodal works (Zhang et al., 2025d;Yang et al., 2025b) follow similar principles, while hardware-efficient kernels like Flash Sparse Attention (Yan et al., 2025) further reduce prefill latency. InfLLM-V2 (Zhao et al., 2025) uses switchable dense sparse attention to smoothly adapt models from short to long sequences while maintaining consistency and achieving efficient acceleration with high performance. ProxyAttn (Wang et al., 2025b) uses representative heads for fine-grained block importance estimation, enabling faster sparse attention with minimal performance loss. Dynamic and trainable sparsity. Content-or gradientadaptive mechanisms select important connections (e.g., diagonal selection (Tyagi et al., 2025) or lag-relative strategies (Liang et al., 2025)); trainable sparse attention improves long-context reasoning (Gao et al., 2025;Vasylenko et al., 2025;Gao et al., 2024), diffusion-based video generation (Zhang et al., 2025g), and state-space models (Zhan et al., 2025). SLA (Zhang et al., 2025f) decomposes attention weights into critical, marginal, and negligible parts, combining sparse and low-rank acceleration to greatly reduce computation while preserving generation quality. Hybrid approaches such as RocketKV (Behnam et al., 2025) combine token/cache compression with learned sparsity, and MMInference (Li et al., 2025d) accelerates modality-aware sparse prefill for VLMs. Despite these advances, most techniques are optimized for text or short multimodal contexts and do not directly address the ultra-long, highly redundant spatio-temporal structure of videos. VideoNSA unifies block-wise compression, salient block selection, and a sliding-window branch under learnable gates that dynamically allocate computation across three native sparse branches (Yuan et al., 2025a). This end-to-end, data-driven design preserves critical global/local dependencies while scaling nearly linearly in both time and memory.",
+    "Training hyperparameters for VideoNSA are shown in Table 4. We filter a subset of LLaVA-Video-178K (Zhang et al., 2024d) as the training data. For each video, we uniformly sample at 4 frames per second and retain only those with 350-550 frames, resulting in 216K video question-answer pairs from the original 961K pairs in LLaVA-Video-178K (Zhang et al., 2024d).",
+    "We list all the hyper-parameters and prompt used for evaluation as shown in Table 5.",
+    "We take LongVideoBench (Wu et al., 2024)",
+    "We take Tomato (Shangguan et al., 2024) as the representative temporal reasoning benchmark and compare against existing token compression and sparse attention methods. As shown in Table 10, VideoNSAachieves comparable performance without specialized designs. Moreover, we observe that VideoNSA significantly outperforms the baselines on subtasks including object counting, shape description, and human actions.",
+    "We take VSIBench (Yang et al., 2025a) as the representative spatial understanding benchmark and compare against existing token compression and sparse attention methods. As shown in Table 11, VideoNSA achieves comparable performance without specialized designs. Moreover, we observe that VideoNSA significantly outperforms the baselines on subtasks including object relative direction, route planning, and object size estimation.",
+    "We visualize the attention patterns of the last layer across the three branches in Figure 10, Figure 11, Figure 12, and Figure 13, together with the final attention output, as representative examples. The compression branch reduces redundancy to preserve salient information, the selection branch highlights task-relevant regions with sparse activations, and the sliding window branch enforces local temporal coverage by focusing on short-range dependencies. These complementary roles collectively shape the final attention output.",
+    "In this section, we report detailed results of different branch combinations across three domains, including long video understanding (Table 12, Tavke 13, Table 14, and Table 15), temporal reasoning (Table 16), and spatial understanding (Table 17). The corresponding performances are summarized in the table, which highlights how the use of individual branches or their combinations affects downstream tasks.",
+    "Figure 15 shows the scaling performance of VideoNSA under different context allocation strategies on LongTimeScope and MLVU. Both benchmarks were trained with a maximum context length of 32K tokens, yet their performance consistently improves when scaled to 64K, beyond the training budget. On LongTimeScope (Zohar et al., 2025), the best results emerge around 512 frames with 128 TPF at 64K tokens, underscoring the dataset's reliance on extended temporal coverage for long-horizon reasoning. In contrast, MLVU (Zhou et al., 2024) also peaks at 64K with the same allocation, but its contours are smoother, and competitive performance extends across a broader range of frame-token trade-offs. This suggests that while LongTimeScope demands aggressive temporal scaling, MLVU benefits from a more balanced distribution of temporal and spatial information.",
+    "In addition to the overall scaling trends, we further report detailed subtask-level results under different allocation settings in Table 18, Table 19, Table 20, Table 21, Table 22, and Table 23.",
+    "Figure 15 evaluates the scaling behavior of VideoNSA under different attention allocation strategies, where the x-axis denotes the sliding window size (log scale), the y-axis shows the block count, and the size and color of each marker reflect performance, with the dashed blue curve indicating configurations of equal attention budget and arrows marking the training setting as well as reduced-budget configurations (3.6% and 1.8%); on LongVideoBench, performance peaks near the training configuration and degrades when allocating excessive budget to local attention through larger sliding windows, while the best configuration achieves strong results with only 3.6% of the full budget, and on TimeScope, performance is even more sensitive, with larger sliding windows quickly reducing accuracy whereas maintaining more global blocks yields superior outcomes, and overall the results confirm that training allocations are well balanced, that prioritizing global attention is consistently more effective than enlarging local windows under equal budget, and that VideoNSA sustains leading performance with as little as 3.6% or less of the full attention cost, demonstrating both efficiency and hardware awareness.",
+    "In addition to the overall scaling trends, we further report detailed subtask-level results under different allocation settings in            Table 22: Ablation study results on information scaling of Tomato (Shangguan et al., 2024). Metrics include overall accuracy and task-specific scores across different steps. # TPF stands for token per frame, and # F stands for sampling frame number.",
+    "Table 23: Ablation study results on information scaling of VSIBench (Yang et al., 2025a). Metrics include overall accuracy and task-specific scores across different steps. # TPF stands for token per frame, and # F stands for sampling frame number.",
+    "THE USE OF LARGE LANGUAGE MODELSLarge language models (LLMs) were used only for light editorial purposes, such as minor grammar checking and language polishing. They were not used for generating scientific content, research ideation, experiment design, or analysis. The authors take full responsibility for the entirety of the paper, and LLMs are not considered contributors or eligible for authorship."
+  ],
+  "references": [
+    {
+      "id": 1,
+      "text": "GQA: Training Generalized Multi-Query Transformer Models from Multi-Head Checkpoints\n\t\t\n\t\t\tJoshuaAinslie\n\t\t\n\t\t\n\t\t\tJamesLee-Thorp\n\t\t\n\t\t\n\t\t\tMichielDe Jong\n\t\t\n\t\t\n\t\t\tYuryZemlyanskiy\n\t\t\n\t\t\n\t\t\tFedericoLebron\n\t\t\n\t\t\n\t\t\tSumitSanghai\n\t\t\n\t\t10.18653/v1/2023.emnlp-main.298\n\t\tarXiv:2305.13245\n\t\n\t\n\t\tProceedings of the 2023 Conference on Empirical Methods in Natural Language Processing\n\t\tthe 2023 Conference on Empirical Methods in Natural Language Processing\n\t\t\n\t\t\tAssociation for Computational Linguistics\n\t\t\t2023\n\t\t\n\t\n\tarXiv preprint"
+    },
+    {
+      "id": 2,
+      "text": "ShuaiBai\n\t\t\n\t\t\n\t\t\tKeqinChen\n\t\t\n\t\t\n\t\t\tXuejingLiu\n\t\t\n\t\t\n\t\t\tJialinWang\n\t\t\n\t\t\n\t\t\tWenbinGe\n\t\t\n\t\t\n\t\t\tSiboSong\n\t\t\n\t\t\n\t\t\tKaiDang\n\t\t\n\t\t\n\t\t\tPengWang\n\t\t\n\t\t\n\t\t\tShijieWang\n\t\t\n\t\t\n\t\t\tJunTang\n\t\t\n\t\tarXiv:2502.13923\n\t\tQwen2. 5-vl technical report\n\t\t\n\t\t\t2025\n\t\t\n\t\n\tarXiv preprint"
+    },
+    {
+      "id": 3,
+      "text": "PaymanBehnam\n\t\t\n\t\t\n\t\t\tYaoshengFu\n\t\t\n\t\t\n\t\t\tRitchieZhao\n\t\t\n\t\t\n\t\t\tPo-AnTsai\n\t\t\n\t\t\n\t\t\tZhidingYu\n\t\t\n\t\t\n\t\t\tAlexeyTumanov\n\t\t\n\t\t\n\t\t\tRocketkv\n\t\t\n\t\tAccelerating long-context llm inference via two-stage kv cache compression\n\t\t\n\t\t\t2025"
+    },
+    {
+      "id": 4,
+      "text": "IzBeltagy\n\t\t\n\t\t\n\t\t\tMatthewEPeters\n\t\t\n\t\t\n\t\t\tArmanCohan\n\t\t\n\t\t\n\t\t\tLongformer\n\t\t\n\t\tarXiv:2004.05150\n\t\tThe long-document transformer\n\t\t\n\t\t\t2020\n\t\t\n\t\n\tarXiv preprint"
+    },
+    {
+      "id": 5,
+      "text": "Temporalbench: Benchmarking fine-grained temporal understanding for multimodal video models\n\t\t\n\t\t\tMuCai\n\t\t\n\t\t\n\t\t\tReubenTan\n\t\t\n\t\t\n\t\t\tJianruiZhang\n\t\t\n\t\t\n\t\t\tBochengZou\n\t\t\n\t\t\n\t\t\tKaiZhang\n\t\t\n\t\t\n\t\t\tFengYao\n\t\t\n\t\t\n\t\t\tFangruiZhu\n\t\t\n\t\t\n\t\t\tJingGu\n\t\t\n\t\t\n\t\t\tYiwuZhong\n\t\t\n\t\t\n\t\t\tYuzhangShang\n\t\t\n\t\tarXiv:2410.10818\n\t\t\n\t\t\t2024\n\t\t\n\t\n\tarXiv preprint"
+    },
+    {
+      "id": 6,
+      "text": "Auroracap: Efficient, performant video detailed captioning and a new benchmark\n\t\t\n\t\t\tWenhaoChai\n\t\t\n\t\t\n\t\t\tEnxinSong\n\t\t\n\t\t\n\t\t\tYilunDu\n\t\t\n\t\t\n\t\t\tChenlinMeng\n\t\t\n\t\t\n\t\t\tVashishtMadhavan\n\t\t\n\t\t\n\t\t\tOmerBar-Tal\n\t\t\n\t\t\n\t\t\tJenq-NengHwang\n\t\t\n\t\t\n\t\t\tSainingXie\n\t\t\n\t\t\n\t\t\tChristopherDManning\n\t\t\n\t\tarXiv:2410.03051\n\t\t\n\t\t\t2024\n\t\t\n\t\n\tarXiv preprint"
+    },
+    {
+      "id": 7,
+      "text": "An image is worth 1/2 tokens after layer 2: Plug-and-play inference acceleration for large visionlanguage models\n\t\t\n\t\t\tLiangChen\n\t\t\n\t\t\n\t\t\tHaozheZhao\n\t\t\n\t\t\n\t\t\tTianyuLiu\n\t\t\n\t\t\n\t\t\tShuaiBai\n\t\t\n\t\t\n\t\t\tJunyangLin\n\t\t\n\t\t\n\t\t\tChangZhou\n\t\t\n\t\t\n\t\t\tBaobaoChang\n\t\t\n\t\n\t\n\t\tEuropean Conference on Computer Vision\n\t\t\n\t\t\tSpringer\n\t\t\t2024"
+    },
+    {
+      "id": 8,
+      "text": "Expanding performance boundaries of open-source multimodal models with model, data, and test-time scaling\n\t\t\n\t\t\tZheChen\n\t\t\n\t\t\n\t\t\tWeiyunWang\n\t\t\n\t\t\n\t\t\tYueCao\n\t\t\n\t\t\n\t\t\tYangzhouLiu\n\t\t\n\t\t\n\t\t\tZhangweiGao\n\t\t\n\t\t\n\t\t\tErfeiCui\n\t\t\n\t\t\n\t\t\tJinguoZhu\n\t\t\n\t\t\n\t\t\tShenglongYe\n\t\t\n\t\t\n\t\t\tZhaoyangHao Tian\n\t\t\n\t\t\n\t\t\tLiu\n\t\t\n\t\tarXiv:2412.05271\n\t\t\n\t\t\t2024\n\t\t\n\t\n\tarXiv preprint"
+    },
+    {
+      "id": 9,
+      "text": "Flashattention-2: Faster attention with better parallelism and work partitioning\n\t\t\n\t\t\tTriDao\n\t\t\n\t\tarXiv:2307.08691\n\t\t\n\t\t\t2023\n\t\t\n\t\n\tarXiv preprint"
+    },
+    {
+      "id": 10,
+      "text": "Mmtok: Multimodal coverage maximization for efficient inference of vlms\n\t\t\n\t\t\tSixunDong\n\t\t\n\t\t\n\t\t\tJuhuaHu\n\t\t\n\t\t\n\t\t\tMianZhang\n\t\t\n\t\t\n\t\t\tMingYin\n\t\t\n\t\t\n\t\t\tYanjieFu\n\t\t\n\t\t\n\t\t\tQiQian\n\t\t\n\t\t\n\t\t\t2025"
+    },
+    {
+      "id": 11,
+      "text": "Vlmevalkit: An open-source toolkit for evaluating large multi-modality models\n\t\t\n\t\t\tJunmingHaodong Duan\n\t\t\n\t\t\n\t\t\tYuxuanYang\n\t\t\n\t\t\n\t\t\tXinyuQiao\n\t\t\n\t\t\n\t\t\tLinFang\n\t\t\n\t\t\n\t\t\tYuanChen\n\t\t\n\t\t\n\t\t\tXiaoyiLiu\n\t\t\n\t\t\n\t\t\tYuhangDong\n\t\t\n\t\t\n\t\t\tPanZang\n\t\t\n\t\t\n\t\t\tJiaqiZhang\n\t\t\n\t\t\n\t\t\tWang\n\t\t\n\t\n\t\n\t\tProceedings of the 32nd ACM international conference on multimedia\n\t\tthe 32nd ACM international conference on multimedia\n\t\t\n\t\t\t2024"
+    },
+    {
+      "id": 12,
+      "text": "Seerattention: Learning intrinsic sparse attention in your llms\n\t\t\n\t\t\tYizhaoGao\n\t\t\n\t\t\n\t\t\tZhichenZeng\n\t\t\n\t\t\n\t\t\tDayouDu\n\t\t\n\t\t\n\t\t\tShijieCao\n\t\t\n\t\t\n\t\t\tPeiyuanZhou\n\t\t\n\t\t\n\t\t\tJiaxingQi\n\t\t\n\t\t\n\t\t\tJunjieLai\n\t\t\n\t\t\n\t\t\tHaydenKwok-Hay\n\t\t\n\t\t\n\t\t\tTingSo\n\t\t\n\t\t\n\t\t\tFanCao\n\t\t\n\t\t\n\t\t\tYang\n\t\t\n\t\tarXiv:2410.13276\n\t\t\n\t\t\t2024\n\t\t\n\t\n\tarXiv preprint"
+    },
+    {
+      "id": 13,
+      "text": "YizhaoGao\n\t\t\n\t\t\n\t\t\tShumingGuo\n\t\t\n\t\t\n\t\t\tShijieCao\n\t\t\n\t\t\n\t\t\tYuqingXia\n\t\t\n\t\t\n\t\t\tYuCheng\n\t\t\n\t\t\n\t\t\tLeiWang\n\t\t\n\t\t\n\t\t\tLingxiaoMa\n\t\t\n\t\t\n\t\t\tYutaoSun\n\t\t\n\t\t\n\t\t\tTianzhuYe\n\t\t\n\t\t\n\t\t\tLiDong\n\t\t\n\t\t\n\t\t\tHaydenKwok-Hay\n\t\t\n\t\t\n\t\t\tYuSo\n\t\t\n\t\t\n\t\t\tTingHua\n\t\t\n\t\t\n\t\t\tFanCao\n\t\t\n\t\t\n\t\t\tMaoYang\n\t\t\n\t\t\n\t\t\tYang\n\t\t\n\t\tSeerattention-r: Sparse attention adaptation for long reasoning\n\t\t\n\t\t\t2025"
+    },
+    {
+      "id": 14,
+      "text": "When attention sink emerges in language models: An empirical view\n\t\t\n\t\t\tXiangmingGu\n\t\t\n\t\t\n\t\t\tTianyuPang\n\t\t\n\t\t\n\t\t\tChaoDu\n\t\t\n\t\t\n\t\t\tQianLiu\n\t\t\n\t\t\n\t\t\tFengzhuoZhang\n\t\t\n\t\t\n\t\t\tCunxiaoDu\n\t\t\n\t\t\n\t\t\tYeWang\n\t\t\n\t\t\n\t\t\tMinLin\n\t\t\n\t\tarXiv:2410.10781\n\t\t\n\t\t\t2024\n\t\t\n\t\n\tarXiv preprint"
+    },
+    {
+      "id": 15,
+      "text": "Trianglemix: A lossless and efficient attention pattern for long context prefilling\n\t\t\n\t\t\tZhiyuanHe\n\t\t\n\t\t\n\t\t\tYikeZhang\n\t\t\n\t\t\n\t\t\tChengruidongZhang\n\t\t\n\t\t\n\t\t\tHuiqiangJiang\n\t\t\n\t\t\n\t\t\tYuqingYang\n\t\t\n\t\t\n\t\t\tLiliQiu\n\t\t\n\t\t\n\t\t\t2025"
+    },
+    {
+      "id": 16,
+      "text": "Multi-granular spatio-temporal token merging for training-free acceleration of video llms\n\t\t\n\t\t\tJeongseokHyun\n\t\t\n\t\t\n\t\t\tSukjunHwang\n\t\t\n\t\t\n\t\t\tSuHo Han\n\t\t\n\t\t\n\t\t\tTaeohKim\n\t\t\n\t\t\n\t\t\tInwoongLee\n\t\t\n\t\t\n\t\t\tDongyoonWee\n\t\t\n\t\t\n\t\t\tJoon-YoungLee\n\t\t\n\t\t\n\t\t\tSeon JooKim\n\t\t\n\t\t\n\t\t\tMinhoShim\n\t\t\n\t\tarXiv:2507.07990\n\t\t\n\t\t\t2025\n\t\t\n\t\n\tarXiv preprint"
+    },
+    {
+      "id": 17,
+      "text": "Minference 1.0: Accelerating pre-filling for long-context llms via dynamic sparse attention\n\t\t\n\t\t\tHuiqiangJiang\n\t\t\n\t\t\n\t\t\tYuchengLi\n\t\t\n\t\t\n\t\t\tChengruidongZhang\n\t\t\n\t\t\n\t\t\tQianhuiWu\n\t\t\n\t\t\n\t\t\tXufangLuo\n\t\t\n\t\t\n\t\t\tSurinAhn\n\t\t\n\t\t\n\t\t\tZhenhuaHan\n\t\t\n\t\t\n\t\t\tDongshengAmir H Abdi\n\t\t\n\t\t\n\t\t\tChin-YewLi\n\t\t\n\t\t\n\t\t\tLin\n\t\t\n\t\n\t\n\t\tAdvances in Neural Information Processing Systems\n\t\t\n\t\t\t37\n\t\t\t\n\t\t\t2024"
+    },
+    {
+      "id": 18,
+      "text": "Storm: Token-efficient long video understanding for multimodal llms\n\t\t\n\t\t\tJindongJiang\n\t\t\n\t\t\n\t\t\tXiuyuLi\n\t\t\n\t\t\n\t\t\tZhijianLiu\n\t\t\n\t\t\n\t\t\tMuyangLi\n\t\t\n\t\t\n\t\t\tGuoChen\n\t\t\n\t\t\n\t\t\tZhiqiLi\n\t\t\n\t\t\n\t\t\tDe-AnHuang\n\t\t\n\t\t\n\t\t\tGuilinLiu\n\t\t\n\t\t\n\t\t\tZhidingYu\n\t\t\n\t\t\n\t\t\tKurtKeutzer\n\t\t\n\t\t\n\t\t\tSungjinAhn\n\t\t\n\t\t\n\t\t\tJanKautz\n\t\t\n\t\t\n\t\t\tHongxuYin\n\t\t\n\t\t\n\t\t\tYaoLu\n\t\t\n\t\t\n\t\t\tSongHan\n\t\t\n\t\t\n\t\t\tWonminByeon\n\t\t\n\t\t\n\t\t\t2025"
+    },
+    {
+      "id": 19,
+      "text": "VISA: Group-wise Visual Token Selection and Aggregation via Graph Summarization for Efficient MLLMs Inference\n\t\t\n\t\t\tPengfeiJiang\n\t\t\t0009-0001-3969-5490\n\t\t\n\t\t\n\t\t\tHanjunLi\n\t\t\t0009-0006-4211-7479\n\t\t\n\t\t\n\t\t\tLinglanZhao\n\t\t\t0000-0002-2241-6977\n\t\t\n\t\t\n\t\t\tFeiChao\n\t\t\t0000-0002-6928-2638\n\t\t\n\t\t\n\t\t\tKeYan\n\t\t\t0000-0003-3424-4866\n\t\t\n\t\t\n\t\t\tShouhongDing\n\t\t\t0000-0002-3175-3553\n\t\t\n\t\t\n\t\t\tRongrongJi\n\t\t\t0000-0001-9163-2932\n\t\t\n\t\t10.1145/3746027.3755792\n\t\n\t\n\t\tProceedings of the 33rd ACM International Conference on Multimedia\n\t\tthe 33rd ACM International Conference on Multimedia\n\t\t\n\t\t\tACM\n\t\t\t2025"
+    },
+    {
+      "id": 20,
+      "text": "Chat-univi: Unified visual representation empowers large language models with image and video understanding\n\t\t\n\t\t\tJinPeng\n\t\t\n\t\t\n\t\t\tRyuichiTakanobu\n\t\t\n\t\t\n\t\t\tWancaiZhang\n\t\t\n\t\t\n\t\t\tXiaochunCao\n\t\t\n\t\t\n\t\t\tLiYuan\n\t\t\n\t\n\t\n\t\tProceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition\n\t\tthe IEEE/CVF Conference on Computer Vision and Pattern Recognition\n\t\t\n\t\t\t2024"
+    },
+    {
+      "id": 21,
+      "text": "Webvision: The Organization of the Retina and Visual System\n\t\t\n\t\t\tKChaitanya\n\t\t\n\t\t\n\t\t\tJoshi\n\t\t\n\t\tarXiv:2506.22084\n\t\t\n\t\n\t\n\t\tTransformers are graph neural networks\n\t\t\n\t\t\tHelgaKolb\n\t\t\n\t\t\n\t\t\tEduardoFernandez\n\t\t\n\t\t\n\t\t\tRalphNelson\n\t\t\n\t\t\n\t\t\tBryanJones\n\t\t\n\t\t\n\t\t\t2025. 2007. September 24, 2025\n\t\t\n\t\t\n\t\t\tUniversity of Utah Health Sciences Center\n\t\t\n\t\n\tarXiv preprint\n\tSalt Lake City (UT)"
+    },
+    {
+      "id": 22,
+      "text": "Infinipot-v: Memoryconstrained kv cache compression for streaming video understanding\n\t\t\n\t\t\tMinsooKim\n\t\t\n\t\t\n\t\t\tKyuhongShim\n\t\t\n\t\t\n\t\t\tJungwookChoi\n\t\t\n\t\t\n\t\t\tSimyungChang\n\t\t\n\t\t\n\t\t\t2025"
+    },
+    {
+      "id": 23,
+      "text": "Flexprefill: A context-aware sparse attention mechanism for efficient long-sequence inference\n\t\t\n\t\t\tXunhaoLai\n\t\t\n\t\t\n\t\t\tJianqiaoLu\n\t\t\n\t\t\n\t\t\tYaoLuo\n\t\t\n\t\t\n\t\t\tYiyuanMa\n\t\t\n\t\t\n\t\t\tXunZhou\n\t\t\n\t\tarXiv:2502.20766\n\t\t\n\t\t\t2025\n\t\t\n\t\n\tarXiv preprint"
+    },
+    {
+      "id": 24,
+      "text": "BoLi\n\t\t\n\t\t\n\t\t\tYuanhanZhang\n\t\t\n\t\t\n\t\t\tDongGuo\n\t\t\n\t\t\n\t\t\tRenruiZhang\n\t\t\n\t\t\n\t\t\tFengLi\n\t\t\n\t\t\n\t\t\tHaoZhang\n\t\t\n\t\t\n\t\t\tKaichenZhang\n\t\t\n\t\t\n\t\t\tPeiyuanZhang\n\t\t\n\t\t\n\t\t\tYanweiLi\n\t\t\n\t\t\n\t\t\tZiweiLiu\n\t\t\n\t\tarXiv:2408.03326\n\t\tLlava-onevision: Easy visual task transfer\n\t\t\n\t\t\t2024\n\t\t\n\t\n\tarXiv preprint"
+    },
+    {
+      "id": 25,
+      "text": "Breaking the encoder barrier for seamless video-language understanding\n\t\t\n\t\t\tHandongLi\n\t\t\n\t\t\n\t\t\tYiyuanZhang\n\t\t\n\t\t\n\t\t\tLongtengGuo\n\t\t\n\t\t\n\t\t\tXiangyuYue\n\t\t\n\t\t\n\t\t\tJingLiu\n\t\t\n\t\t\n\t\t\t2025"
+    },
+    {
+      "id": 26,
+      "text": "Reinforcement learning tuning for videollms: Reward design and data efficiency\n\t\t\n\t\t\tHongyuLi\n\t\t\n\t\t\n\t\t\tSonghaoHan\n\t\t\n\t\t\n\t\t\tYueLiao\n\t\t\n\t\t\n\t\t\tJunfengLuo\n\t\t\n\t\t\n\t\t\tJialinGao\n\t\t\n\t\t\n\t\t\tShuichengYan\n\t\t\n\t\t\n\t\t\tSiLiu\n\t\t\n\t\tarXiv:2506.01908\n\t\t\n\t\t\t2025\n\t\t\n\t\n\tarXiv preprint"
+    },
+    {
+      "id": 27,
+      "text": "Videochat-flash: Hierarchical compression for long-context video modeling\n\t\t\n\t\t\tXinhaoLi\n\t\t\n\t\t\n\t\t\tYiWang\n\t\t\n\t\t\n\t\t\tJiashuoYu\n\t\t\n\t\t\n\t\t\tXiangyuZeng\n\t\t\n\t\t\n\t\t\tYuhanZhu\n\t\t\n\t\t\n\t\t\tHaianHuang\n\t\t\n\t\t\n\t\t\tJianfeiGao\n\t\t\n\t\t\n\t\t\tKunchangLi\n\t\t\n\t\t\n\t\t\tYinanHe\n\t\t\n\t\t\n\t\t\tChentingWang\n\t\t\n\t\tarXiv:2501.00574\n\t\t\n\t\t\t2024\n\t\t\n\t\n\tarXiv preprint"
+    },
+    {
+      "id": 28,
+      "text": "Improving llm video understanding with 16 frames per second\n\t\t\n\t\t\tYixuanLi\n\t\t\n\t\t\n\t\t\tChangliTang\n\t\t\n\t\t\n\t\t\tJiminZhuang\n\t\t\n\t\t\n\t\t\tYudongYang\n\t\t\n\t\t\n\t\t\tGuangzhiSun\n\t\t\n\t\t\n\t\t\tWeiLi\n\t\t\n\t\t\n\t\t\tZejunMa\n\t\t\n\t\t\n\t\t\tChaoZhang\n\t\t\n\t\t\n\t\t\t2025"
+    },
+    {
+      "id": 29,
+      "text": "Scbench: A kv cache-centric analysis of long-context methods\n\t\t\n\t\t\tYuchengLi\n\t\t\n\t\t\n\t\t\tHuiqiangJiang\n\t\t\n\t\t\n\t\t\tQianhuiWu\n\t\t\n\t\t\n\t\t\tXufangLuo\n\t\t\n\t\t\n\t\t\tSurinAhn\n\t\t\n\t\t\n\t\t\tChengruidongZhang\n\t\t\n\t\t\n\t\t\tDongshengAmir H Abdi\n\t\t\n\t\t\n\t\t\tJianfengLi\n\t\t\n\t\t\n\t\t\tYuqingGao\n\t\t\n\t\t\n\t\t\tYang\n\t\t\n\t\tarXiv:2412.10319\n\t\t\n\t\t\t2024\n\t\t\n\t\n\tarXiv preprint"
+    },
+    {
+      "id": 30,
+      "text": "Mminference: Accelerating pre-filling for long-context vlms via modality-aware permutation sparse attention\n\t\t\n\t\t\tYuchengLi\n\t\t\n\t\t\n\t\t\tHuiqiangJiang\n\t\t\n\t\t\n\t\t\tChengruidongZhang\n\t\t\n\t\t\n\t\t\tQianhuiWu\n\t\t\n\t\t\n\t\t\tXufangLuo\n\t\t\n\t\t\n\t\t\tSurinAhn\n\t\t\n\t\t\n\t\t\tHAmir\n\t\t\n\t\t\n\t\t\tDongshengAbdi\n\t\t\n\t\t\n\t\t\tJianfengLi\n\t\t\n\t\t\n\t\t\tYuqingGao\n\t\t\n\t\t\n\t\t\tLiliYang\n\t\t\n\t\t\n\t\t\tQiu\n\t\t\n\t\t\n\t\t\t2025"
+    },
+    {
+      "id": 31,
+      "text": "Lag-relative sparse attention in long context training\n\t\t\n\t\t\tManlaiLiang\n\t\t\n\t\t\n\t\t\tWanyiHuang\n\t\t\n\t\t\n\t\t\tMandiLiu\n\t\t\n\t\t\n\t\t\tHuaijunLi\n\t\t\n\t\t\n\t\t\tJinlongLi\n\t\t\n\t\t\n\t\t\t2025"
+    },
+    {
+      "id": 32,
+      "text": "IlyaLoshchilov\n\t\t\n\t\t\n\t\t\tFrankHutter\n\t\t\n\t\tarXiv:1711.05101\n\t\tDecoupled weight decay regularization\n\t\t\n\t\t\t2017\n\t\t\n\t\n\tarXiv preprint"
+    },
+    {
+      "id": 33,
+      "text": "Livevlm: Efficient online video understanding via streaming-oriented kv cache and retrieval\n\t\t\n\t\t\tZhenyuNing\n\t\t\n\t\t\n\t\t\tGuangdaLiu\n\t\t\n\t\t\n\t\t\tQihaoJin\n\t\t\n\t\t\n\t\t\tWenchaoDing\n\t\t\n\t\t\n\t\t\tMinyiGuo\n\t\t\n\t\t\n\t\t\tJieruZhao\n\t\t\n\t\t\n\t\t\t2025"
+    },
+    {
+      "id": 34,
+      "text": "DhruvPai\n\t\t\n\t\t\n\t\t\tTimorAverbuch\n\t\t\n\t\t\n\t\t\tMasonWang\n\t\t\n\t\t\n\t\t\tBenKeigwin\n\t\t\n\t\t\n\t\n\t\n\t\tSparsity is cool. Blog post, Tilde Research\n\t\t\n\t\t\tJune 2025\n\t\t\n\t\n\tcorrespondence to dhruv@tilderesearch.com"
+    },
+    {
+      "id": 35,
+      "text": "DhruvPai\n\t\t\n\t\t\n\t\t\tTimorAverbuch\n\t\t\n\t\t\n\t\t\tMasonWang\n\t\t\n\t\t\n\t\t\tBenKeigwin\n\t\t\n\t\t\n\t\n\t\n\t\tSparsity is cool\n\t\t\n\t\t\tJune 25 2025b\n\t\t\tTilde Research Blog"
+    },
+    {
+      "id": 36,
+      "text": "Graphormer-IR: Graph Transformers Predict Experimental IR Spectra Using Highly Specialized Attention\n\t\t\n\t\t\tFrancescoPappone\n\t\t\n\t\t10.1021/acs.jcim.4c00378.s001\n\t\t\n\t\t\n\t\t\tAugust 2025\n\t\t\tAmerican Chemical Society (ACS)\n\t\t\n\t\n\tBlogpost"
+    },
+    {
+      "id": 37,
+      "text": "Video-xl-2: Towards very long-video understanding through task-aware kv sparsification\n\t\t\n\t\t\tMinghaoQin\n\t\t\n\t\t\n\t\t\tXiangruiLiu\n\t\t\n\t\t\n\t\t\tZhengyangLiang\n\t\t\n\t\t\n\t\t\tYanShu\n\t\t\n\t\t\n\t\t\tHuayingYuan\n\t\t\n\t\t\n\t\t\tJuenjieZhou\n\t\t\n\t\t\n\t\t\tShitaoXiao\n\t\t\n\t\t\n\t\t\tBoZhao\n\t\t\n\t\t\n\t\t\tZhengLiu\n\t\t\n\t\t\n\t\t\t2025"
+    },
+    {
+      "id": 38,
+      "text": "Video-xl-2: Towards very long-video understanding through task-aware kv sparsification\n\t\t\n\t\t\tMinghaoQin\n\t\t\n\t\t\n\t\t\tXiangruiLiu\n\t\t\n\t\t\n\t\t\tZhengyangLiang\n\t\t\n\t\t\n\t\t\tYanShu\n\t\t\n\t\t\n\t\t\tHuayingYuan\n\t\t\n\t\t\n\t\t\tJuenjieZhou\n\t\t\n\t\t\n\t\t\tShitaoXiao\n\t\t\n\t\t\n\t\t\tBoZhao\n\t\t\n\t\t\n\t\t\tZhengLiu\n\t\t\n\t\tarXiv:2506.19225\n\t\t\n\t\t\t2025\n\t\t\n\t\n\tarXiv preprint"
+    },
+    {
+      "id": 39,
+      "text": ":Qwen\n\t\t\n\t\t\n\t\t\tAnYang\n\t\t\n\t\t\n\t\t\tBaosongYang\n\t\t\n\t\t\n\t\t\tBeichenZhang\n\t\t\n\t\t\n\t\t\tBinyuanHui\n\t\t\n\t\t\n\t\t\tBoZheng\n\t\t\n\t\t\n\t\t\tBowenYu\n\t\t\n\t\t\n\t\t\tChengyuanLi\n\t\t\n\t\t\n\t\t\tDayihengLiu\n\t\t\n\t\t\n\t\t\tFeiHuang\n\t\t\n\t\t\n\t\t\tHaoranWei\n\t\t\n\t\t\n\t\t\tHuanLin\n\t\t\n\t\t\n\t\t\tJianYang\n\t\t\n\t\t\n\t\t\tJianhongTu\n\t\t\n\t\t\n\t\t\tJianweiZhang\n\t\t\n\t\t\n\t\t\tJianxinYang\n\t\t\n\t\t\n\t\t\tJiaxiYang\n\t\t\n\t\t\n\t\t\tJingrenZhou\n\t\t\n\t\t\n\t\t\tJunyangLin\n\t\t\n\t\t\n\t\t\tKaiDang\n\t\t\n\t\t\n\t\t\tKemingLu\n\t\t\n\t\t\n\t\t\tKeqinBao\n\t\t\n\t\t\n\t\t\tKexinYang\n\t\t\n\t\t\n\t\t\tLeYu\n\t\t\n\t\t\n\t\t\tMeiLi\n\t\t\n\t\t\n\t\t\tMingfengXue\n\t\t\n\t\t\n\t\t\tPeiZhang\n\t\t\n\t\t\n\t\t\tQinZhu\n\t\t\n\t\t\n\t\t\tRuiMen\n\t\t\n\t\t\n\t\t\tRunjiLin\n\t\t\n\t\t\n\t\t\tTianhaoLi\n\t\t\n\t\t\n\t\t\tTianyiTang\n\t\t\n\t\t\n\t\t\tTingyuXia\n\t\t\n\t\t\n\t\t\tXingzhangRen\n\t\t\n\t\t\n\t\t\tXuanchengRen\n\t\t\n\t\t\n\t\t\tYangFan\n\t\t\n\t\t\n\t\t\tYangSu\n\t\t\n\t\t\n\t\t\tYichangZhang\n\t\t\n\t\t\n\t\t\tYuWan\n\t\t\n\t\t\n\t\t\tYuqiongLiu\n\t\t\n\t\t\n\t\t\tZeyuCui\n\t\t\n\t\t\n\t\t\tZhenruZhang\n\t\t\n\t\t\n\t\t\n\t\t\t2025\n\t\t\n\t\n\tand Zihan Qiu. Qwen2.5 technical report"
+    },
+    {
+      "id": 40,
+      "text": "Vamba: Understanding hour-long videos with hybrid mamba-transformers\n\t\t\n\t\t\tWeimingRen\n\t\t\n\t\t\n\t\t\tWentaoMa\n\t\t\n\t\t\n\t\t\tHuanYang\n\t\t\n\t\t\n\t\t\tCongWei\n\t\t\n\t\t\n\t\t\tGeZhang\n\t\t\n\t\t\n\t\t\tWenhuChen\n\t\t\n\t\t\n\t\t\t2025"
+    },
+    {
+      "id": 41,
+      "text": "ZiyaoShangguan\n\t\t\n\t\t\n\t\t\tChuhanLi\n\t\t\n\t\t\n\t\t\tYuxuanDing\n\t\t\n\t\t\n\t\t\tYananZheng\n\t\t\n\t\t\n\t\t\tYilunZhao\n\t\t\n\t\t\n\t\t\tTescaFitzgerald\n\t\t\n\t\t\n\t\t\tArmanCohan\n\t\t\n\t\tarXiv:2410.23266\n\t\tTomato: Assessing visual temporal reasoning capabilities in multimodal foundation models\n\t\t\n\t\t\t2024\n\t\t\n\t\n\tarXiv preprint"
+    },
+    {
+      "id": 42,
+      "text": "When tokens talk too much: A survey of multimodal long-context token compression across images, videos, and audios\n\t\t\n\t\t\tKeleShao\n\t\t\n\t\t\n\t\t\tKedaTao\n\t\t\n\t\t\n\t\t\tKejiaZhang\n\t\t\n\t\t\n\t\t\tSichengFeng\n\t\t\n\t\t\n\t\t\tMuCai\n\t\t\n\t\t\n\t\t\tYuzhangShang\n\t\t\n\t\t\n\t\t\tHaoxuanYou\n\t\t\n\t\t\n\t\t\tCanQin\n\t\t\n\t\t\n\t\t\tYangSui\n\t\t\n\t\t\n\t\t\tHuanWang\n\t\t\n\t\t\n\t\t\t2025"
+    },
+    {
+      "id": 43,
+      "text": "MovieChat: From Dense Token to Sparse Memory for Long Video Understanding\n\t\t\n\t\t\tEnxinSong\n\t\t\n\t\t\n\t\t\tWenhaoChai\n\t\t\n\t\t\n\t\t\tGuanhongWang\n\t\t\n\t\t\n\t\t\tYuchengZhang\n\t\t\n\t\t\n\t\t\tHaoyangZhou\n\t\t\n\t\t\n\t\t\tFeiyangWu\n\t\t\n\t\t\n\t\t\tHaozheChi\n\t\t\n\t\t\n\t\t\tXunGuo\n\t\t\n\t\t\n\t\t\tTianYe\n\t\t\n\t\t\n\t\t\tYantingZhang\n\t\t\n\t\t\n\t\t\tYanLu\n\t\t\n\t\t\n\t\t\tJenq-NengHwang\n\t\t\n\t\t\n\t\t\tGaoangWang\n\t\t\n\t\t10.1109/cvpr52733.2024.01725\n\t\n\t\n\t\t2024 IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)\n\t\t\n\t\t\tIEEE\n\t\t\t2024"
+    },
+    {
+      "id": 44,
+      "text": "Video-mmlu: A massive multi-discipline lecture understanding benchmark\n\t\t\n\t\t\tEnxinSong\n\t\t\n\t\t\n\t\t\tWenhaoChai\n\t\t\n\t\t\n\t\t\tWeiliXu\n\t\t\n\t\t\n\t\t\tJianwenXie\n\t\t\n\t\t\n\t\t\tYuxuanLiu\n\t\t\n\t\t\n\t\t\tGaoangWang\n\t\t\n\t\tarXiv:2504.14693\n\t\t\n\t\t\t2025\n\t\t\n\t\n\tarXiv preprint"
+    },
+    {
+      "id": 45,
+      "text": "MovieChat+: Question-aware Sparse Memory for Long Video Question Answering\n\t\t\n\t\t\tEnxinSong\n\t\t\n\t\t\n\t\t\tWenhaoChai\n\t\t\n\t\t\n\t\t\tTianYe\n\t\t\n\t\t\n\t\t\tJenq-NengHwang\n\t\t\n\t\t\n\t\t\tXiLi\n\t\t\n\t\t\n\t\t\tGaoangWang\n\t\t\n\t\t10.1109/tpami.2025.3604614\n\t\n\t\n\t\tIEEE Transactions on Pattern Analysis and Machine Intelligence\n\t\tIEEE Trans. Pattern Anal. Mach. Intell.\n\t\t0162-8828\n\t\t1939-3539\n\t\t\n\t\t\t\n\t\t\t2025\n\t\t\tInstitute of Electrical and Electronics Engineers (IEEE)"
+    },
+    {
+      "id": 46,
+      "text": "CoreTeam\n\t\t\n\t\t\n\t\t\tZihaoYue\n\t\t\n\t\t\n\t\t\tZhenruLin\n\t\t\n\t\t\n\t\t\tYifanSong\n\t\t\n\t\t\n\t\t\tWeikunWang\n\t\t\n\t\t\n\t\t\tShuhuaiRen\n\t\t\n\t\t\n\t\t\tShuhaoGu\n\t\t\n\t\t\n\t\t\tShichengLi\n\t\t\n\t\t\n\t\t\tPeidianLi\n\t\t\n\t\t\n\t\t\tLiangZhao\n\t\t\n\t\t\n\t\t\tLeiLi\n\t\t\n\t\t\n\t\t\tKainanBao\n\t\t\n\t\t\n\t\t\tHailinHao Tian\n\t\t\n\t\t\n\t\t\tGangZhang\n\t\t\n\t\t\n\t\t\tDaweiWang\n\t\t\n\t\t\n\t\t\tZhu\n\t\t\n\t\t\n\t\t\tChenhongCici\n\t\t\n\t\t\n\t\t\tHe\n\t\t\n\t\t\n\t\t\tBowenBowen Ye\n\t\t\n\t\t\n\t\t\tZihanShen\n\t\t\n\t\t\n\t\t\tZihanZhang\n\t\t\n\t\t\n\t\t\tZhixianJiang\n\t\t\n\t\t\n\t\t\tZhichaoZheng\n\t\t\n\t\t\n\t\t\tZhenboSong\n\t\t\n\t\t\n\t\t\tYueLuo\n\t\t\n\t\t\n\t\t\tYudongYu\n\t\t\n\t\t\n\t\t\tYuanyuanWang\n\t\t\n\t\t\n\t\t\tYuTian\n\t\t\n\t\t\n\t\t\tYihanTu\n\t\t\n\t\t\n\t\t\tYiYan\n\t\t\n\t\t\n\t\t\tXuHuang\n\t\t\n\t\t\n\t\t\tXinzheWang\n\t\t\n\t\t\n\t\t\tXingchenXu\n\t\t\n\t\t\n\t\t\tXingSong\n\t\t\n\t\t\n\t\t\tXingZhang\n\t\t\n\t\t\n\t\t\tXinYong\n\t\t\n\t\t\n\t\t\tXiangweiZhang\n\t\t\n\t\t\n\t\t\tWenyuDeng\n\t\t\n\t\t\n\t\t\tWenhanYang\n\t\t\n\t\t\n\t\t\tWeiweiMa\n\t\t\n\t\t\n\t\t\tWeijiLv\n\t\t\n\t\t\n\t\t\tWeiZhuang\n\t\t\n\t\t\n\t\t\tSiruiLiu\n\t\t\n\t\t\n\t\t\tShuoDeng\n\t\t\n\t\t\n\t\t\tShimaoLiu\n\t\t\n\t\t\n\t\t\tShihuaChen\n\t\t\n\t\t\n\t\t\tShaohuiYu\n\t\t\n\t\t\n\t\t\tShandeLiu\n\t\t\n\t\t\n\t\t\tRuiWang\n\t\t\n\t\t\n\t\t\tQiantongMa\n\t\t\n\t\t\n\t\t\tPengWang\n\t\t\n\t\t\n\t\t\tNuoWang\n\t\t\n\t\t\n\t\t\tMenghangChen\n\t\t\n\t\t\n\t\t\tKangyangZhu\n\t\t\n\t\t\n\t\t\tKangZhou\n\t\t\n\t\t\n\t\t\tKaiZhou\n\t\t\n\t\t\n\t\t\tJunFang\n\t\t\n\t\t\n\t\t\tJinhaoShi\n\t\t\n\t\t\n\t\t\tJiebaoDong\n\t\t\n\t\t\n\t\t\tJiamingXiao\n\t\t\n\t\t\n\t\t\tHuaqiuXu\n\t\t\n\t\t\n\t\t\tHongshenLiu\n\t\t\n\t\t\n\t\t\tHengXu\n\t\t\n\t\t\n\t\t\tHaochenQu\n\t\t\n\t\t\n\t\t\tHanglongZhao\n\t\t\n\t\t\n\t\t\tGuoanLv\n\t\t\n\t\t\n\t\t\tDuoWang\n\t\t\n\t\t\n\t\t\tDongZhang\n\t\t\n\t\t\n\t\t\tDiZhang\n\t\t\n\t\t\n\t\t\tChongZhang\n\t\t\n\t\t\n\t\t\tChangMa\n\t\t\n\t\t\n\t\t\tLiu\n\t\t\n\t\t\n\t\n\t\n\t\tCan Cai, and Bingquan Xia. Mimo-vl technical report\n\t\t\n\t\t\t2025"
+    },
+    {
+      "id": 47,
+      "text": "KimiTeam\n\t\t\n\t\t\n\t\t\tAngangDu\n\t\t\n\t\t\n\t\t\tBohongYin\n\t\t\n\t\t\n\t\t\tBoweiXing\n\t\t\n\t\t\n\t\t\tBowenQu\n\t\t\n\t\t\n\t\t\tBowenWang\n\t\t\n\t\t\n\t\t\tChengChen\n\t\t\n\t\t\n\t\t\tChenlinZhang\n\t\t\n\t\t\n\t\t\tChenzhuangDu\n\t\t\n\t\t\n\t\t\tChuWei\n\t\t\n\t\tarXiv:2504.07491\n\t\t-vl technical report\n\t\t\n\t\t\t2025\n\t\t\n\t\n\tarXiv preprint"
+    },
+    {
+      "id": 48,
+      "text": "KwaiKeye\n\t\t\n\t\t\n\t\t\tTeam\n\t\t\n\t\t\n\t\tKwai keye-vl technical report\n\t\t\n\t\t\t2025"
+    },
+    {
+      "id": 49,
+      "text": "Qwen2.5-vl-7b-instruct-awq\n\t\t\n\t\t\tQwenTeam\n\t\t\n\t\t\n\t\t\n\t\t\t2024"
+    },
+    {
+      "id": 50,
+      "text": "Dynamic sparse training of diagonally sparse networks\n\t\t\n\t\t\tAbhishekTyagi\n\t\t\n\t\t\n\t\t\tArjunIyer\n\t\t\n\t\t\n\t\t\tWilliamHRenninger\n\t\t\n\t\t\n\t\t\tChristopherKanan\n\t\t\n\t\t\n\t\t\tYuhaoZhu\n\t\t\n\t\t\n\t\t\t2025"
+    },
+    {
+      "id": 51,
+      "text": "Long-context generalization with sparse attention\n\t\t\n\t\t\tPavloVasylenko\n\t\t\n\t\t\n\t\t\tMarcosTreviso\n\t\t\n\t\t\n\t\t\tFTAndré\n\t\t\n\t\t\n\t\t\tMartins\n\t\t\n\t\t\n\t\t\t2025"
+    },
+    {
+      "id": 52,
+      "text": "AdaReTaKe: Adaptive Redundancy Reduction to Perceive Longer for Video-language Understanding\n\t\t\n\t\t\tXiaoWang\n\t\t\n\t\t\n\t\t\tQingyiSi\n\t\t\n\t\t\n\t\t\tShiyuZhu\n\t\t\n\t\t\n\t\t\tJianlongWu\n\t\t\n\t\t\n\t\t\tLiCao\n\t\t\n\t\t\n\t\t\tLiqiangNie\n\t\t\n\t\t10.18653/v1/2025.findings-acl.283\n\t\tarXiv:2412.20504\n\t\n\t\n\t\tFindings of the Association for Computational Linguistics: ACL 2025\n\t\t\n\t\t\tAssociation for Computational Linguistics\n\t\t\t2024\n\t\t\t\n\t\t\n\t\n\tarXiv preprint"
+    },
+    {
+      "id": 53,
+      "text": "YiWang\n\t\t\n\t\t\n\t\t\tXinhaoLi\n\t\t\n\t\t\n\t\t\tZiangYan\n\t\t\n\t\t\n\t\t\tYinanHe\n\t\t\n\t\t\n\t\t\tJiashuoYu\n\t\t\n\t\t\n\t\t\tXiangyuZeng\n\t\t\n\t\t\n\t\t\tChentingWang\n\t\t\n\t\t\n\t\t\tChanglianMa\n\t\t\n\t\t\n\t\t\tHaianHuang\n\t\t\n\t\t\n\t\t\tJianfeiGao\n\t\t\n\t\tarXiv:2501.12386\n\t\tEmpowering video mllms with long and rich context modeling\n\t\t\n\t\t\t2025\n\t\t\t2\n\t\t\n\t\n\tarXiv preprint"
+    },
+    {
+      "id": 54,
+      "text": "A conceptual peer review model for arXiv and other preprint databases\n\t\t\n\t\t\tLingfengWang\n\t\t\t0000-0001-6217-8865\n\t\t\n\t\t\n\t\t\tYaqingZhan\n\t\t\t0000-0002-2465-2092\n\t\t\n\t\t10.1002/leap.1229\n\t\tarXiv:2509.24745\n\t\n\t\n\t\tLearned Publishing\n\t\tLearned Publishing\n\t\t0953-1513\n\t\t1741-4857\n\t\t\n\t\t\t32\n\t\t\t3\n\t\t\t\n\t\t\t2025\n\t\t\tWiley\n\t\t\n\t\n\tarXiv preprint"
+    },
+    {
+      "id": 55,
+      "text": "Lvc: A lightweight compression framework for enhancing vlms in long video understanding\n\t\t\n\t\t\tZiyiWang\n\t\t\n\t\t\n\t\t\tHaoranWu\n\t\t\n\t\t\n\t\t\tYimingRong\n\t\t\n\t\t\n\t\t\tDeyangJiang\n\t\t\n\t\t\n\t\t\tYixinZhang\n\t\t\n\t\t\n\t\t\tYunlongZhao\n\t\t\n\t\t\n\t\t\tShuangXu\n\t\t\n\t\t\n\t\t\tBoXu\n\t\t\n\t\t\n\t\t\t2025"
+    },
+    {
+      "id": 56,
+      "text": "Token Pruning in Multimodal Large Language Models: Are We Solving the Right Problem?\n\t\t\n\t\t\tZichenWen\n\t\t\n\t\t\n\t\t\tYifengGao\n\t\t\n\t\t\n\t\t\tWeijiaLi\n\t\t\n\t\t\n\t\t\tConghuiHe\n\t\t\n\t\t\n\t\t\tLinfengZhang\n\t\t\n\t\t10.18653/v1/2025.findings-acl.802\n\t\tarXiv:2502.11501\n\t\n\t\n\t\tFindings of the Association for Computational Linguistics: ACL 2025\n\t\t\n\t\t\tAssociation for Computational Linguistics\n\t\t\t2025"
+    },
+    {
+      "id": 57,
+      "text": "Longvideobench: A benchmark for long-context interleaved video-language understanding\n\t\t\n\t\t\tHaoningWu\n\t\t\n\t\t\n\t\t\tDongxuLi\n\t\t\n\t\t\n\t\t\tBeiChen\n\t\t\n\t\t\n\t\t\tJunnanLi\n\t\t\n\t\n\t\n\t\tAdvances in Neural Information Processing Systems\n\t\t\n\t\t\t37\n\t\t\t\n\t\t\t2024"
+    },
+    {
+      "id": 58,
+      "text": "Efficient streaming language models with attention sinks\n\t\t\n\t\t\tGuangxuanXiao\n\t\t\n\t\t\n\t\t\tYuandongTian\n\t\t\n\t\t\n\t\t\tBeidiChen\n\t\t\n\t\t\n\t\t\tSongHan\n\t\t\n\t\t\n\t\t\tMikeLewis\n\t\t\n\t\tarXiv:2309.17453\n\t\t\n\t\t\t2023\n\t\t\n\t\n\tarXiv preprint"
+    },
+    {
+      "id": 59,
+      "text": "Efficient streaming language models with attention sinks\n\t\t\n\t\t\tGuangxuanXiao\n\t\t\n\t\t\n\t\t\tYuandongTian\n\t\t\n\t\t\n\t\t\tBeidiChen\n\t\t\n\t\t\n\t\t\tSongHan\n\t\t\n\t\t\n\t\t\tMikeLewis\n\t\t\n\t\n\t\n\t\tThe Twelfth International Conference on Learning Representations\n\t\t\n\t\t\t2024"
+    },
+    {
+      "id": 60,
+      "text": "Xattention: Block sparse attention with antidiagonal scoring\n\t\t\n\t\t\tRuyiXu\n\t\t\n\t\t\n\t\t\tGuangxuanXiao\n\t\t\n\t\t\n\t\t\tHaofengHuang\n\t\t\n\t\t\n\t\t\tJunxianGuo\n\t\t\n\t\t\n\t\t\tSongHan\n\t\t\n\t\tarXiv:2503.16428\n\t\t\n\t\t\t2025\n\t\t\n\t\n\tarXiv preprint"
+    },
+    {
+      "id": 61,
+      "text": "Auroralong: Bringing rnns back to efficient open-ended video understanding\n\t\t\n\t\t\tWeiliXu\n\t\t\n\t\t\n\t\t\tEnxinSong\n\t\t\n\t\t\n\t\t\tWenhaoChai\n\t\t\n\t\t\n\t\t\tXuexiangWen\n\t\t\n\t\t\n\t\t\tTianYe\n\t\t\n\t\t\n\t\t\tGaoangWang\n\t\t\n\t\tarXiv:2507.02591\n\t\t\n\t\t\t2025\n\t\t\n\t\n\tarXiv preprint"
+    },
+    {
+      "id": 62,
+      "text": "Flash sparse attention: An alternative efficient implementation of native sparse attention kernel\n\t\t\n\t\t\tRanYan\n\t\t\n\t\t\n\t\t\tYouheJiang\n\t\t\n\t\t\n\t\t\tBinhangYuan\n\t\t\n\t\t\n\t\t\t2025"
+    },
+    {
+      "id": 63,
+      "text": "PVC: Progressive Visual Token Compression for Unified Image and Video Processing in Large Vision-Language Models\n\t\t\n\t\t\tChenyuYang\n\t\t\n\t\t\n\t\t\tXuanDong\n\t\t\n\t\t\n\t\t\tXizhouZhu\n\t\t\n\t\t\n\t\t\tWeijieSu\n\t\t\n\t\t\n\t\t\tJiahaoWang\n\t\t\n\t\t\n\t\t\tHaoTian\n\t\t\n\t\t\n\t\t\tZheChen\n\t\t\n\t\t\n\t\t\tWenhaiWang\n\t\t\n\t\t\n\t\t\tLeweiLu\n\t\t\n\t\t\n\t\t\tJifengDai\n\t\t\n\t\t10.1109/cvpr52734.2025.02322\n\t\tarXiv:2412.09613\n\t\n\t\n\t\t2025 IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)\n\t\t\n\t\t\tIEEE\n\t\t\t2024\n\t\t\t\n\t\t\n\t\n\tarXiv preprint"
+    },
+    {
+      "id": 64,
+      "text": "Thinking in space: How multimodal large language models see, remember, and recall spaces\n\t\t\n\t\t\tJihanYang\n\t\t\n\t\t\n\t\t\tShushengYang\n\t\t\n\t\t\n\t\t\tAnjaliWGupta\n\t\t\n\t\t\n\t\t\tRilynHan\n\t\t\n\t\t\n\t\t\tLiFei-Fei\n\t\t\n\t\t\n\t\t\tSainingXie\n\t\t\n\t\t\n\t\t\n\t\t\t2025"
+    },
+    {
+      "id": 65,
+      "text": "Less is more: Training-free sparse attention with global locality for efficient reasoning\n\t\t\n\t\t\tLijieYang\n\t\t\n\t\t\n\t\t\tZhihaoZhang\n\t\t\n\t\t\n\t\t\tArtiJain\n\t\t\n\t\t\n\t\t\tShijieCao\n\t\t\n\t\t\n\t\t\tBaihongYuan\n\t\t\n\t\t\n\t\t\tYiweiChen\n\t\t\n\t\t\n\t\t\tZhihaoJia\n\t\t\n\t\t\n\t\t\tRaviNetravali\n\t\t\n\t\t\n\t\t\t2025"
+    },
+    {
+      "id": 66,
+      "text": "VisionZip: Longer is Better but Not Necessary in Vision Language Models\n\t\t\n\t\t\tSenqiaoYang\n\t\t\n\t\t\n\t\t\tYukangChen\n\t\t\n\t\t\n\t\t\tZhuotaoTian\n\t\t\n\t\t\n\t\t\tChengyaoWang\n\t\t\n\t\t\n\t\t\tJingyaoLi\n\t\t\n\t\t\n\t\t\tBeiYu\n\t\t\n\t\t\n\t\t\tJiayaJia\n\t\t\n\t\t10.1109/cvpr52734.2025.01843\n\t\n\t\n\t\t2025 IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)\n\t\t\n\t\t\tIEEE\n\t\t\t2025"
+    },
+    {
+      "id": 67,
+      "text": "Vflowopt: A token pruning framework for lmms with visual information flow-guided optimization\n\t\t\n\t\t\tSihanYang\n\t\t\n\t\t\n\t\t\tRunsenXu\n\t\t\n\t\t\n\t\t\tChenhangCui\n\t\t\n\t\t\n\t\t\tTaiWang\n\t\t\n\t\t\n\t\t\tDahuaLin\n\t\t\n\t\t\n\t\t\tJiangmiaoPang\n\t\t\n\t\tarXiv:2508.05211\n\t\t\n\t\t\t2025\n\t\t\n\t\n\tarXiv preprint"
+    },
+    {
+      "id": 68,
+      "text": "Fla: A triton-based library for hardware-efficient implementations of linear attention mechanism\n\t\t\n\t\t\tSonglinYang\n\t\t\n\t\t\n\t\t\tYuZhang\n\t\t\n\t\t\n\t\t\n\t\t\tJanuary 2024"
+    },
+    {
+      "id": 69,
+      "text": "Streammem: Query-agnostic kv cache memory for streaming video understanding\n\t\t\n\t\t\tYanlaiYang\n\t\t\n\t\t\n\t\t\tZhuokaiZhao\n\t\t\n\t\t\n\t\t\tAashuSatya Narayan Shukla\n\t\t\n\t\t\n\t\t\tShlokSingh\n\t\t\n\t\t\n\t\t\tLizhuKumar Mishra\n\t\t\n\t\t\n\t\t\tMengyeZhang\n\t\t\n\t\t\n\t\t\tRen\n\t\t\n\t\t\n\t\t\t2025"
+    },
+    {
+      "id": 70,
+      "text": "TimeChat-Online: 80% Visual Tokens are Naturally Redundant in Streaming Videos\n\t\t\n\t\t\tLinliYao\n\t\t\t0000-0002-9809-8864\n\t\t\n\t\t\n\t\t\tYichengLi\n\t\t\t0009-0005-5599-1504\n\t\t\n\t\t\n\t\t\tYuanchengWei\n\t\t\t0009-0007-1576-3341\n\t\t\n\t\t\n\t\t\tLeiLi\n\t\t\t0009-0008-6984-5104\n\t\t\n\t\t\n\t\t\tShuhuaiRen\n\t\t\t0009-0001-9998-864X\n\t\t\n\t\t\n\t\t\tYuanxinLiu\n\t\t\t0009-0000-7218-4011\n\t\t\n\t\t\n\t\t\tKunOuyang\n\t\t\t0009-0008-5788-9126\n\t\t\n\t\t\n\t\t\tLeanWang\n\t\t\t0009-0000-7676-8065\n\t\t\n\t\t\n\t\t\tShichengLi\n\t\t\t0000-0002-5724-0641\n\t\t\n\t\t\n\t\t\tSidaLi\n\t\t\t0009-0001-7994-8050\n\t\t\n\t\t\n\t\t\tLingpengKong\n\t\t\t0000-0002-9033-2724\n\t\t\n\t\t\n\t\t\tQiLiu\n\t\t\t0000-0003-4608-5778\n\t\t\n\t\t\n\t\t\tYuanxingZhang\n\t\t\t0000-0003-1460-8124\n\t\t\n\t\t\n\t\t\tXuSun\n\t\t\t0000-0001-8241-9320\n\t\t\n\t\t10.1145/3746027.3754839\n\t\tTimechat-online: 80\n\t\n\t\n\t\tProceedings of the 33rd ACM International Conference on Multimedia\n\t\tthe 33rd ACM International Conference on Multimedia\n\t\t\n\t\t\tACM"
+    },
+    {
+      "id": 71,
+      "text": "Native sparse attention: Hardware-aligned and natively trainable sparse attention\n\t\t\n\t\t\tJingyangYuan\n\t\t\n\t\t\n\t\t\tHuazuoGao\n\t\t\n\t\t\n\t\t\tDamaiDai\n\t\t\n\t\t\n\t\t\tJunyuLuo\n\t\t\n\t\t\n\t\t\tLiangZhao\n\t\t\n\t\t\n\t\t\tZhengyanZhang\n\t\t\n\t\t\n\t\t\tZhendaXie\n\t\t\n\t\t\n\t\t\tYXWei\n\t\t\n\t\t\n\t\t\tLeanWang\n\t\t\n\t\t\n\t\t\tZhipingXiao\n\t\t\n\t\t\n\t\t\tYuqingWang\n\t\t\n\t\t\n\t\t\tChongRuan\n\t\t\n\t\t\n\t\t\tMingZhang\n\t\t\n\t\t\n\t\t\tWenfengLiang\n\t\t\n\t\t\n\t\t\tWangdingZeng\n\t\t\n\t\t\n\t\t\t2025"
+    },
+    {
+      "id": 72,
+      "text": "Native sparse attention: Hardware-aligned and natively trainable sparse attention\n\t\t\n\t\t\tJingyangYuan\n\t\t\n\t\t\n\t\t\tHuazuoGao\n\t\t\n\t\t\n\t\t\tDamaiDai\n\t\t\n\t\t\n\t\t\tJunyuLuo\n\t\t\n\t\t\n\t\t\tLiangZhao\n\t\t\n\t\t\n\t\t\tZhengyanZhang\n\t\t\n\t\t\n\t\t\tZhendaXie\n\t\t\n\t\t\n\t\t\tYXWei\n\t\t\n\t\t\n\t\t\tLeanWang\n\t\t\n\t\t\n\t\t\tZhipingXiao\n\t\t\n\t\tarXiv:2502.11089\n\t\t\n\t\t\t2025\n\t\t\n\t\n\tarXiv preprint"
+    },
+    {
+      "id": 73,
+      "text": "Overcoming long-context limitations of state-space models via context-dependent sparse attention\n\t\t\n\t\t\tZhihaoZhan\n\t\t\n\t\t\n\t\t\tJiananZhao\n\t\t\n\t\t\n\t\t\tZhaochengZhu\n\t\t\n\t\t\n\t\t\tJianTang\n\t\t\n\t\t\n\t\t\t2025"
+    },
+    {
+      "id": 74,
+      "text": "Videollama 3: Frontier multimodal foundation models for image\n\t\t\n\t\t\tBoqiangZhang\n\t\t\n\t\t\n\t\t\tKehanLi\n\t\t\n\t\t\n\t\t\tZesenCheng\n\t\t\n\t\t\n\t\t\tZhiqiangHu\n\t\t\n\t\t\n\t\t\tYuqianYuan\n\t\t\n\t\t\n\t\t\tGuanzhengChen\n\t\t\n\t\t\n\t\t\tSicongLeng\n\t\t\n\t\t\n\t\t\tYumingJiang\n\t\t\n\t\t\n\t\t\tHangZhang\n\t\t\n\t\t\n\t\t\tXinLi\n\t\t\n\t\tarXiv:2501.13106\n\t\t\n\t\t\t2025\n\t\t\n\t\n\tarXiv preprint"
+    },
+    {
+      "id": 75,
+      "text": "Vscan: Rethinking visual token reduction for efficient large vision-language models\n\t\t\n\t\t\tCeZhang\n\t\t\n\t\t\n\t\t\tKaixinMa\n\t\t\n\t\t\n\t\t\tTianqingFang\n\t\t\n\t\t\n\t\t\tWenhaoYu\n\t\t\n\t\t\n\t\t\tHongmingZhang\n\t\t\n\t\t\n\t\t\tZhisongZhang\n\t\t\n\t\t\n\t\t\tYaqiXie\n\t\t\n\t\t\n\t\t\tKatiaSycara\n\t\t\n\t\t\n\t\t\tHaitaoMi\n\t\t\n\t\t\n\t\t\tDongYu\n\t\t\n\t\tarXiv:2505.22654\n\t\t\n\t\t\t2025\n\t\t\n\t\n\tarXiv preprint"
+    },
+    {
+      "id": 76,
+      "text": "DellZhang\n\t\t\n\t\t\n\t\t\tXiangyuChen\n\t\t\n\t\t\n\t\t\tJixiangLuo\n\t\t\n\t\t\n\t\t\tMengxiJia\n\t\t\n\t\t\n\t\t\tChangzhiSun\n\t\t\n\t\t\n\t\t\tRuilongRen\n\t\t\n\t\t\n\t\t\tJingrenLiu\n\t\t\n\t\t\n\t\t\tHaoSun\n\t\t\n\t\t\n\t\t\tXuelongLi\n\t\t\n\t\tarXiv:2507.09068\n\t\t\n\t\t\t2025\n\t\t\n\t\n\tInfinite video understanding. arXiv preprint"
+    },
+    {
+      "id": 77,
+      "text": "Neural discrete token representation learning for extreme token reduction in video large language models\n\t\t\n\t\t\tHaichaoZhang\n\t\t\n\t\t\n\t\t\tYunFu\n\t\t\n\t\t\n\t\t\t2025"
+    },
+    {
+      "id": 78,
+      "text": "DAM: Dynamic Attention Mask for Long-Context Large Language Model Inference Acceleration\n\t\t\n\t\t\tHanzhiZhang\n\t\t\n\t\t\n\t\t\tHengFan\n\t\t\n\t\t\n\t\t\tKeweiSha\n\t\t\n\t\t\n\t\t\tYanHuang\n\t\t\n\t\t\n\t\t\tYunheFeng\n\t\t\n\t\t10.18653/v1/2025.findings-acl.242\n\t\n\t\n\t\tFindings of the Association for Computational Linguistics: ACL 2025\n\t\t\n\t\t\tAssociation for Computational Linguistics\n\t\t\t2025"
+    },
+    {
+      "id": 79,
+      "text": "A survey of efficient attention methods: Hardware-efficient\n\t\t\n\t\t\tJintaoZhang\n\t\t\n\t\t\n\t\t\tRundongSu\n\t\t\n\t\t\n\t\t\tChunyuLiu\n\t\t\n\t\t\n\t\t\tJiaWei\n\t\t\n\t\t\n\t\t\tZitengWang\n\t\t\n\t\t\n\t\t\tHaoxuWang\n\t\t\n\t\t\n\t\t\tPengleZhang\n\t\t\n\t\t\n\t\t\tHuiqiangJiang\n\t\t\n\t\t\n\t\t\tHaofengHuang\n\t\t\n\t\t\n\t\t\tChendongXiang\n\t\t\n\t\t\n\t\t\tHaochengXi\n\t\t\n\t\t\n\t\t\tShuoYang\n\t\t\n\t\t\n\t\t\tXingyangLi\n\t\t\n\t\t\n\t\t\tYuezhouHu\n\t\t\n\t\t\n\t\t\tTianyuFu\n\t\t\n\t\t\n\t\t\tTianchenZhao\n\t\t\n\t\t\n\t\t\tYichengZhang\n\t\t\n\t\t\n\t\t\tBoqunCao\n\t\t\n\t\t\n\t\t\tYouheJiang\n\t\t\n\t\t\n\t\t\tChangChen\n\t\t\n\t\t\n\t\t\tKaiJiang\n\t\t\n\t\t\n\t\t\tHuayuChen\n\t\t\n\t\t\n\t\t\tMinZhao\n\t\t\n\t\t\n\t\t\tXiaomingXu\n\t\t\n\t\t\n\t\t\tYiWu\n\t\t\n\t\t\n\t\t\tFanBao\n\t\t\n\t\t\n\t\t\tJunZhu\n\t\t\n\t\t\n\t\t\tJianfeiChen\n\t\t\n\t\t\n\t\n\tsparse, compact, and linear attention. 2025e"
+    },
+    {
+      "id": 80,
+      "text": "Sla: Beyond sparsity in diffusion transformers via fine-tunable sparse-linear attention\n\t\t\n\t\t\tJintaoZhang\n\t\t\n\t\t\n\t\t\tHaoxuWang\n\t\t\n\t\t\n\t\t\tKaiJiang\n\t\t\n\t\t\n\t\t\tShuoYang\n\t\t\n\t\t\n\t\t\tKaiwenZheng\n\t\t\n\t\t\n\t\t\tHaochengXi\n\t\t\n\t\t\n\t\t\tZitengWang\n\t\t\n\t\t\n\t\t\tHongzhouZhu\n\t\t\n\t\t\n\t\t\tMinZhao\n\t\t\n\t\t\n\t\t\tIonStoica\n\t\t\n\t\tarXiv:2509.24006\n\t\t\n\t\t\t2025\n\t\t\n\t\n\tarXiv preprint"
+    },
+    {
+      "id": 81,
+      "text": "Lmms-eval: Reality check on the evaluation of large multimodal models\n\t\t\n\t\t\tKaichenZhang\n\t\t\n\t\t\n\t\t\tBoLi\n\t\t\n\t\t\n\t\t\tPeiyuanZhang\n\t\t\n\t\t\n\t\t\tFanyiPu\n\t\t\n\t\t\n\t\t\tJoshua\n\t\t\n\t\t\n\t\t\tAdrianCahyono\n\t\t\n\t\t\n\t\t\tKairuiHu\n\t\t\n\t\t\n\t\t\tShuaiLiu\n\t\t\n\t\t\n\t\t\tYuanhanZhang\n\t\t\n\t\t\n\t\t\tJingkangYang\n\t\t\n\t\t\n\t\t\tChunyuanLi\n\t\t\n\t\tarXiv:2407.12772\n\t\t\n\t\t\t2024\n\t\t\n\t\n\tarXiv preprint"
+    },
+    {
+      "id": 82,
+      "text": "Vsa: Faster video diffusion with trainable sparse attention\n\t\t\n\t\t\tPeiyuanZhang\n\t\t\n\t\t\n\t\t\tYongqiChen\n\t\t\n\t\t\n\t\t\tHaofengHuang\n\t\t\n\t\t\n\t\t\tWillLin\n\t\t\n\t\t\n\t\t\tZhengzhongLiu\n\t\t\n\t\t\n\t\t\tIonStoica\n\t\t\n\t\t\n\t\t\tEricXing\n\t\t\n\t\t\n\t\t\tHaoZhang\n\t\t\n\t\t\n\t\t\t2025"
+    },
+    {
+      "id": 83,
+      "text": "Llava-next: A strong zero-shot video understanding model\n\t\t\n\t\t\tYuanhanZhang\n\t\t\n\t\t\n\t\t\tBoLi\n\t\t\n\t\t\n\t\t\tLiu\n\t\t\n\t\t\n\t\t\tLiangkeYong Jae Lee\n\t\t\n\t\t\n\t\t\tDiGui\n\t\t\n\t\t\n\t\t\tJiashiFu\n\t\t\n\t\t\n\t\t\tZiweiFeng\n\t\t\n\t\t\n\t\t\tChunyuanLiu\n\t\t\n\t\t\n\t\t\tLi\n\t\t\n\t\t\n\t\t\n\t\t\tApril 2024"
+    },
+    {
+      "id": 84,
+      "text": "YuanhanZhang\n\t\t\n\t\t\n\t\t\tJinmingWu\n\t\t\n\t\t\n\t\t\tWeiLi\n\t\t\n\t\t\n\t\t\tBoLi\n\t\t\n\t\t\n\t\t\tZejunMa\n\t\t\n\t\t\n\t\t\tZiweiLiu\n\t\t\n\t\t\n\t\t\tChunyuanLi\n\t\t\n\t\tarXiv:2410.02713\n\t\tVideo instruction tuning with synthetic data\n\t\t\n\t\t\t2024\n\t\t\n\t\n\tarXiv preprint"
+    },
+    {
+      "id": 85,
+      "text": "Video instruction tuning with synthetic data\n\t\t\n\t\t\tYuanhanZhang\n\t\t\n\t\t\n\t\t\tJinmingWu\n\t\t\n\t\t\n\t\t\tWeiLi\n\t\t\n\t\t\n\t\t\tBoLi\n\t\t\n\t\t\n\t\t\tZejunMa\n\t\t\n\t\t\n\t\t\tZiweiLiu\n\t\t\n\t\t\n\t\t\tChunyuanLi\n\t\t\n\t\t\n\t\t\n\t\t\t2024"
+    },
+    {
+      "id": 86,
+      "text": "Flexselect: Flexible token selection for efficient long video understanding\n\t\t\n\t\t\tYunzhuZhang\n\t\t\n\t\t\n\t\t\tYuLu\n\t\t\n\t\t\n\t\t\tTianyiWang\n\t\t\n\t\t\n\t\t\tFengyunRao\n\t\t\n\t\t\n\t\t\tYiYang\n\t\t\n\t\t\n\t\t\tLinchaoZhu\n\t\t\n\t\tarXiv:2506.00993\n\t\t\n\t\t\t2025\n\t\t\n\t\n\tarXiv preprint"
+    },
+    {
+      "id": 87,
+      "text": "Infllm-v2: Dense-sparse switchable attention for seamless short-to-long adaptation\n\t\t\n\t\t\tWeilinZhao\n\t\t\n\t\t\n\t\t\tZihanZhou\n\t\t\n\t\t\n\t\t\tZhouSu\n\t\t\n\t\t\n\t\t\tChaojunXiao\n\t\t\n\t\t\n\t\t\tYuxuanLi\n\t\t\n\t\t\n\t\t\tYanghaoLi\n\t\t\n\t\t\n\t\t\tYudiZhang\n\t\t\n\t\t\n\t\t\tWeilunZhao\n\t\t\n\t\t\n\t\t\tZhenLi\n\t\t\n\t\t\n\t\t\tYuxiangHuang\n\t\t\n\t\tarXiv:2509.24663\n\t\t\n\t\t\t2025\n\t\t\n\t\n\tarXiv preprint"
+    },
+    {
+      "id": 88,
+      "text": "Swift:a scalable lightweight infrastructure for fine-tuning\n\t\t\n\t\t\tYuzeZhao\n\t\t\n\t\t\n\t\t\tJintaoHuang\n\t\t\n\t\t\n\t\t\tJinghanHu\n\t\t\n\t\t\n\t\t\tXingjunWang\n\t\t\n\t\t\n\t\t\tYunlinMao\n\t\t\n\t\t\n\t\t\tDaozeZhang\n\t\t\n\t\t\n\t\t\tZeyinziJiang\n\t\t\n\t\t\n\t\t\tZhikaiWu\n\t\t\n\t\t\n\t\t\tBaoleAi\n\t\t\n\t\t\n\t\t\tAngWang\n\t\t\n\t\t\n\t\t\tWenmengZhou\n\t\t\n\t\t\n\t\t\tYingdaChen\n\t\t\n\t\t\n\t\t\n\t\t\t2024"
+    },
+    {
+      "id": 89,
+      "text": "Mlvu: A comprehensive benchmark for multi-task long video understanding\n\t\t\n\t\t\tJunjieZhou\n\t\t\n\t\t\n\t\t\tYanShu\n\t\t\n\t\t\n\t\t\tBoZhao\n\t\t\n\t\t\n\t\t\tBoyaWu\n\t\t\n\t\t\n\t\t\tShitaoXiao\n\t\t\n\t\t\n\t\t\tXiYang\n\t\t\n\t\t\n\t\t\tYongpingXiong\n\t\t\n\t\t\n\t\t\tBoZhang\n\t\t\n\t\t\n\t\t\tTiejunHuang\n\t\t\n\t\t\n\t\t\tZhengLiu\n\t\t\n\t\t\n\t\t\t2024\n\t\t\t2406\n\t\t\n\t\n\tarXiv e-prints"
+    },
+    {
+      "id": 90,
+      "text": "Exploring the long-video frontier of large multimodal models\n\t\t\n\t\t\tXiaohanOrr Zohar\n\t\t\n\t\t\n\t\t\tRuiWang\n\t\t\n\t\t\n\t\t\tAndrésLi\n\t\t\n\t\t\n\t\t\tMiquelMarafioti\n\t\t\n\t\t\n\t\t\tMerveFarré\n\t\t\n\t\t\n\t\t\tNoyan\n\t\t\n\t\t\n\t\t\tSerenaLeandro Von Werra\n\t\t\n\t\t\n\t\t\tThomasYeung-Levy\n\t\t\n\t\t\n\t\t\tWolf\n\t\t\n\t\t\n\t\t\t2025\n\t\t\t2"
+    },
+    {
+      "id": 91,
+      "text": "Overall Direction Count Rotation Shape&Trend Velocity&Freq\n\t\t\n\t\t\tFps Tpf\n\t\t\n\t\n\t\n\t\tVisual Cues Human Simulated Object\n\t\t\n\t\t\t1\n\t\t\t64"
+    }
+  ],
+  "formulas": [
+    {
+      "id": "FORMULA_1",
+      "raw": "o t = c∈{cmp, slc, win} g c t • Attn q t , K c t , Ṽ c t .(1)"
+    },
+    {
+      "id": "FORMULA_2",
+      "raw": "Kcmp t = {φ(K [id+1:id+m] ) | 0 ≤ i < ⌊ t -m d ⌋}, (2"
+    },
+    {
+      "id": "FORMULA_3",
+      "raw": ")"
+    },
+    {
+      "id": "FORMULA_4",
+      "raw": "I t = {i | rank(p slc' t [i]) ≤ n}.(3)"
+    },
+    {
+      "id": "FORMULA_5",
+      "raw": "Kslc t = Cat({K [im ′ +1:(i+1)m ′ ] | i ∈ I t }),(4)"
+    },
+    {
+      "id": "FORMULA_6",
+      "raw": "Kswa t = K t-w+1:t , Ṽswa t = V t-w+1:t .(5)"
+    },
+    {
+      "id": "FORMULA_7",
+      "raw": "o (s) t = Attention(q (s) t , K (m(s)) ≤t , V (m(s)) ≤t ) = softmax (q (s) t ) ⊤ K (m(s)) ≤t √ d k V (m(s)) ≤t ,(6) where q"
+    },
+    {
+      "id": "FORMULA_8",
+      "raw": "(s) i = x i W (s) q , k (m(s)) i = x i W (m(s)) k , v (m(s)) i = x i W (m(s)) v"
+    },
+    {
+      "id": "FORMULA_9",
+      "raw": "o t = [o (1) t , o (2) t , . . . , o (h) t ]"
+    },
+    {
+      "id": "FORMULA_10",
+      "raw": "o (l) V = c∈{cmp,slc,win} g c t Attn q t , Kc t , Ṽc t ,"
+    },
+    {
+      "id": "FORMULA_11",
+      "raw": "o (l) = [ o (l) V ; o (l) T ]."
+    },
+    {
+      "id": "FORMULA_12",
+      "raw": "γ = L(cS + w) L(L-1) 2 = 2(cS + w) L -1 ,"
+    },
+    {
+      "id": "FORMULA_13",
+      "raw": "L0 L2 L4 L6 L8 L10 L12 L14 L16 L18 L20 L22 L24 L26 L27"
+    },
+    {
+      "id": "FORMULA_14",
+      "raw": "Attention Sink = 1 α > 0.1 ∧ ∥v∥ < median(∥v∥) -2 • IQR(∥v∥) ,"
+    }
+  ]
+}

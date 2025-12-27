@@ -1,0 +1,288 @@
+{
+  "title": "Achieving Pareto Optimality in Games via Single-bit Feedback",
+  "authors": [
+    {
+      "firstname": "Seref",
+      "surname": "Kiremitci",
+      "email": "taha.kiremitci@bilkent.edu.tr"
+    },
+    {
+      "firstname": "Ahmed",
+      "surname": "Said Donmez",
+      "email": "said.donmez@bilkent.edu.tr"
+    },
+    {
+      "firstname": "Muhammed",
+      "surname": "Sayin",
+      "email": "sayin@ee.bilkent.edu.tr"
+    },
+    {
+      "firstname": "A",
+      "surname": "Donmez",
+      "email": ""
+    }
+  ],
+  "abstract": "Efficient coordination in multi-agent systems often incurs high communication overhead or slow convergence rates, making scalable welfare optimization difficult. We propose Single-Bit Coordination Dynamics for Pareto-Efficient Outcomes (SBC-PE), a decentralized learning algorithm requiring only a single-bit satisfaction signal per agent each round. Despite this extreme efficiency, SBC-PE guarantees convergence to the exact optimal solution in arbitrary finite games. We establish explicit regret bounds, showing expected regret grows only logarithmically with the horizon, i.e., O(log T). Compared with prior payoff-based or banditstyle rules, SBC-PE uniquely combines minimal signaling, general applicability, and finite-time guarantees. These results show scalable welfare optimization is achievable under minimal communication constraints.",
+  "sections": [
+    {
+      "title": "Introduction",
+      "paragraphs": [
+        "Achieving socially optimal coordination in multi-agent systems is challenging under severe communication limitations. For example, in wireless sensor networks or dynamic spectrum access, agents optimize a global objective (a social welfare) using only local observations and minimal feedback. Prior research shows that even payoff-based learning rules can guide agents toward efficient outcomes in generic n-player games without inter-agent communication Marden et al. [2012], Pradelski and Young [2012]. However, these approaches typically lack effective finite-time performance guarantees. This gap motivates the need for a new learning mechanism that is both communication-efficient and backed by rigorous convergence guarantees.",
+        "We propose Single-Bit Coordination Dynamics for Pareto-Efficient Outcomes (SBC-PE)-a multiagent learning algorithm requiring only one bit per agent per round. The method applies to arbitrary finite games and maximizes a weighted sum of local payoffs. SBC-PE follows an explorethen-commit paradigm: agents first explore by randomly sampling actions, then commit to those most often aligned with collective satisfaction. At each step, agents broadcast a single-bit signal generated probabilistically from their realized utilities and parameters (w i , λ i , ϵ); this minimal feedback is the only exchanged information. Despite such limited communication-far lower than typical schemes-the dynamics provably drives the system to the exact socially optimal outcome. This low burden makes SBC-PE especially attractive for domains with bandwidth constraints or intermittent connectivity.",
+        "Communication efficiency is a central challenge in distributed learning, with strategies such as event-triggering, sparsification, and quantization proposed to mitigate bandwidth and energy costs Cao et al. [2023]. Quantization-based methods are especially appealing, with single-bit protocols representing the most communication-efficient extreme. Prior work shows that compressive and reduced-dimension diffusion strategies achieve near full-information performance while lowering communication Sayin andKozat [2014, 2013]. Similarly, consensus and optimization methods using only the sign of relative state differences demonstrate that one-bit messages suffice for distributed agreement and optimization Zhang et al. [2019], Chen et al. [2011]. Despite such compression, single-bit strategies maintain comparable convergence rates and sometimes attain exact solutions Zhang et al. [2019Zhang et al. [ , 2018]]. Building on this line, our contribution shows that in arbitrary finite games, a single satisfaction bit per agent suffices to preserve communication efficiency while guaranteeing exact convergence to the socially optimal outcome with finite-time regret bounds.",
+        "SBC-PE provably converges to the exact optimum in a decentralized way. For sufficiently large horizon T , the expected total regret is logarithmic, O(log T ), with a precise bound in Theorem 1. This result and our numerical simulations show that SBC-PE identifies the welfare-maximizing joint action a * efficiently in finite time.",
+        "Earlier distributed learning approaches aimed for efficiency but did not quantify performance. For example, the Game of Thrones algorithm achieves decentralized coordination without communication, but is analyzed only in terms of asymptotic regret and limited to collusion-based resource allocation Bistritz and Leshem [2021]. Notably, the payoff-based rules can be stochastically stable at Pareto-efficient solutions Marden et al. [2012] or optimal equilibria Pradelski and Young [2012]. However, they do not provide finite-time rate guarantees on optimality. By contrast, SBC-PE combines minimal signaling with provable finite-time guarantees.",
+        "Another notable advantage of SBC-PE is its generality. The algorithm is agnostic to game structure, requiring no assumptions like potential games or special reward distributions. This universality suits applications from cooperative sensor coverage and multi-robot coordination to interference management in dynamic spectrum access. In all cases, agents autonomously reach socially optimal configurations with negligible communication overhead.",
+        "In summary, our contributions are threefold: (i) a simple yet effective decentralized algorithm for almost any game with only one-bit communication per agent, (ii) theoretical guarantees of exact convergence with logarithmic regret bounds, and (iii) simulations demonstrating robustness to system size, exploration length, and welfare gaps. These results show that minimal communication can suffice for scalable welfare optimization in multi-agent systems."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Problem Formulation",
+      "paragraphs": [
+        "We consider a multi-agent game with agents N = {1, 2, . . . , n}. Each agent i selects an action a i ∈ A i , where A i is its finite action set. The joint action is a = (a 1 , . . . , a n ) ∈ A = n i=1 A i , over a finite horizon T . Each agent i then receives a utility u i (a). To ensure fairness, each agent has a minimum utility threshold λ i , requiring",
+        "so that no agent is entirely neglected when welfare is maximized.",
+        "The system objective is to maximize weighted sum:",
+        "where w i > 0 denotes the weight of agent i. This aligns with distributed welfare optimization in learning-in-games and cooperative control.",
+        "Strategy updates rely only on (i) agent's realized utility and (ii) one-bit feedback from others. This enforces a decentralized, payoff-based learning rule where agents cannot observe actions or utilities of others, yet achieve efficient communication. Agents communicate only via one-bit messages."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Algorithm",
+      "paragraphs": [
+        "We present a decentralized learning algorithm to maximize the social welfare objective under the communication constraint in (1). Algorithm 1 has two phases: an exploration phase of length K, followed by exploitation.",
+        "Our approach draws on Pradelski and Young [2012] and the payoff-algorithm in Bistritz and Leshem [2021], which achieve efficient outcomes without inter-agent communication (the latter using a small internal state). In contrast, our model is deliberately simple: it requires no state values and relies only on a one-bit satisfaction signal, yielding an easily implementable mechanism with ϵ-bounds and convergence to Pareto optimality.",
+        "The Single-Bit Coordination Dynamics for Pareto-Efficient Outcomes (SBC-PE) is an explore-thencommit procedure (Algorithm 1). In the exploration phase, agents play random actions for K rounds, observe utilities, and broadcast a one-bit signal m i (t) as in (3). Each agent keeps counters c i (a i ), incrementing when all broadcast m i (t) = 1 generated stochastically from u i , w i , λ i , and ϵ ∈ (0, 1). After exploration, each selects a * i = arg max a i ∈A i c i (a i ). In the exploitation phase, agents repeatedly play a * i , so the joint action a * = (a * 1 , . . . , a * n ) converges to a Pareto-efficient outcome. Each agent acts independently, using only local utility and one-bit feedback."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Algorithm 1 Single-Bit Coordination Dynamics for Pareto-Efficient Outcomes (SBC-PE)",
+      "paragraphs": [
+        "Initialize: exploration horizon K, content action counter c i (a i ) = 0 ∀a i ∈ A i , weight w i , threshold λ i , parameter ϵ ∈ (0, 1) Exploration for each time step t = 1, 2, . . . , K do choose action a i (t) uniformly from A i observe own realized utility u i (t) = u i (a(t)) compute message",
+        "Exploitation for each time step t > K do play the component a * i corresponding to agent i end for"
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Results",
+      "paragraphs": [
+        "In this section, we analyze the regret bounds of the Algorithm 1, and specify the necessary conditions for which this holds.",
+        "Define A λ := { a ∈ A : u i (a) > λ i ∀i ∈ N } as the feasible set of joint actions. For notational simplicity, we restrict attention to A λ in the proof. Let a * ∈ arg max a∈A λ W (a), ∆ 1 = W (a * )max a̸ =a * W (a), ∆ = max a (W (a * ) -W (a)), and M := |A λ |.",
+        "We need the following assumptions for the regret bound: Assumption 1.",
+        "(i) For each agent, w i u i (a) < 1 for all a ∈ A, (ii) The social welfare maximizer a * is unique, (iii) ϵ < (M + δ) -1/∆ 1 for some δ > 0.",
+        "Let c t (a) := t k=0 I {a(k)=a} I {m i (t)=1, ∀i∈N } denote the count of each joint action a ∈ A up to time t for which all agents are content. Similarly, let c i,t (a i ) := t k=0 I {a i (k)=a i } I {m i (t)=1, ∀i∈N } denote the count of individual actions a i ∈ A i for agent i ∈ N under contentment. If ϵ is sufficiently small, the most frequent joint action and the individual agents' most frequent actions coincide.",
+        "For each a ∈ A λ , define a Bernoulli random variable a) . By the Strong Law of Large Numbers (SLLN), lim t→∞ ct(a) t = P (ρ(a) = 1) = ϵ ,n-W (a) a.s.",
+        "Since ϵ < 1, arg max",
+        "where the last equality follows from the uniqueness of the welfare maximizer. Define θ ∈ R M with entries θ(a) = P (ρ(a) = 1). For each agent i, the marginalization of θ is",
+        "Then, by the SLLN, we have lim t→∞ c i,t (a i )/t = θ i (a i ). Remark 1. Normalizing θ yields a softmax distribution over the social welfare values of the joint actions:",
+        "The next lemma shows how well the optimal joint action a * is separated from all others. Lemma 1. Under Assumption 1, we have",
+        "where ξ := δ M ϵ N -max ã̸ =a * W (a) Proof: Using Assumption 1, we have ϵ -∆ 1 > M + δ, and from there, we have",
+        "Then, by adding (M -1)ξ to both sides, we obtain (5). □ During exploration, agents must sample each joint action multiple times to estimate θ. Let θ t (a) := c t (a)/t and θ i,t (a i ) := c i,t (a i )/t be estimates of θ and θ i . In practice, agents do not observe θ t ; agent i only sees θ i,t .",
+        "If each entry of θ can be estimated within error ξ, the following proposition shows that agents can identify the action required to achieve the optimal social welfare. Proposition 1. If Assumption 1 holds, and | θ t (a) -θ(a)| < ξ for all a ∈ A λ , then we have {arg max",
+        "Proof: From the definition of θ i,t , and θ t , we have",
+        "Using Lemma 1, we have",
+        "Hence, we can say that arg max a i ∈A i θ i,t (a i ) = a * i , and we obtain (6). □ Remark 2. The proof of Proposition 1 clarifies the need for Assumption 1-(ii). With multiple maximizers, Lemma 1 fails, leaving agents unable to choose the socially better action, and the resulting joint action may be arbitrarily worse. Remark 3. If the joint action is observable to all agents, the dynamics still guarantee coordination without Assumptions 1-(ii) and 1-(iii), converging to one of the social maximizers.",
+        "Theorem 1 (Main Result) For any multi-agent game, with a finite horizon length T, if Assumption 1 holds, for large enough T, the expected total regret is bounded by",
+        "Proof: With exploration length K, let l K (a) denote the number of times joint action a is played. This is a binomial random variable. By Chernoff bound Chernoff [1952], for any a ∈ A λ ,",
+        "Using the Hoeffding bound, the estimation error of θ(a) for any a ∈ A λ satisfies",
+        "Then, by ( 7), ( 8), and union bound,",
+        "Assume K > 16M ln(M ) to simplify the denominator in (9). This is feasible for large T since M is constant. Then",
+        "By Proposition 1 and (10), agents play the best joint action in the exploitation phase with proba- bility 1 -β and a worse joint action with probability β. Thus, the expected regret is:",
+        "If we find the optimal K * that minimizes K∆ + λT ∆, by equating the derivative to zero, we have",
+        ", and, we can bound the expected regret. □"
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Simulation",
+      "paragraphs": [
+        "We evaluate the proposed Single-Bit Coordination Dynamics for Pareto-Efficient Outcomes (SBC-PE) through simulations. The system has n = 10 agents, each with m = 2 actions and with parameters w i = 1, λ i = 0.2 ∀i ∈ N . Utilities u i (a) are generated randomly between 0 and 1, so they may not satisfy the minimum utility constraints (1). Fig. 1 shows the effect of the exploration horizon K on aggregate welfare. Larger K improves reliability of convergence to the Pareto-efficient profile within 10 7 iterations, while large ϵ values (e.g., ϵ = 0.5) hinder stability.",
+        "Fig. 2 shows limiting ϵ values as a function of the welfare gap ∆ 1 , defined as the difference between the best and second-best aggregate utilities. As ∆ 1 widens, the frequency of the socially maximizing action increases, allowing larger ϵ values and highlighting the robustness of SBC-PE when the optimal solution is well separated from suboptimal ones."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Discussion & Conclusion",
+      "paragraphs": [
+        "Simulations confirm that SBC-PE achieves exact socially optimal outcomes with minimal communication. The parameter ϵ is critical: too small slows adaptation, while too large reduces stability.",
+        "The exploration horizon K must also scale with system size to ensure reliable identification of Pareto-efficient profiles. Remark 4. If agents can observe the full joint action, the message rule in (3) modifies to m i (t) =    I {u i (t)>λ i , a i (t)∈BR i (a -i (t))} w.p. ϵ 1-w i u i (t) , 0 otherwise, where BR i (a -i (t)) is the best-response set of agent i. Under this rule, if a pure equilibrium exists, Algorithm 1 converges to a Pareto Optimal Equilibrium, even for relatively large ϵ.",
+        "Communication-based methods guaranteeing Pareto optimality often face scalability challenges from heavy message exchange. SBC-PE remains efficient since each agent broadcasts only one bit per iteration, independent of n or m. Thus, the overall communication cost grows linearly with the number of agents while message size is fixed. Hence, the algorithm is communication efficient and scalable. By combining exact convergence guarantees with minimal signaling requirements, SBC-PE demonstrates that strong welfare optimization is possible even under very limited communication. This makes it a practical candidate for large-scale applications."
+      ],
+      "subsections": []
+    }
+  ],
+  "body_paragraphs": [
+    "Achieving socially optimal coordination in multi-agent systems is challenging under severe communication limitations. For example, in wireless sensor networks or dynamic spectrum access, agents optimize a global objective (a social welfare) using only local observations and minimal feedback. Prior research shows that even payoff-based learning rules can guide agents toward efficient outcomes in generic n-player games without inter-agent communication Marden et al. [2012], Pradelski and Young [2012]. However, these approaches typically lack effective finite-time performance guarantees. This gap motivates the need for a new learning mechanism that is both communication-efficient and backed by rigorous convergence guarantees.",
+    "We propose Single-Bit Coordination Dynamics for Pareto-Efficient Outcomes (SBC-PE)-a multiagent learning algorithm requiring only one bit per agent per round. The method applies to arbitrary finite games and maximizes a weighted sum of local payoffs. SBC-PE follows an explorethen-commit paradigm: agents first explore by randomly sampling actions, then commit to those most often aligned with collective satisfaction. At each step, agents broadcast a single-bit signal generated probabilistically from their realized utilities and parameters (w i , λ i , ϵ); this minimal feedback is the only exchanged information. Despite such limited communication-far lower than typical schemes-the dynamics provably drives the system to the exact socially optimal outcome. This low burden makes SBC-PE especially attractive for domains with bandwidth constraints or intermittent connectivity.",
+    "Communication efficiency is a central challenge in distributed learning, with strategies such as event-triggering, sparsification, and quantization proposed to mitigate bandwidth and energy costs Cao et al. [2023]. Quantization-based methods are especially appealing, with single-bit protocols representing the most communication-efficient extreme. Prior work shows that compressive and reduced-dimension diffusion strategies achieve near full-information performance while lowering communication Sayin andKozat [2014, 2013]. Similarly, consensus and optimization methods using only the sign of relative state differences demonstrate that one-bit messages suffice for distributed agreement and optimization Zhang et al. [2019], Chen et al. [2011]. Despite such compression, single-bit strategies maintain comparable convergence rates and sometimes attain exact solutions Zhang et al. [2019Zhang et al. [ , 2018]]. Building on this line, our contribution shows that in arbitrary finite games, a single satisfaction bit per agent suffices to preserve communication efficiency while guaranteeing exact convergence to the socially optimal outcome with finite-time regret bounds.",
+    "SBC-PE provably converges to the exact optimum in a decentralized way. For sufficiently large horizon T , the expected total regret is logarithmic, O(log T ), with a precise bound in Theorem 1. This result and our numerical simulations show that SBC-PE identifies the welfare-maximizing joint action a * efficiently in finite time.",
+    "Earlier distributed learning approaches aimed for efficiency but did not quantify performance. For example, the Game of Thrones algorithm achieves decentralized coordination without communication, but is analyzed only in terms of asymptotic regret and limited to collusion-based resource allocation Bistritz and Leshem [2021]. Notably, the payoff-based rules can be stochastically stable at Pareto-efficient solutions Marden et al. [2012] or optimal equilibria Pradelski and Young [2012]. However, they do not provide finite-time rate guarantees on optimality. By contrast, SBC-PE combines minimal signaling with provable finite-time guarantees.",
+    "Another notable advantage of SBC-PE is its generality. The algorithm is agnostic to game structure, requiring no assumptions like potential games or special reward distributions. This universality suits applications from cooperative sensor coverage and multi-robot coordination to interference management in dynamic spectrum access. In all cases, agents autonomously reach socially optimal configurations with negligible communication overhead.",
+    "In summary, our contributions are threefold: (i) a simple yet effective decentralized algorithm for almost any game with only one-bit communication per agent, (ii) theoretical guarantees of exact convergence with logarithmic regret bounds, and (iii) simulations demonstrating robustness to system size, exploration length, and welfare gaps. These results show that minimal communication can suffice for scalable welfare optimization in multi-agent systems.",
+    "We consider a multi-agent game with agents N = {1, 2, . . . , n}. Each agent i selects an action a i ∈ A i , where A i is its finite action set. The joint action is a = (a 1 , . . . , a n ) ∈ A = n i=1 A i , over a finite horizon T . Each agent i then receives a utility u i (a). To ensure fairness, each agent has a minimum utility threshold λ i , requiring",
+    "so that no agent is entirely neglected when welfare is maximized.",
+    "The system objective is to maximize weighted sum:",
+    "where w i > 0 denotes the weight of agent i. This aligns with distributed welfare optimization in learning-in-games and cooperative control.",
+    "Strategy updates rely only on (i) agent's realized utility and (ii) one-bit feedback from others. This enforces a decentralized, payoff-based learning rule where agents cannot observe actions or utilities of others, yet achieve efficient communication. Agents communicate only via one-bit messages.",
+    "We present a decentralized learning algorithm to maximize the social welfare objective under the communication constraint in (1). Algorithm 1 has two phases: an exploration phase of length K, followed by exploitation.",
+    "Our approach draws on Pradelski and Young [2012] and the payoff-algorithm in Bistritz and Leshem [2021], which achieve efficient outcomes without inter-agent communication (the latter using a small internal state). In contrast, our model is deliberately simple: it requires no state values and relies only on a one-bit satisfaction signal, yielding an easily implementable mechanism with ϵ-bounds and convergence to Pareto optimality.",
+    "The Single-Bit Coordination Dynamics for Pareto-Efficient Outcomes (SBC-PE) is an explore-thencommit procedure (Algorithm 1). In the exploration phase, agents play random actions for K rounds, observe utilities, and broadcast a one-bit signal m i (t) as in (3). Each agent keeps counters c i (a i ), incrementing when all broadcast m i (t) = 1 generated stochastically from u i , w i , λ i , and ϵ ∈ (0, 1). After exploration, each selects a * i = arg max a i ∈A i c i (a i ). In the exploitation phase, agents repeatedly play a * i , so the joint action a * = (a * 1 , . . . , a * n ) converges to a Pareto-efficient outcome. Each agent acts independently, using only local utility and one-bit feedback.",
+    "Initialize: exploration horizon K, content action counter c i (a i ) = 0 ∀a i ∈ A i , weight w i , threshold λ i , parameter ϵ ∈ (0, 1) Exploration for each time step t = 1, 2, . . . , K do choose action a i (t) uniformly from A i observe own realized utility u i (t) = u i (a(t)) compute message",
+    "Exploitation for each time step t > K do play the component a * i corresponding to agent i end for",
+    "In this section, we analyze the regret bounds of the Algorithm 1, and specify the necessary conditions for which this holds.",
+    "Define A λ := { a ∈ A : u i (a) > λ i ∀i ∈ N } as the feasible set of joint actions. For notational simplicity, we restrict attention to A λ in the proof. Let a * ∈ arg max a∈A λ W (a), ∆ 1 = W (a * )max a̸ =a * W (a), ∆ = max a (W (a * ) -W (a)), and M := |A λ |.",
+    "We need the following assumptions for the regret bound: Assumption 1.",
+    "(i) For each agent, w i u i (a) < 1 for all a ∈ A, (ii) The social welfare maximizer a * is unique, (iii) ϵ < (M + δ) -1/∆ 1 for some δ > 0.",
+    "Let c t (a) := t k=0 I {a(k)=a} I {m i (t)=1, ∀i∈N } denote the count of each joint action a ∈ A up to time t for which all agents are content. Similarly, let c i,t (a i ) := t k=0 I {a i (k)=a i } I {m i (t)=1, ∀i∈N } denote the count of individual actions a i ∈ A i for agent i ∈ N under contentment. If ϵ is sufficiently small, the most frequent joint action and the individual agents' most frequent actions coincide.",
+    "For each a ∈ A λ , define a Bernoulli random variable a) . By the Strong Law of Large Numbers (SLLN), lim t→∞ ct(a) t = P (ρ(a) = 1) = ϵ ,n-W (a) a.s.",
+    "Since ϵ < 1, arg max",
+    "where the last equality follows from the uniqueness of the welfare maximizer. Define θ ∈ R M with entries θ(a) = P (ρ(a) = 1). For each agent i, the marginalization of θ is",
+    "Then, by the SLLN, we have lim t→∞ c i,t (a i )/t = θ i (a i ). Remark 1. Normalizing θ yields a softmax distribution over the social welfare values of the joint actions:",
+    "The next lemma shows how well the optimal joint action a * is separated from all others. Lemma 1. Under Assumption 1, we have",
+    "where ξ := δ M ϵ N -max ã̸ =a * W (a) Proof: Using Assumption 1, we have ϵ -∆ 1 > M + δ, and from there, we have",
+    "Then, by adding (M -1)ξ to both sides, we obtain (5). □ During exploration, agents must sample each joint action multiple times to estimate θ. Let θ t (a) := c t (a)/t and θ i,t (a i ) := c i,t (a i )/t be estimates of θ and θ i . In practice, agents do not observe θ t ; agent i only sees θ i,t .",
+    "If each entry of θ can be estimated within error ξ, the following proposition shows that agents can identify the action required to achieve the optimal social welfare. Proposition 1. If Assumption 1 holds, and | θ t (a) -θ(a)| < ξ for all a ∈ A λ , then we have {arg max",
+    "Proof: From the definition of θ i,t , and θ t , we have",
+    "Using Lemma 1, we have",
+    "Hence, we can say that arg max a i ∈A i θ i,t (a i ) = a * i , and we obtain (6). □ Remark 2. The proof of Proposition 1 clarifies the need for Assumption 1-(ii). With multiple maximizers, Lemma 1 fails, leaving agents unable to choose the socially better action, and the resulting joint action may be arbitrarily worse. Remark 3. If the joint action is observable to all agents, the dynamics still guarantee coordination without Assumptions 1-(ii) and 1-(iii), converging to one of the social maximizers.",
+    "Theorem 1 (Main Result) For any multi-agent game, with a finite horizon length T, if Assumption 1 holds, for large enough T, the expected total regret is bounded by",
+    "Proof: With exploration length K, let l K (a) denote the number of times joint action a is played. This is a binomial random variable. By Chernoff bound Chernoff [1952], for any a ∈ A λ ,",
+    "Using the Hoeffding bound, the estimation error of θ(a) for any a ∈ A λ satisfies",
+    "Then, by ( 7), ( 8), and union bound,",
+    "Assume K > 16M ln(M ) to simplify the denominator in (9). This is feasible for large T since M is constant. Then",
+    "By Proposition 1 and (10), agents play the best joint action in the exploitation phase with proba- bility 1 -β and a worse joint action with probability β. Thus, the expected regret is:",
+    "If we find the optimal K * that minimizes K∆ + λT ∆, by equating the derivative to zero, we have",
+    ", and, we can bound the expected regret. □",
+    "We evaluate the proposed Single-Bit Coordination Dynamics for Pareto-Efficient Outcomes (SBC-PE) through simulations. The system has n = 10 agents, each with m = 2 actions and with parameters w i = 1, λ i = 0.2 ∀i ∈ N . Utilities u i (a) are generated randomly between 0 and 1, so they may not satisfy the minimum utility constraints (1). Fig. 1 shows the effect of the exploration horizon K on aggregate welfare. Larger K improves reliability of convergence to the Pareto-efficient profile within 10 7 iterations, while large ϵ values (e.g., ϵ = 0.5) hinder stability.",
+    "Fig. 2 shows limiting ϵ values as a function of the welfare gap ∆ 1 , defined as the difference between the best and second-best aggregate utilities. As ∆ 1 widens, the frequency of the socially maximizing action increases, allowing larger ϵ values and highlighting the robustness of SBC-PE when the optimal solution is well separated from suboptimal ones.",
+    "Simulations confirm that SBC-PE achieves exact socially optimal outcomes with minimal communication. The parameter ϵ is critical: too small slows adaptation, while too large reduces stability.",
+    "The exploration horizon K must also scale with system size to ensure reliable identification of Pareto-efficient profiles. Remark 4. If agents can observe the full joint action, the message rule in (3) modifies to m i (t) =    I {u i (t)>λ i , a i (t)∈BR i (a -i (t))} w.p. ϵ 1-w i u i (t) , 0 otherwise, where BR i (a -i (t)) is the best-response set of agent i. Under this rule, if a pure equilibrium exists, Algorithm 1 converges to a Pareto Optimal Equilibrium, even for relatively large ϵ.",
+    "Communication-based methods guaranteeing Pareto optimality often face scalability challenges from heavy message exchange. SBC-PE remains efficient since each agent broadcasts only one bit per iteration, independent of n or m. Thus, the overall communication cost grows linearly with the number of agents while message size is fixed. Hence, the algorithm is communication efficient and scalable. By combining exact convergence guarantees with minimal signaling requirements, SBC-PE demonstrates that strong welfare optimization is possible even under very limited communication. This makes it a practical candidate for large-scale applications."
+  ],
+  "references": [
+    {
+      "id": 1,
+      "text": "Game of Thrones: Fully Distributed Learning for Multiplayer Bandits\n\t\t\n\t\t\tIlaiBistritz\n\t\t\t0000-0002-4120-8292\n\t\t\n\t\t\n\t\t\tAmirLeshem\n\t\t\n\t\t10.1287/moor.2020.1051\n\t\t\n\t\n\t\n\t\tMathematics of Operations Research\n\t\tMathematics of OR\n\t\t0364-765X\n\t\t1526-5471\n\t\t\n\t\t\t46\n\t\t\t1\n\t\t\t\n\t\t\tFebruary 2021\n\t\t\tInstitute for Operations Research and the Management Sciences (INFORMS)"
+    },
+    {
+      "id": 2,
+      "text": "Communication-Efficient Distributed Learning: An Overview\n\t\t\n\t\t\tXuanyuCao\n\t\t\t0000-0003-0190-4362\n\t\t\n\t\t\n\t\t\tTamerBaşar\n\t\t\t0000-0003-4406-7875\n\t\t\n\t\t\n\t\t\tSuhasDiggavi\n\t\t\t0000-0001-7313-9861\n\t\t\n\t\t\n\t\t\tYoninaCEldar\n\t\t\t0000-0003-4358-5304\n\t\t\n\t\t\n\t\t\tKhaledBLetaief\n\t\t\t0000-0003-2519-6401\n\t\t\n\t\t\n\t\t\tHVincentPoor\n\t\t\t0000-0002-2062-131X\n\t\t\n\t\t\n\t\t\tJunshanZhang\n\t\t\t0000-0002-3840-1753\n\t\t\n\t\t10.1109/jsac.2023.3242710\n\t\n\t\n\t\tIEEE Journal on Selected Areas in Communications\n\t\tIEEE J. Select. Areas Commun.\n\t\t0733-8716\n\t\t1558-0008\n\t\t\n\t\t\t41\n\t\t\t4\n\t\t\t\n\t\t\t2023\n\t\t\tInstitute of Electrical and Electronics Engineers (IEEE)"
+    },
+    {
+      "id": 3,
+      "text": "Finite-time distributed consensus via binary control protocols\n\t\t\n\t\t\tGangChen\n\t\t\n\t\t\n\t\t\tFrankLLewis\n\t\t\n\t\t\n\t\t\tLihuaXie\n\t\t\n\t\t10.1016/j.automatica.2011.05.013\n\t\t\n\t\n\t\n\t\tAutomatica\n\t\tAutomatica\n\t\t0005-1098\n\t\t\n\t\t\t47\n\t\t\t9\n\t\t\t\n\t\t\t1962-1968, 2011\n\t\t\tElsevier BV"
+    },
+    {
+      "id": 4,
+      "text": "A Measure of Asymptotic Efficiency for Tests of a Hypothesis Based on the sum of Observations\n\t\t\n\t\t\tHermanChernoff\n\t\t\n\t\t10.1214/aoms/1177729330\n\t\n\t\n\t\tThe Annals of Mathematical Statistics\n\t\tAnn. Math. Statist.\n\t\t0003-4851\n\t\t\n\t\t\t23\n\t\t\t4\n\t\t\t\n\t\t\t1952\n\t\t\tInstitute of Mathematical Statistics"
+    },
+    {
+      "id": 5,
+      "text": "Achieving pareto optimality through distributed learning\n\t\t\n\t\t\tJasonRMarden\n\t\t\n\t\t\n\t\t\tHPeytonYoung\n\t\t\n\t\t\n\t\t\tLucyYPao\n\t\t\n\t\t10.1109/cdc.2012.6426834\n\t\n\t\n\t\t2012 IEEE 51st IEEE Conference on Decision and Control (CDC)\n\t\t\n\t\t\tIEEE\n\t\t\t2012"
+    },
+    {
+      "id": 6,
+      "text": "Learning efficient nash equilibria in distributed systems\n\t\t\n\t\t\tSRBary\n\t\t\n\t\t\n\t\t\tHPeytonPradelski\n\t\t\n\t\t\n\t\t\tYoung\n\t\t\n\t\t10.1016/j.geb.2012.02.017\n\t\t\n\t\n\t\n\t\tGames and Economic Behavior\n\t\t0899-8256\n\t\t\n\t\t\t75\n\t\t\t2\n\t\t\t\n\t\t\t2012"
+    },
+    {
+      "id": 7,
+      "text": "Single bit and reduced dimension diffusion strategies over distributed networks\n\t\t\n\t\t\tOMuhammed\n\t\t\n\t\t\n\t\t\tSuleymanSSayin\n\t\t\n\t\t\n\t\t\tKozat\n\t\t\n\t\t10.1109/LSP.2013.2273304\n\t\n\t\n\t\tIEEE Signal Processing Letters\n\t\t\n\t\t\t20\n\t\t\t10\n\t\t\t\n\t\t\t2013"
+    },
+    {
+      "id": 8,
+      "text": "Compressive diffusion strategies over distributed networks for reduced communication load\n\t\t\n\t\t\tOMuhammed\n\t\t\n\t\t\n\t\t\tSuleymanSayin\n\t\t\n\t\t\n\t\t\tKozatSerdar\n\t\t\n\t\t10.1109/TSP.2014.2347917\n\t\n\t\n\t\tIEEE Transactions on Signal Processing\n\t\t\n\t\t\t62\n\t\t\t20\n\t\t\t\n\t\t\t2014"
+    },
+    {
+      "id": 9,
+      "text": "Distributed discrete-time optimization by exchanging one bit of information\n\t\t\n\t\t\tJiaqiZhang\n\t\t\n\t\t\n\t\t\tKeyouYou\n\t\t\n\t\t\n\t\t\tTamerBasar\n\t\t\n\t\t10.23919/acc.2018.8431279\n\t\n\t\n\t\t2018 Annual American Control Conference (ACC)\n\t\t\n\t\t\tIEEE\n\t\t\t2018"
+    },
+    {
+      "id": 10,
+      "text": "Distributed Discrete-Time Optimization in Multiagent Networks Using Only Sign of Relative State\n\t\t\n\t\t\tJiaqiZhang\n\t\t\t0000-0002-8833-1714\n\t\t\n\t\t\n\t\t\tKeyouYou\n\t\t\t0000-0003-4355-5340\n\t\t\n\t\t\n\t\t\tTamerBasar\n\t\t\t0000-0003-4406-7875\n\t\t\n\t\t10.1109/tac.2018.2884998\n\t\n\t\n\t\tIEEE Transactions on Automatic Control\n\t\tIEEE Trans. Automat. Contr.\n\t\t0018-9286\n\t\t2334-3303\n\t\t\n\t\t\t64\n\t\t\t6\n\t\t\t\n\t\t\t2019\n\t\t\tInstitute of Electrical and Electronics Engineers (IEEE)"
+    }
+  ],
+  "formulas": [
+    {
+      "id": "FORMULA_1",
+      "raw": "u i (a) ≥ λ i , ∀i ∈ N (1)"
+    },
+    {
+      "id": "FORMULA_2",
+      "raw": "max a∈A W (a) = n i=1 w i u i (a),(2)"
+    },
+    {
+      "id": "FORMULA_3",
+      "raw": "m i (t) = I{u i (t) > λ i } w.p. ϵ 1-w i u i (t) , 0 otherwise. (3) broadcast m i (t) to all other agents if m i (t) = 1 ∀i ∈ N then c i (a i (t)) = c i (a i (t)) + 1 end if end for identify a * i = arg max a i ∈A i c i (a i )"
+    },
+    {
+      "id": "FORMULA_4",
+      "raw": "ρ(a) =    1 if m i (t) = 1, ∀i ∈ N, 0 otherwise Then P (ρ(a) = 1) = ϵ 1-w i u i (a) = ϵ ,n-W ("
+    },
+    {
+      "id": "FORMULA_5",
+      "raw": "a∈A λ ϵ n-W (a) = arg max a∈A λ W (a) = a ,"
+    },
+    {
+      "id": "FORMULA_6",
+      "raw": "θ i (ã i ) := {a∈A λ : a i =ã i } θ(a).(4)"
+    },
+    {
+      "id": "FORMULA_7",
+      "raw": "θ(a) := θ(a) ∥θ∥ 1 = (1/ϵ) W (a) ã∈A λ (1/ϵ) W (ã) ."
+    },
+    {
+      "id": "FORMULA_8",
+      "raw": "θ(a * ) -ξ > a̸ =a * (θ(a) + ξ),(5)"
+    },
+    {
+      "id": "FORMULA_9",
+      "raw": "θ(a * ) -M ξ = ϵ N -W (a * ) -δϵ N -max ã̸ =a * W (a) = ϵ N -max ã̸ =a * W (a) (ϵ -∆ 1 -δ) > M ϵ N -max ã̸ =a * W (a) > a̸ =a * (θ(a))."
+    },
+    {
+      "id": "FORMULA_10",
+      "raw": "a i ∈A i θ i,t (a i )} n i=1 = arg max a∈A λ θ(a) = a * .(6)"
+    },
+    {
+      "id": "FORMULA_11",
+      "raw": "θ i,t (a * i ) = {a∈A λ : a i =a * i } θ t (a) > θ t (a * ) > θ(a * ) -ξ."
+    },
+    {
+      "id": "FORMULA_12",
+      "raw": "θ(a * ) -ξ > a̸ =a * (θ(a) + ξ) > a̸ =a * θ t (a) > {a∈A λ : a i ̸ =a * i } θ t (a) > θ i,t (ã i ), ∀ã i ̸ = a * i ,"
+    },
+    {
+      "id": "FORMULA_13",
+      "raw": "R < M ∆ ξ 2 1 + 1 -M T ξ 2 log 2T M ξ 2 M -1 = O(log(T ))."
+    },
+    {
+      "id": "FORMULA_14",
+      "raw": "P l K (a) < K 2M < e -K 8M .(7)"
+    },
+    {
+      "id": "FORMULA_15",
+      "raw": "P θ K (a) -θ(a) ≥ ξ, , l K (a) > K 2M ≤ 2e -K M ξ 2 .(8)"
+    },
+    {
+      "id": "FORMULA_16",
+      "raw": "a∈A λ P ( θ K (a) -θ(a) ≥ ξ) < 2M e -K M ξ 2 1-M e -K 8M .(9)"
+    },
+    {
+      "id": "FORMULA_17",
+      "raw": "P θ K (a) -θ(a) ≤ ξ, ∀a ∈ A λ > 1 -β,(10)"
+    },
+    {
+      "id": "FORMULA_18",
+      "raw": "β := ψe -K M ξ 2 , ψ := 2M 2 M -1 ."
+    },
+    {
+      "id": "FORMULA_19",
+      "raw": "RK < K∆ + β(T -K)∆."
+    },
+    {
+      "id": "FORMULA_20",
+      "raw": "K * = M ξ 2 log T ψξ 2 M . Choosing K = K * , β = M T ξ 2 , we have R < M ∆ ξ 2 1 + 1 -M T ξ 2 log 2T M ξ 2 M -1"
+    }
+  ]
+}

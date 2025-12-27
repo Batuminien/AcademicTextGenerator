@@ -1,0 +1,1081 @@
+{
+  "title": "TeraAgent: A Distributed Agent-Based Simulation Engine for Simulating Half a Trillion Agents",
+  "authors": [
+    {
+      "firstname": "Lukas",
+      "surname": "Breitwieser",
+      "email": "lukas.breitwieser@gmail.com"
+    },
+    {
+      "firstname": "Ahmad",
+      "surname": "Hesam",
+      "email": ""
+    },
+    {
+      "firstname": "Onur",
+      "surname": "Mutlu",
+      "email": "omutlu@gmail.com"
+    },
+    {
+      "firstname": "",
+      "surname": "",
+      "email": ""
+    },
+    {
+      "firstname": "",
+      "surname": "",
+      "email": ""
+    },
+    {
+      "firstname": "",
+      "surname": "",
+      "email": ""
+    },
+    {
+      "firstname": "",
+      "surname": "",
+      "email": ""
+    },
+    {
+      "firstname": "",
+      "surname": "",
+      "email": ""
+    }
+  ],
+  "abstract": "Agent-based simulation is an indispensable paradigm for studying complex systems. These systems cancomprise billions of agents, requiring the computing resources of multiple servers to simulate. Unfortunately, the state-of-the-art platform, BioDynaMo, does not scale out across servers due to its shared-memory-based implementation. To overcome this key limitation, we introduce TeraAgent, a distributed agent-based simulation engine. A critical challenge in distributed execution is the exchange of agent information across servers, which we identify as a major performance bottleneck. We propose two solutions: 1) a tailored serialization mechanism that allows agents to be accessed and mutated directly from the receive buffer, and 2) leveraging the iterative nature of agent-based simulations to reduce data transfer with delta encoding. Built on our solutions, TeraAgent enables extreme-scale simulations with half a trillion agents (an 84× improvement), reduces timeto-result with additional compute nodes, improves interoperability with third-party tools, and provides users with more hardware flexibility. CCS Concepts • Computing methodologies → Massively parallel and highperformance simulations; Agent / discrete models; Distributed algorithms; • Software and its engineering → Software performance.",
+  "sections": [
+    {
+      "title": "Introduction",
+      "paragraphs": [
+        "Agent-based modeling is a bottom-up simulation method to study complex systems. Early agent-based models, dating back as far as 1971, studied segregation in cities [136], flocks of birds [129], and complex social phenomena [45]. These models follow the same three-step structure, although the studied systems differ widely. First, the researcher has to define what the abstract term agent should represent. In the flock model from Craig Reynolds [129], an agent represents a bird. The bird has a current position, and a velocity vector. Second, the researcher has to define the agent's capacities found in today's data centers-cannot support more than two billion agents. Impractical integration with third party software. It is not feasible to integrate BioDynaMo with a third-party software that is parallelized predominantly with MPI because the resulting performance would be prohibitively slow. Examples include the lattice Boltzmann solver OpenLB [78] and the visualization tool ParaView [2], particularly the in-situ visualization mode [8] that eliminates the need to export files to disk. This limitation highlights the need for a distributed simulation engine. Limited hardware flexibility. Connecting less powerful hardware together may be more cost-effective than relying on a high-end server for large-scale simulations that surpass the capabilities of typical commodity servers. However, doing so requires the simulation platform to efficiently scale out while BioDynaMo is limited to a single server.",
+        "To overcome these three restrictions, we significantly improve BioDynaMo from two aspects.",
+        "First, we present TeraAgent, a new distributed simulation engine that executes a single simulation on multiple servers (i.e., scale-out) by dividing the simulation space, leveraging the spatial locality of agent interactions in agent-based simulations. This approach is also known as scale-out architecture, which allows to increase the computational resources by increasing the number of connected servers. Distributed execution requires the exchange of agent information between servers, to obtain the local environment for an agent update, or migrate agents to a new server. These exchanges comprise a serialization stage (packing agents into a contiguous buffer) and a transfer stage, which incur high performance and energy overheads. To alleviate such overheads, we address both stages with the following two key improvements: 1) a serialization mechanism that allows using the objects directly from the received buffer, while maintaining full mutability of the data structures and 2) an encoding scheme based on delta encoding that compresses data communication across servers. Delta encoding takes advantage of the iterative nature of agent-based simulations, where the attributes of agents change only gradually over time.",
+        "Second, analogous to the OpenMP parallelization by Breitwieser et al. [17], we incorporate scaling out the simulation across many servers into the simulation platform, such that the additional parallelism across servers is mostly hidden from the user. By doing so, we enable seamless model execution across laptops, workstations, high-end servers [18], supercomputers, and clouds without the need to modify the simulation code, for a wide range of simulations.",
+        "Our evaluation demonstrates that utilizing domain-specific knowledge in agent-based simulation to alleviate the communication bottleneck between servers results in significant performance improvements. We compare TeraAgent both with BioDynaMo (Section 3.5) and Biocellion (Section 3.8), analyze its scalability (Section 3.7, 3.9), interoperability (Section 3.6), and quantify the improvements of serialization (Section 3.10) and delta encoding (Section 3.11). TeraAgent is able to simulate 250× more agents than BioDynaMo, achieves an 8× higher agent update rate per CPU core than Biocellion, and improves the visualization performance by 39×. The median serialization performance increases by 110× (deserialization by 37×), and delta encoding reduces the required data transfer by up to 3.5×.",
+        "Built on these improvements, our distributed simulation engine, TeraAgent, 1) enables extreme-scale simulations with half a trillion agents-an 84× improvement over the state-of-the-art-on 84096 CPU cores, 2) reduces time-to-result by adding additional compute nodes, 3) improves interoperability with third-party tools in terms of performance, and 4) provides users with greater hardware flexibility. The main contributions of this paper are:",
+        "• We show that it is possible to make scale-out agent-based simulations practical by alleviating their data movement overheads across nodes via tailored serialization and delta encoding-based compression. • We present a novel distributed simulation engine called Tera-Agent capable of simulating 501.51 billion agents and scaling to 84096 CPU cores. This number of CPU cores represents the maximum we were permitted to use on the Dutch National Supercomputer. • We present a novel serialization method for the agent-based use case, which significantly reduces the time spent on packing and unpacking agents during agent migrations and aura exchanges. We observe a median speedup of 110× for serialization and 37× for deserialization. • We extend our serialization method to support delta encoding to reduce the amount of data that has to be transferred between servers, reducing the message size by up to 3.5×."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "The Distributed Simulation Engine",
+      "paragraphs": [
+        "This section provides an overview of the required steps in distributed execution (Section 2.1), details the TeraAgent IO serialization mechanism (Section 2.2), presents our delta encoding scheme to reduce the amount of data that needs to be transferred (Section 2.3), explains implementation details (Section 2.4), and further improvements over BioDynaMo (Section 2.5)."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Distribution Overview",
+      "paragraphs": [
+        "Figure 1 shows an overview of the steps involved in the distributed execution of an agent-based simulation. The figure is simplified for a 2D simulation, but also applies for simulations in 3D. Figure 1A shows a simulation that is executed on two processes (ranks in MPI terminology [106]) that do not share their memory space. We apply a partitioning grid (consisting of partitioning boxes) on the simulation space to divide the space into mutually exclusive volumes corresponding to the number of ranks. It follows that each rank is authoritative of the assigned volume (or area in 2D) and the agents inside it. Figure 1B shows these regions in blue and green together with the interactions between the two ranks at the bordering regions. The specifics of these interactions, which happen in each simulation iteration are outlined below.",
+        "Aura Update. In this section, we focus on how agents close to the bordering region between two ranks interact with their local environment, which, for our purposes, consists only of other agents. In simulations conducted in Euclidean space, the local environment is defined by a radius centered around each agent. The modeler sets the radius value at the beginning of the simulation.",
+        "For agents located near the boundary between ranks, part of their local environment may reside on a different rank. Therefore, agents situated near these boundaries must have their data transmitted to neighboring ranks to enable the update to the next simulation iteration. Figure 1B illustrates the bordering region sent from rank 0 to rank 1 in red and yellow for the opposite direction. These areas are commonly referred to in the literature as aura, halo, or ghost regions. Consequently, these exchanges of data are known as aura updates.",
+        "It is important to note that the partitioning grid's boxes can be larger than the maximum interaction distance of the agents. The zoomed-out detail in Figure 1A shows that, in this specific example, the partitioning boxes are three times larger than the maximum interaction distance. Consequently, regions outside this interaction distance do not need to be transferred. Therefore, the aura regions shown in red and yellow in Figure 1B are narrower than the partitioning box.",
+        "Agent Migration. Agents that change their position might also move out of the locally-owned simulation space and must therefore be moved to the rank which is authoritative for the agent's new position. For this scenario we have to distinguish two cases. First, the current rank can determine the destination rank itself 2 because the new position lies inside a partitioning box that is locally available. Second, if the agent lies outside all locally-available partitioning boxes, a collective lookup stage is necessary to determine the rank which is authoritative for the position 3 .",
+        "Load Balancing. The current space partitioning might be adjusted during the simulation 4 to avoid load imbalances between MPI ranks and a therefore suboptimal resource utilization."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Serialization",
+      "paragraphs": [
+        "For all required steps presented in Section 2.1 (agent migration, aura updates, and load balancing), agents are moved or copied to other ranks. Serialization is necessary to pack agents and their attributes to a contiguous buffer which can then be sent with MPI.",
+        "We initially utilized ROOT I/O, because it is already used in BioDynaMo [17] for backing up and restoring whole simulations. ROOT serves as the main data analysis framework for high-energy physics [20]. ROOT's serialization (called ROOT I/O) is used at CERN to store more than one exabyte scientific data from the large hadron collider experiments [153]. According to Blomer [14], ROOT I/O outperforms other serialization frameworks like Protobuf [152], HDF5 [58], Parquet [149], and Avro [148].",
+        "However, we observed that agent serialization was a significant performance bottleneck and made the following four observations. First, ROOT I/O keeps track of already seen pointers during serialization. Thus, ROOT can skip over repeated occurrences of the same pointer and ensure that upon deserialization all pointers point to the same instance. TeraAgent does not need this feature, because Bio-DynaMo does not allow multiple agents having pointers to the same object. In the distributed setting, this would lead to further challenges, because the pointed object could be required on more than one rank and updates to this object would need to be kept in sync. We enable pointers to other agents with an indirection implemented in the smart-pointer class AgentPointer. An AgentPointer stores the unique agent identifier of the pointed agent and obtains the raw pointer from a map stored in the ResourceManager. Therefore, the serialization of AgentPointers reduces to the serialization of the unique agent identifiers. The current TeraAgent version only supports const AgentPointers to avoid merging changes from multiple ranks.",
+        "Second, we observe that deserialization takes a significant amount of time. Therefore, we analyze the design of Google's Flat-Buffer serialization library which provides \"access to serialized data without parsing/unpacking\" [150]. FlatBuffer serialization library even supports mutability, but is limited to changing the value of an attribute. For example, adding or removing an element from a vector is not supported.",
+        "Third, the current goal is to execute TeraAgent on supercomputers and clouds on machines with the same endianness. Thus, if the condition holds, there should not be any CPU cycles spent on endian conversions.",
+        "Fourth, ROOT I/O ensures that data that was captured and stored decades ago, can still be read and analyzed today. Schema evolution is therefore needed to deal with changes that occurred since the data was written. In TeraAgent, the transferred data exists only during the execution of the simulation, sometimes only for one iteration. In this time frame, the schema, i.e., the agent classes with their attributes do not change. Therefore, TeraAgent skips schema evolution to reduce the performance and energy overheads.",
+        "Based on these four observations, we design TeraAgent to avoid pointer deduplication, deserialization, endianness conversions, and schema evolution to alleviate the performance and energy overheads of agent serialization."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "TeraAgent IO.",
+      "paragraphs": [
+        "Following one of the design principles of C++ \"What you don't use you don't pay for\" [142], we create a serialization method that take these four observations into account and thus avoids spending compute cycles on unnecessary steps.",
+        "Figure 2A shows an abstract representation of the objects in memory. Starting from a root object (e.g., a container of agent pointers), a tree structure can be observed, because multiple pointers to the same memory block are disallowed. The nodes of the tree are formed by contiguous memory blocks that were allocated on the heap. The given example could be interpreted as having a pointer to a container with three different agents, that have zero, one, and two attached behaviors.  Serialization. This structure can be serialized by an in-order tree traversal (B). Each tree node (i.e., memory block) is copied to the serialized buffer. Fields inside each memory block that point to other memory blocks are labeled as such, but point to the invalid address 𝑂𝑥1. Furthermore, the virtual table pointer of polymorphic classes is replaced by a unique identifier of the most derived class. This step is necessary because we cannot guarantee that the virtual table pointers will be the same on all ranks.",
+        "Deserialization. From the communication subsystem, the deserialization implementation receives a buffer with a starting address, length, and type of the root object. Deserialization consists of four steps that can be performed in a single traversal of the buffer. First, we traverse the tree from the beginning of the buffer and restore the virtual table pointer for polymorphic objects. The offsets of the memory blocks are determined by their type and retrieved from the compiler. Second, if a pointer is encountered, we set it to the next memory block in the buffer. Third, as we traverse, we count the number of memory blocks, which will be required for memory deallocation (see next paragraph). Fourth, reinterpret the buffer's starting address as a pointer to the root object and return it to the caller. No other memory reads or writes are taking place. Furthermore, there are no calls to allocate memory besides the single contiguous receive buffer that holds the data.",
+        "Mutability. By returning the root object pointer to the higherlevel code, we create the illusion that all contained memory blocks have been allocated separately on the heap. Therefore, higher-level code is not aware that these objects were deserialized using Tera-Agent IO and can change them in any way. This includes setting value of attributes, but extends to, for example, adding elements to containers, even if there is not sufficient space in the buffer. In this scenario, the vector implementation notices the capacity is reached, allocates a new memory block on the heap (separately from the buffer) and deallocates the obsolete memory block inside the deserialized buffer.",
+        "Deallocation. As we have seen in the vector example above, higher-level code will at some point try to deallocate memory blocks by calling delete. These delete calls, however, would crash the memory allocator, due to the missing corresponding new call. To maintain the illusion, we intercept all calls to delete and filter those that fall into the memory range of the deserialized buffer. If the number of expected delete calls (determined during deserialization) matches the intercepted delete calls, we deallocate the whole buffer and remove the filter rule.",
+        "The disadvantage that memory is leaked if not all memory blocks are freed in a deserialized buffer can be solved for TeraAgent. First, the aura region is completely rebuilt in each iteration, which means that the previous aura information is completely destroyed. Second, for agent migrations and load balancing data, we rely on the periodic agent sorting mechanism in BioDynaMo. Agent sorting changes the memory location of agents to improve the cache hit rate. During this process all agents are copied to a new location and the old ones are deallocated. Figure 10 shows that the memory consumption does not increase by using the TeraAgent serialization mechanism."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Data Transfer Minimization",
+      "paragraphs": [
+        "Agent-based modeling is an iterative method. Figure 3 shows three successive iterations of the cell clustering simulation. We can observe that the cell positions change only gradually between iterations while the cell type and diameter do not change at all. We leverage this observation to reduce the amount of data that must be transferred between MPI ranks to update the aura region by using delta encoding. The implementation of delta encoding is built on top of the TeraAgent serialization mechanism (see Figure 4). Each sender and receiver pair stores the same reference. The sender calculates the difference between the message and the reference, compresses it and sends it to the receiver. On the receiving side, the process is reversed to restore the original message. The receiver uncompresses the buffer and restores the original message by inverting the difference operation using the received buffer and More precisely, the sender reorders the message at the agent pointer level (B). Agents which exist both in the message and the reference are moved to the same position that the agent has in the reference. Agents that exist in the reference and not in the message are indicated by an empty placeholder, a value that cannot occur at the same tree depth in the message. In the TeraAgent case, this is simply a null pointer. Lastly, agents that exist in the message and not in the reference are appended at the very end. Reordering agents does not affect the correctness of a TeraAgent simulation.",
+        "After the matching stage (B), the TeraAgent serialization mechanism (C) traverses the two conjoined trees, in the same way as described in Section 2.2.1. The only difference is that if a match is found in the reference, the difference between the two is written to the result buffer. Since the message is reordered at the sender, we do not need to send additional information about the agent order.",
+        "During deserialization (D), we use the data stored in the reference to restore the original message. Lastly, we defragment the message by removing any placeholders that were inserted during the matching stage (B). Note that defragmentation will not restore the original agent ordering as shown in (A). The defragmented message is then passed to higher-level code.",
+        "By using this mechanism, TeraAgent reduces the data movement bottleneck and increases the efficiency of distributed execution."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Implementation Details",
+      "paragraphs": [
+        "2.4.1 Partitioning Grid. One important data structure in the distributed simulation engine is the partitioning grid, which is responsible for the domain decomposition of the simulation space as shown in Figure 1. We use Sierra Toolkit (STK) [12], because it is (i) an established tool maintained as part of Trilinos [162], (ii) well integrated with the load balancing framework Zoltan2 [131], and (iii) has the ability to export the grid in exodus format [99], which our main visualization framework ParaView [2] can read. However, since STK is a generic mesh library, capable of much more than processing rectilinear grids, these functionality comes with a performance penalty in terms of compute and required memory. Furthermore, although STK uses Kokkos [44] for shared memory parallelism, we observe that if TeraAgent is executed in MPI hybrid mode (MPI/OpenMP), most threads are idle during balancing and mesh modification calls into STK. As an alternative, we also considered the parallel grid library [64], but experienced difficulties generating very large grid sizes.",
+        "To reduce the memory and compute footprint of STK's partitioning grid, we introduce a parameter to make the partitioning box length a multiple of the neighbor search grid (see Figure 1). The higher this factor is chosen the less memory and compute resources are needed for the space partitioning, but at the cost of increased granularity at which load balancing decisions can be made."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Serialization.",
+      "paragraphs": [
+        "The TeraAgent IO mechanism (Section 2.2.1) requires that (de)serialization methods (also known as TeraAgent IO functions) are available for all types in the message. TeraAgent provides the necessary implementation for its internal classes, the standard template library (STL) classes, and important groups of types (e.g., polymorphic types, pointers, and plain arrays). Due to the design decision to opt for a very lightweight deserialization method, the implementation of the (de)serialization methods depends on its internal attributes (i.e., the concrete implementation), rather than the public interface. This design decision might increase the maintenance effort. However, the TeraAgent IO methods follow a regular structure and can be generated automatically in most of the cases. This is especially true for all user-defined classes in this paper. Although the (de)serialization methods are currently written by hand, they can easily be integrated into BioDynaMo's existing code generation stages. BioDynaMo uses code generation during compile time, and during runtime using the C++ just-in-time compiler cling [166].",
+        "Custom TeraAgent IO functions are necessary if classes contain pointer attributes, whose memory is not owned. An example could be an array-based stack implementation with an attribute that points to the current top of the stack. To this end, TeraAgent allows for custom implementations of the IO functions that will replace the automatically generated ones.",
+        "To intercept delete calls, we overwrite all global C++ delete operators and insert a call to the delete filter, which returns if the delete should be filtered out or executed. This design choice causes some challenges in combination with performance or correctness tools (e.g., valgrind) that use LD_PRELOAD to inject their own implementation of new and delete and prevent the TeraAgent ones from being executed. For valgrind, we solved this issue by patching its code."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Communication.",
+      "paragraphs": [
+        "For the majority of data transfers, we use non-blocking point to point communication (MPI_Isend, MPI_Irecv, and MPI_Probe). This choice allows for overlapping communication with computation to hide latency. For regular communication patterns that occur between neighbors, we issue speculative receive requests right after the previous transfer finished, to avoid delay through late receivers. If the neighbors of a rank change due to load balancing, obsolete speculative receives are cancelled.",
+        "Furthermore, we transmit large messages in smaller batches to reduce the memory needed for transmission buffers, compression, and serialization."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Distributed Initialization.",
+      "paragraphs": [
+        "Although the distributed simulation engine has the capability to migrate agents to any other MPI rank (Section 2.1), we try to avoid a costly mass migration of agents during the initialization stage, by trying to create agents on the authoritative rank. This is straightforward for regular geometric shapes (e.g., agents created on a surface defined by a function), but we also address agent populations that are created using a uniform random number distribution within a specific space. Each rank determines the fraction of the given target space with its authoritative volume, and adjusts the number of agents for this space and the bounds accordingly, if the number of agents for each node is sufficiently high."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Load",
+      "paragraphs": [
+        "Balancing. Load balancing has two goals. First, partition the simulation space in a way that simulating one iteration takes the same amount of time on all ranks. Second, the partitioning should minimize the distributed overheads, e.g., the number of aura agents that must be exchanged.",
+        "TeraAgent provides two classes of load balancing methods to achieve these goals: global and diffusive.",
+        "The global balancing method is based on STK and Zoltan2. We provide their functionality for TeraAgent users and choose the recursive coordinate bisection (RCB) algorithm as default. We apply a weight field on the partitioning grid and set the weight of each partitioning box based on the number of agents contained and scale it by the runtime of the last iteration. Zoltan2 now partitions the space in a way that the sum of all owned partition boxes is distributed uniformly between all ranks. This approach might lead to a new partitioning that differs substantially from the previous one, causing mass migrations of agents to their new authoritative rank.",
+        "Therefore, we also implement a diffusive approach in which neighboring ranks exchange partition boxes. Ranks whose runtime exceed the local average, send boxes to neighbors that were faster than the local average."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Improvements and Modifications to BioDynaMo",
+      "paragraphs": [
+        "This section describes the necessary modifications and improvements to the existing OpenMP parallelized BioDynaMo version to enable distributed execution.",
+        "Parallelization Modes. By building upon and extending the shared-memory capabilities, we provide two distributed execution modes: MPI hybrid (MPI/OpenMP), and MPI only. For the MPI hybrid mode, we launch one MPI rank for each NUMA domain on a compute node, while for MPI only we launch one rank for each CPU core. On today's modern hardware with constantly increasing CPU core counts, the MPI hybrid mode can reduce the number of ranks currently by almost two orders of magnitude. We therefore expect the MPI hybrid mode to be more efficient. The MPI only mode, on the other hand, provides benefits when interfacing with third party applications that are only parallelized using MPI. In the MPI hybrid mode, these applications, would leave all but one thread per rank idle.",
+        "Switching between parallelization modes does not require recompilation of TeraAgent.",
+        "Unique Agent Identifiers. BioDynaMo uses unique agent identifiers to address agents, since the actual memory location might change due to agent sorting. Agent sorting improves the performance by reordering agents in a way that agents that are close in 3D space are also close in memory (see [18]). The identifier is comprised of two fields: ⟨𝑖𝑛𝑑𝑒𝑥, 𝑟𝑒𝑢𝑠𝑒𝑑_𝑐𝑜𝑢𝑛𝑡𝑒𝑟 ⟩ and has the following invariants: At any point in time, there is only one (active) agent in the simulation with the same index. If an agent is removed from the simulation, this index will be reused, but to satisfy uniqueness the reuse_counter is incremented. This design allows the construction of a vector-based unordered map, where the first part of the identifier (the index) is used to index the vector. This map allows for lock-less additions and removals to distinct map elements.",
+        "However, this solution does not work without changes for distributed executions with agent migrations and aura updates, because the invariant that the 𝑖𝑛𝑑𝑒𝑥 of the identifiers are almost contiguous does not hold anymore. This would waste a considerable amount of memory in the vector-based unordered map.",
+        "Therefore, we rename the existing identifier to \"local identifier\" and introduce also a global identifier ⟨𝑟𝑎𝑛𝑘, 𝑐𝑜𝑢𝑛𝑡𝑒𝑟 ⟩. Rank is set to the rank where the agent was created, and \"counter\" is a strictly increasing number. The global identifier of an agent is constant, but the agent might have various different local identifiers during the whole simulation.",
+        "We implement this change in a minimally invasive way. The translation between local and global identifier happens only during serialization if the agent is transferred to another rank, or written to disk as part of a backup or checkpoint. Global identifiers are only generated on demand. If there are no backups or checkpoints and the agent stays on the same rank throughout the simulation, the agent will only have a local identifier.",
+        "Incremental Updates to the Neighbor Search Grid (NSG).. Breitwieser et al. [18] showed that their optimized uniform grid implementation performed best for the benchmarked simulations. Updates to the NSG required a complete rebuild, which was adequate so far. The distributed simulation engine, however, relies on the NSG not only to search for neighbors of an agent, but also to accurately determine the agents in a specific sub volume for agent migrations, aura updates, and load balancing. Rebuilding the complete NSG after each of these steps would be prohibitively expensive. Therefore, we adapted the implementation to allow for incremental changes, i.e., the addition, removal, and position update of single agents.",
+        "Modularity Improvements. Alongside high-performance, modularity is another key design aspect of TeraAgent. We have therefore made additional efforts in this direction during the development of TeraAgent and made three main changes. First, we introduce the VisualizationProvider interface to facilitate rendering of additional information besides agents and scalar/vector fields. We use an implementation of this interface to render the partitioning grid as can be seen in Figures 5. Second, we add the SimulationSpace interface to explicitly gather information about whole and local simulation space in one place. Third, we refactor the code and introduce the SpaceBoundaryCondition interface and refactor the implementations for \"open\", \"closed\", and \"toroidal\"."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Evaluation 3.1 Benchmark Simulations",
+      "paragraphs": [
+        "We use four simulations from [17,18] to evaluate the performance of the simulation engine: cell clustering, cell proliferation, and use cases in the domains of epidemiology, and oncology. We did not include the neuroscience use case, since it requires the ability to modify neighbors, which is currently not implemented yet and chose only one of the two cell clustering implementations. Table 1 in [18] shows that these simulations cover a broad spectrum of performance-related simulation characteristics."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Experimental Setup and Reproducibility",
+      "paragraphs": [
+        "All tests were executed in a Singularity container with an Ubuntu 22.04 based image. We used two systems to evaluate the distributed simulation engine. First, we used the Dutch national supercomputer Snellius (genoa partition) where each node has two AMD Genoa 9654 processors with 96 physical CPU cores each, 384 GB total memory per node, and Infiniband interconnect (200 Gbps within a rack, 100 Gbps outside the rack) [143]. Second, we use a two node system (System B) where each node has four Intel Xeon E7-8890 v3 CPUs processors each with 72 physical CPU core, 504 and 1024 GB main memory, and Gigabit Ethernet interconnect. We are therefore able to evaluate the performance with a commodity and high-end interconnect.",
+        "We use the term \"simulation runtime\" for the wall-clock time needed to simulate a number of iterations, which excludes the initialization step and tear down.",
+        "We will provide all code, the self-contained Singularity image, more detailed information on the hardware and software setup, and instructions to execute the benchmarks upon publication on Zenodo."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Correctness",
+      "paragraphs": [
+        "To ensure the correctness of the distributed simulation engine, we added 180 automated tests, and replicate the results from [17,18]. Figure 5 shows the quantitative comparison of the simulation compared to analytical (epidemiology use case) or experimental data (oncology use case), and a qualitative comparison for the cell sorting simulation. We can observe that TeraAgent produces the same results as BioDynaMo."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Seamless Transition From a Laptop to a Supercomputer",
+      "paragraphs": [
+        "User-friendliness is a key design aspect, alongside our focus on performance. Regarding distributed computing, the model definitions for the four benchmark simulations are completely transparent to the user. Only the evaluations for the epidemiology and oncology use cases require additional code for distributed execution.",
+        "The changes in the epidemiology simulation, are limited to two lines of code. To create the graph shown in Figure 5, the engine has to count the number of agents for the three groups (susceptible, infected, and recovered). For distributed executions the rank local results have to be summed up to obtain the correct result. To do that, we provide the function SumOverAllRanks, which hides the MPI related function call. Furthermore, to save the generated plot to disk, we have to make sure that only one rank writes to the same file location. This goal can be achieved by telling the other ranks to exit the function before the save function is executed. We can achieve this with the preprocessor macro IF_NOT_RANK0_RETURN.",
+        "Also the tumor spheroid simulation requires extra code to generate the result plot (Figure 5). To accurately measure the tumor diameter in the simulation, we determine the volume of the convex hull, from which we can calculate the diameter by assuming a spherical shape. Breitwieser et al. [17] used libqhull [10], a library which is not distributed. Consequently, the simulation contains a couple lines of extra code to transmit agent positions to the master rank to perform the diameter calculation. For simulations with a larger number of agents, we use a more approximate method, by determining the enclosing bounding box. The approximate method is provided by TeraAgent and is the same whether executed distributed or not.",
+        "To summarize, for many simulations our users do not need to know about distributed computing to scale out a simulation to tens of thousands of CPU cores, as demonstrated in this paper. Researchers can start the development on a laptop and seamlessly transition to more powerful hardware as the model size and complexity grows."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Comparison with BioDynaMo",
+      "paragraphs": [
+        "We compare the performance of TeraAgent in MPI hybrid and MPI only mode with BioDynaMo (OpenMP). The benchmarks were executed on one node of System B with 10 7 agents and for all iterations of the simulations. Figure 6 shows that MPI hybrid mode performs close to the OpenMP version (slowdown between 4-9%) despite the extra steps required in distributed execution (Figure 1). The performance drops significantly for MPI only (slowdown between 26-34%), which uses 18× more MPI ranks and also does not use hyperthreading. For the epidemiology simulation, both distributed modes outperform (speedup of MPI hybrid: 2.8×) BioDynaMo. Breitwieser et al. [17] showed that the performance of the epidemiology simulation is sensitive to the memory layout. Although, BioDynaMo is NUMAaware, not all data structures (e.g., the neighbor search grid) are separated for each NUMA domain. We attribute the observed performance increase to reduced cross-CPU traffic of the distributed engine, which outweighs the overheads of aura updates and agent migrations.",
+        "The memory consumption increases approximately by 2× for the MPI hybrid mode due to the additional data structures. A large part of the memory required by the MPI only mode can be attributed to the use of cling [166]. In the current implementation, each rank has its own instance of cling, which requires several hundred MB of memory on its own."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Improved Interoperability",
+      "paragraphs": [
+        "This section demonstrates how the distributed simulation engine improves interoperability with third party software by enabling the interaction from the performance aspect. A well-suited example to demonstrate this improvement is ParaView, the main visualization provider of BioDynaMo. ParaView offers two visualization modes: export mode in which the simulation state is exported to file during the simulation and visualized afterwards, and the situ mode in which ParaView accesses the agent attributes directly in memory and generates the visualization while the simulation is running.",
+        "Although ParaView uses distributed and shared-memory parallelism, the scalability of using threads alone is very limited (see Figure 7). Therefore, BioDynaMo used mainly the export mode. TeraAgent, however, is now able to leverage the unused potential of in situ visualization.",
+        "On one System B node, we execute the cell clustering simulation with 10 million agents for 10 iterations (Figure 7). Each iteration renders one image. We evaluate three configurations: BioDynaMo using OpenMP (i.e., one rank and 144 threads), and two TeraAgent configurations: MPI only (i.e., 72 ranks with one thread each) and MPI hybrid (i.e., 4 ranks and 36 threads each).",
+        "We can clearly see that ParaView's in situ mode scales mainly with the number of ranks. TeraAgent's MPI only configuration visualizes 39× faster than BioDynaMo although it is only using half the number of threads. The memory consumption is dominated by ParaView and therefore shows a less pronounced difference between MPI hybrid and MPI only mode."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Scalability",
+      "paragraphs": [
+        "We analyze the scalability of the distributed engine under a strong and weak scaling benchmark. First, for the strong scaling analysis, we examine how much we can reduce the runtime of a simulation with a fixed problem size by adding more compute nodes. We chose the simulation size such that it fills one server and run it for 10 iterations with node counts ranging from one to 16 (3072 CPU cores) increased by powers of two. Figure 8 shows good scaling until 8 nodes (1536 CPU cores), which slows down due to load imbalances and the associated wait times for the slowest rank.",
+        "Second, we investigate the performance of the distributed engine by simulating larger models with proportionally increased compute resources. We use 10 8 agents per node and increase the node count from one to 128, which corresponds to 24'576 CPU cores. Figure 9 shows that after an initial increase in runtime, a plateau is reached."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Comparison with Biocellion",
+      "paragraphs": [
+        "To compare the performance of the distributed simulation engine with Biocellion [72], we replicate the benchmark from [18]. We execute the cell clustering simulation with 1.72 billion cells on System B. In contrast to [18], we use two nodes due to the additional required 𝑎𝑔𝑒𝑛𝑡 _𝑢𝑝𝑑𝑎𝑡𝑒𝑠 𝑠 ×𝐶𝑃𝑈 _𝑐𝑜𝑟𝑒 . We therefore conclude that TeraAgent is 8× more efficient than Biocellion."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Extreme-Scale Simulation",
+      "paragraphs": [
+        "To demonstrate that TeraAgent can substantially increase the stateof-the-art in terms of how many agents can be simulated, we perform two experiments.",
+        "First, we execute the cell clustering simulation with 102.4 billion cells (or agents) for 10 iterations. The simulation was executed on 24'576 CPU cores on 128 Snellius nodes using 40 TB of memory and taking on average 7.08 s per iteration.",
+        "Second, we increase the number of agents even further to 501.51 billion and use 438 nodes with 84096 CPU cores. This number of CPU cores represents the maximum we were permitted to use on the Dutch National Supercomputer. To fit this amount of agents into the available main memory, we reduce the engine's memory consumption by disabling all optimizations that require extra memory, use single-precision floating point numbers, reduce the agent's size by changing the base class, and reduce the memory consumption of the neighbor search grid. These adjustments reduce the memory consumption to 92 TB, but also increase the average runtime per iteration to 147 s."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Serialization",
+      "paragraphs": [
+        "This section compares the tailor-made TeraAgent serialization mechanism for the agent-based use case presented in Section 2.2 with the baseline ROOT IO (see Figure 10). We execute the benchmark simulations on four Snellius nodes in MPI hybrid mode with 10 8 agents for 10 iterations. Figure 10 shows that simulation runtime was reduced by up to 3.6×, while keeping the memory consumption constant. TeraAgent IO serializes the agents up to 296× faster (median 110×) and also significantly improves the deserialization performance: maximum observed speedup of 73× (median 37×). Figure 10d shows that the resulting message sizes are equivalent. The only outlier in cell proliferation is due to the small message size and does not impact the performance negatively."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Data Transfer Minimization",
+      "paragraphs": [
+        "To evaluate the performance improvements of LZ4 compression [32] and delta encoding, we execute all benchmark simulations with 10 8 agents on two System B and four Snellius nodes for 10 iterations. Figure 11 shows the comparison on Snellius with TeraAgent IO as baseline. The message size is reduced between 3.0-5.2× by LZ4 compression and by another 1.1-3.5× for adding the delta encoding scheme described in Section 2.3. This improvement speeds up the distribution operation, which subsumes aura updates and agent migrations, up to 11×. However, the significant speedups of delta encoding do not translate to the whole simulation. The reason is shown in Figure 11b (right). Delta encoding reduces the performance of agent operations (i.e., the main functionality of the model), caused by agent reordering. The memory consumption is increased slightly for delta encoding enabled by the data structures that holds the reference (median: 3%).",
+        "On Snellius, simulation runtime is reduced in three out of four simulations by using LZ4 compression (median improvement: 1.8%).",
+        "However, due to Snellius' low latency and high bandwidth interconnect, delta encoding does not lead to further runtime reductions, because the overheads outweigh the benefits."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Related Work",
+      "paragraphs": [
+        "Agent-Based Simulation Tools. To our knowledge, TeraAgent is the only simulation platform capable of simulating 501.51 billion agents. The largest reported agent populations in the literature is from Jon Parker [119], who simulated a specialized epidemiological model with up to 6 billion agents and Biocellion [72], a distributed tool in the tissue modeling domain, with 1.72 billion agents. Other distributed platforms exist [33-35, 100, 130], but have not shown simulations on this extreme scale.",
+        "Serialization. There is a wide range of serialization libraries. This paper compares the performance against ROOT IO [20], which according to Blomer [14] outperforms Protobuf [152], HDF5 [58], Parquet [149], and Avro [148]. MPI [106] also provides functionality to define derived data types, but targets use cases with regular patterns, for example, the last element of each row in a matrix. TeraAgent's agents are allocated on the heap with irregular offsets between them and, therefore, cannot use MPI's solution.",
+        "Delta Encoding. Delta encoding [66] is a widely used concept to minimize the amount of data that is stored or transferred, which we apply to aura updates of the agent-based workload (Section 2.3). Other applications include backups [21], file revision systems such as git [151], network protocols [69,102], cache and memory compression [85,120,121,168], and more [92,144]. We did not find explicit mention of this concept in the literature to accelerate the distributed execution of agent-based simulations."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Conclusion and Future Work",
+      "paragraphs": [
+        "This paper presents TeraAgent a distributed simulation engine that addresses the scaling limitations of the state-of-the-art agent based simulation platform, BioDynaMo. To do so, our distributed simulation engine, TeraAgent, 1) enables extreme-scale simulations with half a trillion agents, 2) reduces time-to-result by adding additional compute nodes, 3) improves interoperability with third-party tools in terms of performance, and 4) provides users with greater hardware flexibility. TeraAgent allows researchers to scale out their execution environment seamlessly from laptops and workstations to clouds and supercomputers. We demonstrate (Section 3.4) that such scale-out does not require any model code changes. These results clearly show the benefits of distributed computing capabilities. Researchers can leverage these performance improvements and gain new insights into complex systems by building models on an unprecedented scale that has not been possible before."
+      ],
+      "subsections": []
+    }
+  ],
+  "body_paragraphs": [
+    "Agent-based modeling is a bottom-up simulation method to study complex systems. Early agent-based models, dating back as far as 1971, studied segregation in cities [136], flocks of birds [129], and complex social phenomena [45]. These models follow the same three-step structure, although the studied systems differ widely. First, the researcher has to define what the abstract term agent should represent. In the flock model from Craig Reynolds [129], an agent represents a bird. The bird has a current position, and a velocity vector. Second, the researcher has to define the agent's capacities found in today's data centers-cannot support more than two billion agents. Impractical integration with third party software. It is not feasible to integrate BioDynaMo with a third-party software that is parallelized predominantly with MPI because the resulting performance would be prohibitively slow. Examples include the lattice Boltzmann solver OpenLB [78] and the visualization tool ParaView [2], particularly the in-situ visualization mode [8] that eliminates the need to export files to disk. This limitation highlights the need for a distributed simulation engine. Limited hardware flexibility. Connecting less powerful hardware together may be more cost-effective than relying on a high-end server for large-scale simulations that surpass the capabilities of typical commodity servers. However, doing so requires the simulation platform to efficiently scale out while BioDynaMo is limited to a single server.",
+    "To overcome these three restrictions, we significantly improve BioDynaMo from two aspects.",
+    "First, we present TeraAgent, a new distributed simulation engine that executes a single simulation on multiple servers (i.e., scale-out) by dividing the simulation space, leveraging the spatial locality of agent interactions in agent-based simulations. This approach is also known as scale-out architecture, which allows to increase the computational resources by increasing the number of connected servers. Distributed execution requires the exchange of agent information between servers, to obtain the local environment for an agent update, or migrate agents to a new server. These exchanges comprise a serialization stage (packing agents into a contiguous buffer) and a transfer stage, which incur high performance and energy overheads. To alleviate such overheads, we address both stages with the following two key improvements: 1) a serialization mechanism that allows using the objects directly from the received buffer, while maintaining full mutability of the data structures and 2) an encoding scheme based on delta encoding that compresses data communication across servers. Delta encoding takes advantage of the iterative nature of agent-based simulations, where the attributes of agents change only gradually over time.",
+    "Second, analogous to the OpenMP parallelization by Breitwieser et al. [17], we incorporate scaling out the simulation across many servers into the simulation platform, such that the additional parallelism across servers is mostly hidden from the user. By doing so, we enable seamless model execution across laptops, workstations, high-end servers [18], supercomputers, and clouds without the need to modify the simulation code, for a wide range of simulations.",
+    "Our evaluation demonstrates that utilizing domain-specific knowledge in agent-based simulation to alleviate the communication bottleneck between servers results in significant performance improvements. We compare TeraAgent both with BioDynaMo (Section 3.5) and Biocellion (Section 3.8), analyze its scalability (Section 3.7, 3.9), interoperability (Section 3.6), and quantify the improvements of serialization (Section 3.10) and delta encoding (Section 3.11). TeraAgent is able to simulate 250× more agents than BioDynaMo, achieves an 8× higher agent update rate per CPU core than Biocellion, and improves the visualization performance by 39×. The median serialization performance increases by 110× (deserialization by 37×), and delta encoding reduces the required data transfer by up to 3.5×.",
+    "Built on these improvements, our distributed simulation engine, TeraAgent, 1) enables extreme-scale simulations with half a trillion agents-an 84× improvement over the state-of-the-art-on 84096 CPU cores, 2) reduces time-to-result by adding additional compute nodes, 3) improves interoperability with third-party tools in terms of performance, and 4) provides users with greater hardware flexibility. The main contributions of this paper are:",
+    "• We show that it is possible to make scale-out agent-based simulations practical by alleviating their data movement overheads across nodes via tailored serialization and delta encoding-based compression. • We present a novel distributed simulation engine called Tera-Agent capable of simulating 501.51 billion agents and scaling to 84096 CPU cores. This number of CPU cores represents the maximum we were permitted to use on the Dutch National Supercomputer. • We present a novel serialization method for the agent-based use case, which significantly reduces the time spent on packing and unpacking agents during agent migrations and aura exchanges. We observe a median speedup of 110× for serialization and 37× for deserialization. • We extend our serialization method to support delta encoding to reduce the amount of data that has to be transferred between servers, reducing the message size by up to 3.5×.",
+    "This section provides an overview of the required steps in distributed execution (Section 2.1), details the TeraAgent IO serialization mechanism (Section 2.2), presents our delta encoding scheme to reduce the amount of data that needs to be transferred (Section 2.3), explains implementation details (Section 2.4), and further improvements over BioDynaMo (Section 2.5).",
+    "Figure 1 shows an overview of the steps involved in the distributed execution of an agent-based simulation. The figure is simplified for a 2D simulation, but also applies for simulations in 3D. Figure 1A shows a simulation that is executed on two processes (ranks in MPI terminology [106]) that do not share their memory space. We apply a partitioning grid (consisting of partitioning boxes) on the simulation space to divide the space into mutually exclusive volumes corresponding to the number of ranks. It follows that each rank is authoritative of the assigned volume (or area in 2D) and the agents inside it. Figure 1B shows these regions in blue and green together with the interactions between the two ranks at the bordering regions. The specifics of these interactions, which happen in each simulation iteration are outlined below.",
+    "Aura Update. In this section, we focus on how agents close to the bordering region between two ranks interact with their local environment, which, for our purposes, consists only of other agents. In simulations conducted in Euclidean space, the local environment is defined by a radius centered around each agent. The modeler sets the radius value at the beginning of the simulation.",
+    "For agents located near the boundary between ranks, part of their local environment may reside on a different rank. Therefore, agents situated near these boundaries must have their data transmitted to neighboring ranks to enable the update to the next simulation iteration. Figure 1B illustrates the bordering region sent from rank 0 to rank 1 in red and yellow for the opposite direction. These areas are commonly referred to in the literature as aura, halo, or ghost regions. Consequently, these exchanges of data are known as aura updates.",
+    "It is important to note that the partitioning grid's boxes can be larger than the maximum interaction distance of the agents. The zoomed-out detail in Figure 1A shows that, in this specific example, the partitioning boxes are three times larger than the maximum interaction distance. Consequently, regions outside this interaction distance do not need to be transferred. Therefore, the aura regions shown in red and yellow in Figure 1B are narrower than the partitioning box.",
+    "Agent Migration. Agents that change their position might also move out of the locally-owned simulation space and must therefore be moved to the rank which is authoritative for the agent's new position. For this scenario we have to distinguish two cases. First, the current rank can determine the destination rank itself 2 because the new position lies inside a partitioning box that is locally available. Second, if the agent lies outside all locally-available partitioning boxes, a collective lookup stage is necessary to determine the rank which is authoritative for the position 3 .",
+    "Load Balancing. The current space partitioning might be adjusted during the simulation 4 to avoid load imbalances between MPI ranks and a therefore suboptimal resource utilization.",
+    "For all required steps presented in Section 2.1 (agent migration, aura updates, and load balancing), agents are moved or copied to other ranks. Serialization is necessary to pack agents and their attributes to a contiguous buffer which can then be sent with MPI.",
+    "We initially utilized ROOT I/O, because it is already used in BioDynaMo [17] for backing up and restoring whole simulations. ROOT serves as the main data analysis framework for high-energy physics [20]. ROOT's serialization (called ROOT I/O) is used at CERN to store more than one exabyte scientific data from the large hadron collider experiments [153]. According to Blomer [14], ROOT I/O outperforms other serialization frameworks like Protobuf [152], HDF5 [58], Parquet [149], and Avro [148].",
+    "However, we observed that agent serialization was a significant performance bottleneck and made the following four observations. First, ROOT I/O keeps track of already seen pointers during serialization. Thus, ROOT can skip over repeated occurrences of the same pointer and ensure that upon deserialization all pointers point to the same instance. TeraAgent does not need this feature, because Bio-DynaMo does not allow multiple agents having pointers to the same object. In the distributed setting, this would lead to further challenges, because the pointed object could be required on more than one rank and updates to this object would need to be kept in sync. We enable pointers to other agents with an indirection implemented in the smart-pointer class AgentPointer. An AgentPointer stores the unique agent identifier of the pointed agent and obtains the raw pointer from a map stored in the ResourceManager. Therefore, the serialization of AgentPointers reduces to the serialization of the unique agent identifiers. The current TeraAgent version only supports const AgentPointers to avoid merging changes from multiple ranks.",
+    "Second, we observe that deserialization takes a significant amount of time. Therefore, we analyze the design of Google's Flat-Buffer serialization library which provides \"access to serialized data without parsing/unpacking\" [150]. FlatBuffer serialization library even supports mutability, but is limited to changing the value of an attribute. For example, adding or removing an element from a vector is not supported.",
+    "Third, the current goal is to execute TeraAgent on supercomputers and clouds on machines with the same endianness. Thus, if the condition holds, there should not be any CPU cycles spent on endian conversions.",
+    "Fourth, ROOT I/O ensures that data that was captured and stored decades ago, can still be read and analyzed today. Schema evolution is therefore needed to deal with changes that occurred since the data was written. In TeraAgent, the transferred data exists only during the execution of the simulation, sometimes only for one iteration. In this time frame, the schema, i.e., the agent classes with their attributes do not change. Therefore, TeraAgent skips schema evolution to reduce the performance and energy overheads.",
+    "Based on these four observations, we design TeraAgent to avoid pointer deduplication, deserialization, endianness conversions, and schema evolution to alleviate the performance and energy overheads of agent serialization.",
+    "Following one of the design principles of C++ \"What you don't use you don't pay for\" [142], we create a serialization method that take these four observations into account and thus avoids spending compute cycles on unnecessary steps.",
+    "Figure 2A shows an abstract representation of the objects in memory. Starting from a root object (e.g., a container of agent pointers), a tree structure can be observed, because multiple pointers to the same memory block are disallowed. The nodes of the tree are formed by contiguous memory blocks that were allocated on the heap. The given example could be interpreted as having a pointer to a container with three different agents, that have zero, one, and two attached behaviors.  Serialization. This structure can be serialized by an in-order tree traversal (B). Each tree node (i.e., memory block) is copied to the serialized buffer. Fields inside each memory block that point to other memory blocks are labeled as such, but point to the invalid address 𝑂𝑥1. Furthermore, the virtual table pointer of polymorphic classes is replaced by a unique identifier of the most derived class. This step is necessary because we cannot guarantee that the virtual table pointers will be the same on all ranks.",
+    "Deserialization. From the communication subsystem, the deserialization implementation receives a buffer with a starting address, length, and type of the root object. Deserialization consists of four steps that can be performed in a single traversal of the buffer. First, we traverse the tree from the beginning of the buffer and restore the virtual table pointer for polymorphic objects. The offsets of the memory blocks are determined by their type and retrieved from the compiler. Second, if a pointer is encountered, we set it to the next memory block in the buffer. Third, as we traverse, we count the number of memory blocks, which will be required for memory deallocation (see next paragraph). Fourth, reinterpret the buffer's starting address as a pointer to the root object and return it to the caller. No other memory reads or writes are taking place. Furthermore, there are no calls to allocate memory besides the single contiguous receive buffer that holds the data.",
+    "Mutability. By returning the root object pointer to the higherlevel code, we create the illusion that all contained memory blocks have been allocated separately on the heap. Therefore, higher-level code is not aware that these objects were deserialized using Tera-Agent IO and can change them in any way. This includes setting value of attributes, but extends to, for example, adding elements to containers, even if there is not sufficient space in the buffer. In this scenario, the vector implementation notices the capacity is reached, allocates a new memory block on the heap (separately from the buffer) and deallocates the obsolete memory block inside the deserialized buffer.",
+    "Deallocation. As we have seen in the vector example above, higher-level code will at some point try to deallocate memory blocks by calling delete. These delete calls, however, would crash the memory allocator, due to the missing corresponding new call. To maintain the illusion, we intercept all calls to delete and filter those that fall into the memory range of the deserialized buffer. If the number of expected delete calls (determined during deserialization) matches the intercepted delete calls, we deallocate the whole buffer and remove the filter rule.",
+    "The disadvantage that memory is leaked if not all memory blocks are freed in a deserialized buffer can be solved for TeraAgent. First, the aura region is completely rebuilt in each iteration, which means that the previous aura information is completely destroyed. Second, for agent migrations and load balancing data, we rely on the periodic agent sorting mechanism in BioDynaMo. Agent sorting changes the memory location of agents to improve the cache hit rate. During this process all agents are copied to a new location and the old ones are deallocated. Figure 10 shows that the memory consumption does not increase by using the TeraAgent serialization mechanism.",
+    "Agent-based modeling is an iterative method. Figure 3 shows three successive iterations of the cell clustering simulation. We can observe that the cell positions change only gradually between iterations while the cell type and diameter do not change at all. We leverage this observation to reduce the amount of data that must be transferred between MPI ranks to update the aura region by using delta encoding. The implementation of delta encoding is built on top of the TeraAgent serialization mechanism (see Figure 4). Each sender and receiver pair stores the same reference. The sender calculates the difference between the message and the reference, compresses it and sends it to the receiver. On the receiving side, the process is reversed to restore the original message. The receiver uncompresses the buffer and restores the original message by inverting the difference operation using the received buffer and More precisely, the sender reorders the message at the agent pointer level (B). Agents which exist both in the message and the reference are moved to the same position that the agent has in the reference. Agents that exist in the reference and not in the message are indicated by an empty placeholder, a value that cannot occur at the same tree depth in the message. In the TeraAgent case, this is simply a null pointer. Lastly, agents that exist in the message and not in the reference are appended at the very end. Reordering agents does not affect the correctness of a TeraAgent simulation.",
+    "After the matching stage (B), the TeraAgent serialization mechanism (C) traverses the two conjoined trees, in the same way as described in Section 2.2.1. The only difference is that if a match is found in the reference, the difference between the two is written to the result buffer. Since the message is reordered at the sender, we do not need to send additional information about the agent order.",
+    "During deserialization (D), we use the data stored in the reference to restore the original message. Lastly, we defragment the message by removing any placeholders that were inserted during the matching stage (B). Note that defragmentation will not restore the original agent ordering as shown in (A). The defragmented message is then passed to higher-level code.",
+    "By using this mechanism, TeraAgent reduces the data movement bottleneck and increases the efficiency of distributed execution.",
+    "2.4.1 Partitioning Grid. One important data structure in the distributed simulation engine is the partitioning grid, which is responsible for the domain decomposition of the simulation space as shown in Figure 1. We use Sierra Toolkit (STK) [12], because it is (i) an established tool maintained as part of Trilinos [162], (ii) well integrated with the load balancing framework Zoltan2 [131], and (iii) has the ability to export the grid in exodus format [99], which our main visualization framework ParaView [2] can read. However, since STK is a generic mesh library, capable of much more than processing rectilinear grids, these functionality comes with a performance penalty in terms of compute and required memory. Furthermore, although STK uses Kokkos [44] for shared memory parallelism, we observe that if TeraAgent is executed in MPI hybrid mode (MPI/OpenMP), most threads are idle during balancing and mesh modification calls into STK. As an alternative, we also considered the parallel grid library [64], but experienced difficulties generating very large grid sizes.",
+    "To reduce the memory and compute footprint of STK's partitioning grid, we introduce a parameter to make the partitioning box length a multiple of the neighbor search grid (see Figure 1). The higher this factor is chosen the less memory and compute resources are needed for the space partitioning, but at the cost of increased granularity at which load balancing decisions can be made.",
+    "The TeraAgent IO mechanism (Section 2.2.1) requires that (de)serialization methods (also known as TeraAgent IO functions) are available for all types in the message. TeraAgent provides the necessary implementation for its internal classes, the standard template library (STL) classes, and important groups of types (e.g., polymorphic types, pointers, and plain arrays). Due to the design decision to opt for a very lightweight deserialization method, the implementation of the (de)serialization methods depends on its internal attributes (i.e., the concrete implementation), rather than the public interface. This design decision might increase the maintenance effort. However, the TeraAgent IO methods follow a regular structure and can be generated automatically in most of the cases. This is especially true for all user-defined classes in this paper. Although the (de)serialization methods are currently written by hand, they can easily be integrated into BioDynaMo's existing code generation stages. BioDynaMo uses code generation during compile time, and during runtime using the C++ just-in-time compiler cling [166].",
+    "Custom TeraAgent IO functions are necessary if classes contain pointer attributes, whose memory is not owned. An example could be an array-based stack implementation with an attribute that points to the current top of the stack. To this end, TeraAgent allows for custom implementations of the IO functions that will replace the automatically generated ones.",
+    "To intercept delete calls, we overwrite all global C++ delete operators and insert a call to the delete filter, which returns if the delete should be filtered out or executed. This design choice causes some challenges in combination with performance or correctness tools (e.g., valgrind) that use LD_PRELOAD to inject their own implementation of new and delete and prevent the TeraAgent ones from being executed. For valgrind, we solved this issue by patching its code.",
+    "For the majority of data transfers, we use non-blocking point to point communication (MPI_Isend, MPI_Irecv, and MPI_Probe). This choice allows for overlapping communication with computation to hide latency. For regular communication patterns that occur between neighbors, we issue speculative receive requests right after the previous transfer finished, to avoid delay through late receivers. If the neighbors of a rank change due to load balancing, obsolete speculative receives are cancelled.",
+    "Furthermore, we transmit large messages in smaller batches to reduce the memory needed for transmission buffers, compression, and serialization.",
+    "Although the distributed simulation engine has the capability to migrate agents to any other MPI rank (Section 2.1), we try to avoid a costly mass migration of agents during the initialization stage, by trying to create agents on the authoritative rank. This is straightforward for regular geometric shapes (e.g., agents created on a surface defined by a function), but we also address agent populations that are created using a uniform random number distribution within a specific space. Each rank determines the fraction of the given target space with its authoritative volume, and adjusts the number of agents for this space and the bounds accordingly, if the number of agents for each node is sufficiently high.",
+    "Balancing. Load balancing has two goals. First, partition the simulation space in a way that simulating one iteration takes the same amount of time on all ranks. Second, the partitioning should minimize the distributed overheads, e.g., the number of aura agents that must be exchanged.",
+    "TeraAgent provides two classes of load balancing methods to achieve these goals: global and diffusive.",
+    "The global balancing method is based on STK and Zoltan2. We provide their functionality for TeraAgent users and choose the recursive coordinate bisection (RCB) algorithm as default. We apply a weight field on the partitioning grid and set the weight of each partitioning box based on the number of agents contained and scale it by the runtime of the last iteration. Zoltan2 now partitions the space in a way that the sum of all owned partition boxes is distributed uniformly between all ranks. This approach might lead to a new partitioning that differs substantially from the previous one, causing mass migrations of agents to their new authoritative rank.",
+    "Therefore, we also implement a diffusive approach in which neighboring ranks exchange partition boxes. Ranks whose runtime exceed the local average, send boxes to neighbors that were faster than the local average.",
+    "This section describes the necessary modifications and improvements to the existing OpenMP parallelized BioDynaMo version to enable distributed execution.",
+    "Parallelization Modes. By building upon and extending the shared-memory capabilities, we provide two distributed execution modes: MPI hybrid (MPI/OpenMP), and MPI only. For the MPI hybrid mode, we launch one MPI rank for each NUMA domain on a compute node, while for MPI only we launch one rank for each CPU core. On today's modern hardware with constantly increasing CPU core counts, the MPI hybrid mode can reduce the number of ranks currently by almost two orders of magnitude. We therefore expect the MPI hybrid mode to be more efficient. The MPI only mode, on the other hand, provides benefits when interfacing with third party applications that are only parallelized using MPI. In the MPI hybrid mode, these applications, would leave all but one thread per rank idle.",
+    "Switching between parallelization modes does not require recompilation of TeraAgent.",
+    "Unique Agent Identifiers. BioDynaMo uses unique agent identifiers to address agents, since the actual memory location might change due to agent sorting. Agent sorting improves the performance by reordering agents in a way that agents that are close in 3D space are also close in memory (see [18]). The identifier is comprised of two fields: ⟨𝑖𝑛𝑑𝑒𝑥, 𝑟𝑒𝑢𝑠𝑒𝑑_𝑐𝑜𝑢𝑛𝑡𝑒𝑟 ⟩ and has the following invariants: At any point in time, there is only one (active) agent in the simulation with the same index. If an agent is removed from the simulation, this index will be reused, but to satisfy uniqueness the reuse_counter is incremented. This design allows the construction of a vector-based unordered map, where the first part of the identifier (the index) is used to index the vector. This map allows for lock-less additions and removals to distinct map elements.",
+    "However, this solution does not work without changes for distributed executions with agent migrations and aura updates, because the invariant that the 𝑖𝑛𝑑𝑒𝑥 of the identifiers are almost contiguous does not hold anymore. This would waste a considerable amount of memory in the vector-based unordered map.",
+    "Therefore, we rename the existing identifier to \"local identifier\" and introduce also a global identifier ⟨𝑟𝑎𝑛𝑘, 𝑐𝑜𝑢𝑛𝑡𝑒𝑟 ⟩. Rank is set to the rank where the agent was created, and \"counter\" is a strictly increasing number. The global identifier of an agent is constant, but the agent might have various different local identifiers during the whole simulation.",
+    "We implement this change in a minimally invasive way. The translation between local and global identifier happens only during serialization if the agent is transferred to another rank, or written to disk as part of a backup or checkpoint. Global identifiers are only generated on demand. If there are no backups or checkpoints and the agent stays on the same rank throughout the simulation, the agent will only have a local identifier.",
+    "Incremental Updates to the Neighbor Search Grid (NSG).. Breitwieser et al. [18] showed that their optimized uniform grid implementation performed best for the benchmarked simulations. Updates to the NSG required a complete rebuild, which was adequate so far. The distributed simulation engine, however, relies on the NSG not only to search for neighbors of an agent, but also to accurately determine the agents in a specific sub volume for agent migrations, aura updates, and load balancing. Rebuilding the complete NSG after each of these steps would be prohibitively expensive. Therefore, we adapted the implementation to allow for incremental changes, i.e., the addition, removal, and position update of single agents.",
+    "Modularity Improvements. Alongside high-performance, modularity is another key design aspect of TeraAgent. We have therefore made additional efforts in this direction during the development of TeraAgent and made three main changes. First, we introduce the VisualizationProvider interface to facilitate rendering of additional information besides agents and scalar/vector fields. We use an implementation of this interface to render the partitioning grid as can be seen in Figures 5. Second, we add the SimulationSpace interface to explicitly gather information about whole and local simulation space in one place. Third, we refactor the code and introduce the SpaceBoundaryCondition interface and refactor the implementations for \"open\", \"closed\", and \"toroidal\".",
+    "We use four simulations from [17,18] to evaluate the performance of the simulation engine: cell clustering, cell proliferation, and use cases in the domains of epidemiology, and oncology. We did not include the neuroscience use case, since it requires the ability to modify neighbors, which is currently not implemented yet and chose only one of the two cell clustering implementations. Table 1 in [18] shows that these simulations cover a broad spectrum of performance-related simulation characteristics.",
+    "All tests were executed in a Singularity container with an Ubuntu 22.04 based image. We used two systems to evaluate the distributed simulation engine. First, we used the Dutch national supercomputer Snellius (genoa partition) where each node has two AMD Genoa 9654 processors with 96 physical CPU cores each, 384 GB total memory per node, and Infiniband interconnect (200 Gbps within a rack, 100 Gbps outside the rack) [143]. Second, we use a two node system (System B) where each node has four Intel Xeon E7-8890 v3 CPUs processors each with 72 physical CPU core, 504 and 1024 GB main memory, and Gigabit Ethernet interconnect. We are therefore able to evaluate the performance with a commodity and high-end interconnect.",
+    "We use the term \"simulation runtime\" for the wall-clock time needed to simulate a number of iterations, which excludes the initialization step and tear down.",
+    "We will provide all code, the self-contained Singularity image, more detailed information on the hardware and software setup, and instructions to execute the benchmarks upon publication on Zenodo.",
+    "To ensure the correctness of the distributed simulation engine, we added 180 automated tests, and replicate the results from [17,18]. Figure 5 shows the quantitative comparison of the simulation compared to analytical (epidemiology use case) or experimental data (oncology use case), and a qualitative comparison for the cell sorting simulation. We can observe that TeraAgent produces the same results as BioDynaMo.",
+    "User-friendliness is a key design aspect, alongside our focus on performance. Regarding distributed computing, the model definitions for the four benchmark simulations are completely transparent to the user. Only the evaluations for the epidemiology and oncology use cases require additional code for distributed execution.",
+    "The changes in the epidemiology simulation, are limited to two lines of code. To create the graph shown in Figure 5, the engine has to count the number of agents for the three groups (susceptible, infected, and recovered). For distributed executions the rank local results have to be summed up to obtain the correct result. To do that, we provide the function SumOverAllRanks, which hides the MPI related function call. Furthermore, to save the generated plot to disk, we have to make sure that only one rank writes to the same file location. This goal can be achieved by telling the other ranks to exit the function before the save function is executed. We can achieve this with the preprocessor macro IF_NOT_RANK0_RETURN.",
+    "Also the tumor spheroid simulation requires extra code to generate the result plot (Figure 5). To accurately measure the tumor diameter in the simulation, we determine the volume of the convex hull, from which we can calculate the diameter by assuming a spherical shape. Breitwieser et al. [17] used libqhull [10], a library which is not distributed. Consequently, the simulation contains a couple lines of extra code to transmit agent positions to the master rank to perform the diameter calculation. For simulations with a larger number of agents, we use a more approximate method, by determining the enclosing bounding box. The approximate method is provided by TeraAgent and is the same whether executed distributed or not.",
+    "To summarize, for many simulations our users do not need to know about distributed computing to scale out a simulation to tens of thousands of CPU cores, as demonstrated in this paper. Researchers can start the development on a laptop and seamlessly transition to more powerful hardware as the model size and complexity grows.",
+    "We compare the performance of TeraAgent in MPI hybrid and MPI only mode with BioDynaMo (OpenMP). The benchmarks were executed on one node of System B with 10 7 agents and for all iterations of the simulations. Figure 6 shows that MPI hybrid mode performs close to the OpenMP version (slowdown between 4-9%) despite the extra steps required in distributed execution (Figure 1). The performance drops significantly for MPI only (slowdown between 26-34%), which uses 18× more MPI ranks and also does not use hyperthreading. For the epidemiology simulation, both distributed modes outperform (speedup of MPI hybrid: 2.8×) BioDynaMo. Breitwieser et al. [17] showed that the performance of the epidemiology simulation is sensitive to the memory layout. Although, BioDynaMo is NUMAaware, not all data structures (e.g., the neighbor search grid) are separated for each NUMA domain. We attribute the observed performance increase to reduced cross-CPU traffic of the distributed engine, which outweighs the overheads of aura updates and agent migrations.",
+    "The memory consumption increases approximately by 2× for the MPI hybrid mode due to the additional data structures. A large part of the memory required by the MPI only mode can be attributed to the use of cling [166]. In the current implementation, each rank has its own instance of cling, which requires several hundred MB of memory on its own.",
+    "This section demonstrates how the distributed simulation engine improves interoperability with third party software by enabling the interaction from the performance aspect. A well-suited example to demonstrate this improvement is ParaView, the main visualization provider of BioDynaMo. ParaView offers two visualization modes: export mode in which the simulation state is exported to file during the simulation and visualized afterwards, and the situ mode in which ParaView accesses the agent attributes directly in memory and generates the visualization while the simulation is running.",
+    "Although ParaView uses distributed and shared-memory parallelism, the scalability of using threads alone is very limited (see Figure 7). Therefore, BioDynaMo used mainly the export mode. TeraAgent, however, is now able to leverage the unused potential of in situ visualization.",
+    "On one System B node, we execute the cell clustering simulation with 10 million agents for 10 iterations (Figure 7). Each iteration renders one image. We evaluate three configurations: BioDynaMo using OpenMP (i.e., one rank and 144 threads), and two TeraAgent configurations: MPI only (i.e., 72 ranks with one thread each) and MPI hybrid (i.e., 4 ranks and 36 threads each).",
+    "We can clearly see that ParaView's in situ mode scales mainly with the number of ranks. TeraAgent's MPI only configuration visualizes 39× faster than BioDynaMo although it is only using half the number of threads. The memory consumption is dominated by ParaView and therefore shows a less pronounced difference between MPI hybrid and MPI only mode.",
+    "We analyze the scalability of the distributed engine under a strong and weak scaling benchmark. First, for the strong scaling analysis, we examine how much we can reduce the runtime of a simulation with a fixed problem size by adding more compute nodes. We chose the simulation size such that it fills one server and run it for 10 iterations with node counts ranging from one to 16 (3072 CPU cores) increased by powers of two. Figure 8 shows good scaling until 8 nodes (1536 CPU cores), which slows down due to load imbalances and the associated wait times for the slowest rank.",
+    "Second, we investigate the performance of the distributed engine by simulating larger models with proportionally increased compute resources. We use 10 8 agents per node and increase the node count from one to 128, which corresponds to 24'576 CPU cores. Figure 9 shows that after an initial increase in runtime, a plateau is reached.",
+    "To compare the performance of the distributed simulation engine with Biocellion [72], we replicate the benchmark from [18]. We execute the cell clustering simulation with 1.72 billion cells on System B. In contrast to [18], we use two nodes due to the additional required 𝑎𝑔𝑒𝑛𝑡 _𝑢𝑝𝑑𝑎𝑡𝑒𝑠 𝑠 ×𝐶𝑃𝑈 _𝑐𝑜𝑟𝑒 . We therefore conclude that TeraAgent is 8× more efficient than Biocellion.",
+    "To demonstrate that TeraAgent can substantially increase the stateof-the-art in terms of how many agents can be simulated, we perform two experiments.",
+    "First, we execute the cell clustering simulation with 102.4 billion cells (or agents) for 10 iterations. The simulation was executed on 24'576 CPU cores on 128 Snellius nodes using 40 TB of memory and taking on average 7.08 s per iteration.",
+    "Second, we increase the number of agents even further to 501.51 billion and use 438 nodes with 84096 CPU cores. This number of CPU cores represents the maximum we were permitted to use on the Dutch National Supercomputer. To fit this amount of agents into the available main memory, we reduce the engine's memory consumption by disabling all optimizations that require extra memory, use single-precision floating point numbers, reduce the agent's size by changing the base class, and reduce the memory consumption of the neighbor search grid. These adjustments reduce the memory consumption to 92 TB, but also increase the average runtime per iteration to 147 s.",
+    "This section compares the tailor-made TeraAgent serialization mechanism for the agent-based use case presented in Section 2.2 with the baseline ROOT IO (see Figure 10). We execute the benchmark simulations on four Snellius nodes in MPI hybrid mode with 10 8 agents for 10 iterations. Figure 10 shows that simulation runtime was reduced by up to 3.6×, while keeping the memory consumption constant. TeraAgent IO serializes the agents up to 296× faster (median 110×) and also significantly improves the deserialization performance: maximum observed speedup of 73× (median 37×). Figure 10d shows that the resulting message sizes are equivalent. The only outlier in cell proliferation is due to the small message size and does not impact the performance negatively.",
+    "To evaluate the performance improvements of LZ4 compression [32] and delta encoding, we execute all benchmark simulations with 10 8 agents on two System B and four Snellius nodes for 10 iterations. Figure 11 shows the comparison on Snellius with TeraAgent IO as baseline. The message size is reduced between 3.0-5.2× by LZ4 compression and by another 1.1-3.5× for adding the delta encoding scheme described in Section 2.3. This improvement speeds up the distribution operation, which subsumes aura updates and agent migrations, up to 11×. However, the significant speedups of delta encoding do not translate to the whole simulation. The reason is shown in Figure 11b (right). Delta encoding reduces the performance of agent operations (i.e., the main functionality of the model), caused by agent reordering. The memory consumption is increased slightly for delta encoding enabled by the data structures that holds the reference (median: 3%).",
+    "On Snellius, simulation runtime is reduced in three out of four simulations by using LZ4 compression (median improvement: 1.8%).",
+    "However, due to Snellius' low latency and high bandwidth interconnect, delta encoding does not lead to further runtime reductions, because the overheads outweigh the benefits.",
+    "Agent-Based Simulation Tools. To our knowledge, TeraAgent is the only simulation platform capable of simulating 501.51 billion agents. The largest reported agent populations in the literature is from Jon Parker [119], who simulated a specialized epidemiological model with up to 6 billion agents and Biocellion [72], a distributed tool in the tissue modeling domain, with 1.72 billion agents. Other distributed platforms exist [33-35, 100, 130], but have not shown simulations on this extreme scale.",
+    "Serialization. There is a wide range of serialization libraries. This paper compares the performance against ROOT IO [20], which according to Blomer [14] outperforms Protobuf [152], HDF5 [58], Parquet [149], and Avro [148]. MPI [106] also provides functionality to define derived data types, but targets use cases with regular patterns, for example, the last element of each row in a matrix. TeraAgent's agents are allocated on the heap with irregular offsets between them and, therefore, cannot use MPI's solution.",
+    "Delta Encoding. Delta encoding [66] is a widely used concept to minimize the amount of data that is stored or transferred, which we apply to aura updates of the agent-based workload (Section 2.3). Other applications include backups [21], file revision systems such as git [151], network protocols [69,102], cache and memory compression [85,120,121,168], and more [92,144]. We did not find explicit mention of this concept in the literature to accelerate the distributed execution of agent-based simulations.",
+    "This paper presents TeraAgent a distributed simulation engine that addresses the scaling limitations of the state-of-the-art agent based simulation platform, BioDynaMo. To do so, our distributed simulation engine, TeraAgent, 1) enables extreme-scale simulations with half a trillion agents, 2) reduces time-to-result by adding additional compute nodes, 3) improves interoperability with third-party tools in terms of performance, and 4) provides users with greater hardware flexibility. TeraAgent allows researchers to scale out their execution environment seamlessly from laptops and workstations to clouds and supercomputers. We demonstrate (Section 3.4) that such scale-out does not require any model code changes. These results clearly show the benefits of distributed computing capabilities. Researchers can leverage these performance improvements and gain new insights into complex systems by building models on an unprecedented scale that has not been possible before."
+  ],
+  "references": [
+    {
+      "id": 1,
+      "text": "Agent-Based Modelling to Simulate Realistic Self-Organizing Development of the Mammalian Cerebral Cortex\n\t\t\n\t\t\tUmarAbubacar\n\t\t\n\t\t\n\t\t\tRomanBauer\n\t\t\n\t\t\n\t\t\n\t\t\t2024. acccessed Aug 26, 2024\n\t\t\n\t\n\tusV1M4BgKEeEHNQxT3GDDR5uNeipNYt5/view"
+    },
+    {
+      "id": 2,
+      "text": "ParaView: An End-User Tool for Large-Data Visualization\n\t\t\n\t\t\tJamesAhrens\n\t\t\n\t\t\n\t\t\tBerkGeveci\n\t\t\n\t\t\n\t\t\tCharlesLaw\n\t\t\n\t\t10.1016/b978-012387582-2/50038-1\n\t\n\t\n\t\tVisualization Handbook\n\t\t\n\t\t\tElsevier\n\t\t\t2005"
+    },
+    {
+      "id": 3,
+      "text": "An agent-based modeling framework linking inflammation and cancer using evolutionary principles: Description of a generative hierarchy for the hallmarks of cancer and developing a bridge between mechanism and epidemiological data\n\t\t\n\t\t\tGaryAn\n\t\t\n\t\t\n\t\t\tSwatiKulkarni\n\t\t\n\t\t10.1016/j.mbs.2014.07.009\n\t\n\t\n\t\tMathematical Biosciences\n\t\tMathematical Biosciences\n\t\t0025-5564\n\t\t\n\t\t\t260\n\t\t\t\n\t\t\t2015. Feb. 2015\n\t\t\tElsevier BV"
+    },
+    {
+      "id": 4,
+      "text": "Modelling HIV/AIDS epidemiological complexity: A scoping review of Agent-Based Models and their application\n\t\t\n\t\t\tRodrigoVolmir Anderle\n\t\t\n\t\t\n\t\t\tRobsonBruniera De\n\t\t\n\t\t\n\t\t\tFelipeAlvesOliveira\n\t\t\n\t\t\n\t\t\tJamesRubio\n\t\t\n\t\t\n\t\t\tInesMacinko\n\t\t\n\t\t\n\t\t\tDavideDourado\n\t\t\n\t\t\n\t\t\tRasella\n\t\t\n\t\t10.1371/journal.pone.0297247Publisher\n\t\n\t\n\t\tPLOS ONE\n\t\t\n\t\t\t19\n\t\t\t2\n\t\t\t297247\n\t\t\t2024. Feb. 2024\n\t\t\tPublic Library of Science"
+    },
+    {
+      "id": 5,
+      "text": "An agent-based model of the spread of behavioural riskfactors for cardiovascular disease in city-scale populations\n\t\t\n\t\t\tJamesArchbold\n\t\t\n\t\t\n\t\t\tSophieClohessy\n\t\t\n\t\t\n\t\t\tDeshaniHerath\n\t\t\n\t\t\n\t\t\tNathanGriffiths\n\t\t\n\t\t\n\t\t\tOyinlolaOyebode\n\t\t\n\t\t10.1371/journal.pone.0303051Publisher\n\t\n\t\n\t\tPLOS ONE\n\t\t\n\t\t\t19\n\t\t\t5\n\t\t\t303051\n\t\t\t2024. May 2024\n\t\t\tPublic Library of Science"
+    },
+    {
+      "id": 6,
+      "text": "An agent-based model clarifies the importance of functional and developmental integration in shaping brain evolution\n\t\t\n\t\t\tAdrianShahar Avin\n\t\t\n\t\t\n\t\t\tStephenHCurrie\n\t\t\n\t\t\n\t\t\tMontgomery\n\t\t\n\t\t10.1186/s12915-021-01024-1\n\t\n\t\n\t\tBMC Biology\n\t\t\n\t\t\t19\n\t\t\t1\n\t\t\t97\n\t\t\t2021. May 2021"
+    },
+    {
+      "id": 7,
+      "text": "Agent-Based Modeling in Economics and Finance: Past, Present, and Future\n\t\t\n\t\t\tLRobert\n\t\t\n\t\t\n\t\t\tJ DoyneAxtell\n\t\t\n\t\t\n\t\t\tFarmer\n\t\t\n\t\t10.1257/jel.20221319\n\t\t\n\t\n\t\n\t\tJournal of Economic Literature\n\t\t\n\t\t\t2024. 2024"
+    },
+    {
+      "id": 8,
+      "text": "ParaView Catalyst\n\t\t\n\t\t\tUtkarshAyachit\n\t\t\n\t\t\n\t\t\tAndrewBauer\n\t\t\n\t\t\n\t\t\tBerkGeveci\n\t\t\n\t\t\n\t\t\tPatrickO'leary\n\t\t\n\t\t\n\t\t\tKennethMoreland\n\t\t\n\t\t\n\t\t\tNathanFabian\n\t\t\n\t\t\n\t\t\tJeffreyMauldin\n\t\t\n\t\t10.1145/2828612.2828624\n\t\n\t\n\t\tProceedings of the First Workshop on In Situ Infrastructures for Enabling Extreme-Scale Analysis and Visualization\n\t\tthe First Workshop on In Situ Infrastructures for Enabling Extreme-Scale Analysis and VisualizationNew York, NY, USA; Austin, TX, USA\n\t\t\n\t\t\tACM\n\t\t\t2015. 2015"
+    },
+    {
+      "id": 9,
+      "text": "Equal numbers of neuronal and nonneuronal cells make the human brain an isometrically scaled-up primate brain\n\t\t\n\t\t\tACFrederico\n\t\t\n\t\t\n\t\t\tAzevedo\n\t\t\n\t\t\n\t\t\tRBLudmila\n\t\t\n\t\t\n\t\t\tLeaTCarvalho\n\t\t\n\t\t\n\t\t\tGrinberg\n\t\t\n\t\t\n\t\t\tMarceloJosé\n\t\t\n\t\t\n\t\t\tRenataE LFarfel\n\t\t\n\t\t\n\t\t\tRenataE PFerretti\n\t\t\n\t\t\n\t\t\tWilsonLeite\n\t\t\n\t\t\n\t\t\tRobertoJacob Filho\n\t\t\n\t\t\n\t\t\tSuzanaLent\n\t\t\n\t\t\n\t\t\tHerculano-Houzel\n\t\t\n\t\t10.1002/cne.21974\n\t\n\t\n\t\tThe Journal of Comparative Neurology\n\t\t\n\t\t\t513\n\t\t\t5\n\t\t\t\n\t\t\t2009. April 2009"
+    },
+    {
+      "id": 10,
+      "text": "The quickhull algorithm for convex hulls\n\t\t\n\t\t\tC\n\t\t\n\t\t\n\t\t\tBradfordBarber\n\t\t\n\t\t\n\t\t\tDavidPDobkin\n\t\t\n\t\t\n\t\t\tHannuHuhdanpaa\n\t\t\n\t\t10.1145/235815.235821\n\t\n\t\n\t\tACM Trans. Math. Softw\n\t\t\n\t\t\t22\n\t\t\t4\n\t\t\t\n\t\t\t1996. dec 1996"
+    },
+    {
+      "id": 11,
+      "text": "Agent-based modeling of host–pathogen systems: The successes and challenges\n\t\t\n\t\t\tAmyLBauer\n\t\t\n\t\t\n\t\t\tCatherineA ABeauchemin\n\t\t\n\t\t\n\t\t\tAlanSPerelson\n\t\t\n\t\t10.1016/j.ins.2008.11.012\n\t\n\t\n\t\tInformation Sciences\n\t\tInformation Sciences\n\t\t0020-0255\n\t\t\n\t\t\t179\n\t\t\t10\n\t\t\t\n\t\t\t2009. April 2009\n\t\t\tElsevier BV"
+    },
+    {
+      "id": 12,
+      "text": "toolkit computational mesh conceptual model.\n\t\t\n\t\t\tDavidGBaur\n\t\t\n\t\t\n\t\t\tHaroldCarterEdwards\n\t\t\n\t\t\n\t\t\tWilliamKCochran\n\t\t\n\t\t\n\t\t\tAlanBWilliams\n\t\t\n\t\t\n\t\t\tGregoryDSjaardema\n\t\t\n\t\t10.2172/976950\n\t\t\n\t\n\t\n\t\tSierra toolkit computational mesh conceptual model\n\t\t\n\t\t\tOffice of Scientific and Technical Information (OSTI)\n\t\t\tMar 2010\n\t\t\n\t\n\tTechnical Report\n\tUnited States. 60 pages"
+    },
+    {
+      "id": 13,
+      "text": "Comparing methods of targeting obesity interventions in populations: An agent-based simulation\n\t\t\n\t\t\tRahmatollahBeheshti\n\t\t\n\t\t\n\t\t\tMehdiJalalpour\n\t\t\n\t\t\n\t\t\tThomasAGlass\n\t\t\n\t\t10.1016/j.ssmph.2017.01.006\n\t\n\t\n\t\tSSM - Population Health\n\t\tSSM - Population Health\n\t\t2352-8273\n\t\t\n\t\t\t3\n\t\t\t\n\t\t\t2017. Dec. 2017\n\t\t\tElsevier BV"
+    },
+    {
+      "id": 14,
+      "text": "A quantitative review of data formats for HEP analyses\n\t\t\n\t\t\tJBlomer\n\t\t\n\t\t10.1088/1742-6596/1085/3/032020Publisher\n\t\n\t\n\t\tJournal of Physics: Conference Series\n\t\t\n\t\t\t1085\n\t\t\t32020\n\t\t\t2018. Sept. 2018\n\t\t\tIOP Publishing"
+    },
+    {
+      "id": 15,
+      "text": "From Classical Models of Morphogenesis to Agent-Based Models of Pattern Formation\n\t\t\n\t\t\tEricBonabeau\n\t\t\n\t\t10.1162/artl.1997.3.3.191\n\t\n\t\n\t\tArtificial Life\n\t\tArtificial Life\n\t\t1064-5462\n\t\t1530-9185\n\t\t\n\t\t\t3\n\t\t\t3\n\t\t\t\n\t\t\t1997. July 1997\n\t\t\tMIT Press"
+    },
+    {
+      "id": 16,
+      "text": "Evolutionary computation in zoology and ecology\n\t\t\n\t\t\tBRandall\n\t\t\n\t\t\n\t\t\tBoone\n\t\t\n\t\t10.1093/cz/zox057\n\t\n\t\n\t\tCurrent Zoology\n\t\t\n\t\t\t63\n\t\t\t\n\t\t\t2017. Dec. 2017"
+    },
+    {
+      "id": 17,
+      "text": "BioDynaMo: a modular platform for high-performance agent-based simulation\n\t\t\n\t\t\tLukasBreitwieser\n\t\t\t0000-0003-2265-8615\n\t\t\n\t\t\n\t\t\tAhmadHesam\n\t\t\n\t\t\n\t\t\tJeanDe Montigny\n\t\t\n\t\t\n\t\t\tVasileiosVavourakis\n\t\t\n\t\t\n\t\t\tAlexandrosIosif\n\t\t\n\t\t\n\t\t\tJackJennings\n\t\t\n\t\t\n\t\t\tMarcusKaiser\n\t\t\n\t\t\n\t\t\tMarcoManca\n\t\t\t0000-0002-7869-2620\n\t\t\n\t\t\n\t\t\tAlbertoDi Meglio\n\t\t\n\t\t\n\t\t\tZaidAl-Ars\n\t\t\n\t\t\n\t\t\tFonsRademakers\n\t\t\n\t\t\n\t\t\tOnurMutlu\n\t\t\n\t\t\n\t\t\tRomanBauer\n\t\t\n\t\t10.1093/bioinformatics/btab649\n\t\n\t\n\t\tBioinformatics\n\t\t1367-4803\n\t\t1367-4811\n\t\t\n\t\t\t38\n\t\t\t2\n\t\t\t\n\t\t\t2021. 09 2021\n\t\t\tOxford University Press (OUP)"
+    },
+    {
+      "id": 18,
+      "text": "High-Performance and Scalable Agent-Based Simulation with BioDynaMo\n\t\t\n\t\t\tLukasBreitwieser\n\t\t\t0000-0003-2265-8615\n\t\t\n\t\t\n\t\t\tAhmadHesam\n\t\t\t0000-0001-7331-1000\n\t\t\n\t\t\n\t\t\tFonsRademakers\n\t\t\t0000-0002-3571-9635\n\t\t\n\t\t\n\t\t\tJuanGómezLuna\n\t\t\t0000-0002-6514-1571\n\t\t\n\t\t\n\t\t\tOnurMutlu\n\t\t\t0000-0002-0075-2312\n\t\t\n\t\t10.1145/3572848.3577480\n\t\tarXiv:2301.06984[cs.DC]\n\t\n\t\n\t\tProceedings of the 28th ACM SIGPLAN Annual Symposium on Principles and Practice of Parallel Programming\n\t\tthe 28th ACM SIGPLAN Annual Symposium on Principles and Practice of Parallel ProgrammingMontreal, QC, Canada; New York, NY, USA\n\t\t\n\t\t\tACM\n\t\t\t2023\n\t\t\t\n\t\t\n\t\n\tPPoPP '23)"
+    },
+    {
+      "id": 19,
+      "text": "RonBrookmeyer\n\t\t\n\t\t\n\t\t\tDavidBoren\n\t\t\n\t\t\n\t\t\tStefanDBaral\n\t\t\n\t\t\n\t\t\tLinda-GailBekker\n\t\t\n\t\t\n\t\t\tNancyPhaswana-Mafuya\n\t\t\n\t\t\n\t\t\tChrisBeyrer\n\t\t\n\t\t\n\t\t\tPatrickSSullivan\n\t\t\n\t\t10.1371/journal.pone.0112668Publisher\n\t\n\t\n\t\tCombination HIV Prevention among MSM in South Africa: Results from Agent-based Modeling\n\t\t\n\t\t\tPublic Library of Science\n\t\t\t2014. Nov. 2014\n\t\t\t9\n\t\t\t112668"
+    },
+    {
+      "id": 20,
+      "text": "ROOT — An object oriented data analysis framework\n\t\t\n\t\t\tReneBrun\n\t\t\n\t\t\n\t\t\tFonsRademakers\n\t\t\n\t\t10.1016/s0168-9002(97)00048-x\n\t\n\t\n\t\tNuclear Instruments and Methods in Physics Research Section A: Accelerators, Spectrometers, Detectors and Associated Equipment\n\t\tNuclear Instruments and Methods in Physics Research Section A: Accelerators, Spectrometers, Detectors and Associated Equipment\n\t\t0168-9002\n\t\t\n\t\t\t389\n\t\t\t1-2\n\t\t\t\n\t\t\t1997. April 1997\n\t\t\tElsevier BV"
+    },
+    {
+      "id": 21,
+      "text": "Efficient distributed backup with delta compression\n\t\t\n\t\t\tCRandal\n\t\t\n\t\t\n\t\t\tDarrellDeBurns\n\t\t\n\t\t\n\t\t\tLong\n\t\t\n\t\n\t\n\t\tProceedings of the fifth workshop on I/O in parallel and distributed systems\n\t\tthe fifth workshop on I/O in parallel and distributed systems\n\t\t\n\t\t\t1997"
+    },
+    {
+      "id": 22,
+      "text": "Provider dismissal policies and clustering of vaccine-hesitant families\n\t\t\n\t\t\tAlisonMButtenheim\n\t\t\n\t\t\n\t\t\tSarahTCherng\n\t\t\n\t\t\n\t\t\tDavidAAsch\n\t\t\n\t\t10.4161/hv.25635\n\t\t\n\t\n\t\n\t\tHuman Vaccines & Immunotherapeutics\n\t\tHuman Vaccines & Immunotherapeutics\n\t\t2164-5515\n\t\t2164-554X\n\t\t\n\t\t\t9\n\t\t\t8\n\t\t\t\n\t\t\t2013. Aug. 2013\n\t\t\tInforma UK Limited"
+    },
+    {
+      "id": 23,
+      "text": "An In Silico Agent-Based Model Demonstrates Reelin Function in Directing Lamination of Neurons during Cortical Development\n\t\t\n\t\t\tJamesRCaffrey\n\t\t\n\t\t\n\t\t\tBarryDHughes\n\t\t\n\t\t\n\t\t\tJoanneMBritto\n\t\t\n\t\t\n\t\t\tKerryALandman\n\t\t\n\t\t10.1371/journal.pone.0110415Publisher\n\t\n\t\n\t\tPLOS ONE\n\t\t\n\t\t\t9\n\t\t\t110415\n\t\t\t2014. Oct. 2014\n\t\t\tPublic Library of Science"
+    },
+    {
+      "id": 24,
+      "text": "A 3D multi-agent-based model for lumen morphogenesis: the role of the biophysical properties of the extracellular matrix\n\t\t\n\t\t\tDanielCamacho-Gómez\n\t\t\n\t\t\n\t\t\tJoséManuelGarcía-Aznar\n\t\t\t0000-0002-9864-7683\n\t\t\n\t\t\n\t\t\tMaríaJoséGómez-Benito\n\t\t\n\t\t10.1007/s00366-022-01654-1\n\t\n\t\n\t\tEngineering with Computers\n\t\tEngineering with Computers\n\t\t0177-0667\n\t\t1435-5663\n\t\t\n\t\t\t38\n\t\t\t5\n\t\t\t\n\t\t\t2022. Oct. 2022\n\t\t\tSpringer Science and Business Media LLC"
+    },
+    {
+      "id": 25,
+      "text": "A review of agent‐based modeling of climate‐energy policy\n\t\t\n\t\t\tJuanaCastro\n\t\t\n\t\t\n\t\t\tStefanDrews\n\t\t\n\t\t\n\t\t\tFilipposExadaktylos\n\t\t\n\t\t\n\t\t\tJoëlForamitti\n\t\t\n\t\t\n\t\t\tFranziskaKlein\n\t\t\n\t\t\n\t\t\tThéoKonc\n\t\t\n\t\t\n\t\t\tIvanSavin\n\t\t\n\t\t\n\t\t\tJeroenVan Den Bergh\n\t\t\n\t\t10.1002/wcc.647\n\t\t\n\t\n\t\n\t\tWIREs Climate Change\n\t\tWIREs Climate Change\n\t\t1757-7780\n\t\t1757-7799\n\t\t\n\t\t\t11\n\t\t\t4\n\t\t\t647\n\t\t\t2020. 2020\n\t\t\tWiley"
+    },
+    {
+      "id": 26,
+      "text": "An agent-based model to assess large-scale COVID-19 vaccination campaigns for the Italian territory: The case study of Lombardy region\n\t\t\n\t\t\tAndreaCattaneo\n\t\t\t0000-0002-6911-7042\n\t\t\n\t\t\n\t\t\tAndreaVitali\n\t\t\t0000-0001-9261-4357\n\t\t\n\t\t\n\t\t\tMirkoMazzoleni\n\t\t\t0000-0002-7116-135X\n\t\t\n\t\t\n\t\t\tFabioPrevidi\n\t\t\t0000-0002-3713-7727\n\t\t\n\t\t10.1016/j.cmpb.2022.107029\n\t\n\t\n\t\tComputer Methods and Programs in Biomedicine\n\t\tComputer Methods and Programs in Biomedicine\n\t\t0169-2607\n\t\t\n\t\t\t224\n\t\t\t107029\n\t\t\t2022. Sept. 2022\n\t\t\tElsevier BV"
+    },
+    {
+      "id": 27,
+      "text": "Agent-Based Modeling of the Immune System: NetLogo, a Promising Framework\n\t\t\n\t\t\tFerdinandoChiacchio\n\t\t\n\t\t\n\t\t\tMarzioPennisi\n\t\t\t0000-0003-0231-7653\n\t\t\n\t\t\n\t\t\tGiuliaRusso\n\t\t\n\t\t\n\t\t\tSantoMotta\n\t\t\t0000-0003-3533-2972\n\t\t\n\t\t\n\t\t\tFrancescoPappalardo\n\t\t\n\t\t10.1155/2014/907171\n\t\t\n\t\n\t\n\t\tBioMed Research International\n\t\tBioMed Research International\n\t\t2314-6133\n\t\t2314-6141\n\t\t\n\t\t\t2014\n\t\t\t\n\t\t\t2014. 2014\n\t\t\tWiley"
+    },
+    {
+      "id": 28,
+      "text": "Agent-Based Modelling of Radiation-Induced Lung Injuries\n\t\t\n\t\t\tNicolòCogno\n\t\t\n\t\t10.26083/tuprints-00026335\n\t\t\n\t\t\t2023\n\t\t\tDarmstadt\n\t\t\n\t\t\n\t\t\tTechnische Universität Darmstadt\n\t\t\n\t\n\tPh. D. Dissertation"
+    },
+    {
+      "id": 29,
+      "text": "A 3D Agent-Based Model of Lung Fibrosis\n\t\t\n\t\t\tNicolòCogno\n\t\t\n\t\t\n\t\t\tRomanBauer\n\t\t\n\t\t\n\t\t\tMarcoDurante\n\t\t\n\t\t10.3390/sym14010090Number:1Publisher\n\t\n\t\n\t\tSymmetry\n\t\t\n\t\t\t14\n\t\t\t90\n\t\t\t2022. Jan. 2022\n\t\t\tMultidisciplinary Digital Publishing Institute"
+    },
+    {
+      "id": 30,
+      "text": "An Agent-Based Model of Radiation-Induced Lung Fibrosis\n\t\t\n\t\t\tNicolòCogno\n\t\t\n\t\t\n\t\t\tRomanBauer\n\t\t\n\t\t\n\t\t\tMarcoDurante\n\t\t\n\t\t10.3390/ijms232213920Number:22Publisher\n\t\n\t\n\t\tInternational Journal of Molecular Sciences\n\t\t\n\t\t\t23\n\t\t\t13920\n\t\t\t2022. Jan. 2022\n\t\t\tMultidisciplinary Digital Publishing Institute"
+    },
+    {
+      "id": 31,
+      "text": "Mechanistic model of radiotherapy-induced lung fibrosis using coupled 3D agent-based and Monte Carlo simulations\n\t\t\n\t\t\tNicolòCogno\n\t\t\t0000-0003-4205-4640\n\t\t\n\t\t\n\t\t\tRomanBauer\n\t\t\n\t\t\n\t\t\tMarcoDurante\n\t\t\t0000-0002-4615-553X\n\t\t\n\t\t10.1038/s43856-024-00442-w\n\t\n\t\n\t\tCommunications Medicine\n\t\tCommun Med\n\t\t2730-664X\n\t\t\n\t\t\t4\n\t\t\t1\n\t\t\t16\n\t\t\t2024. 1 (09 Feb 2024\n\t\t\tSpringer Science and Business Media LLC"
+    },
+    {
+      "id": 32,
+      "text": "YannCollet\n\t\t\n\t\t\n\t\tLZ4 -Extremely fast compression\n\t\t\n\t\t\t2024. acccessed Aug 15, 2024"
+    },
+    {
+      "id": 33,
+      "text": "Parallel agent-based simulation with Repast for High Performance Computing\n\t\t\n\t\t\tNicholsonCollier\n\t\t\n\t\t\n\t\t\tMichaelNorth\n\t\t\n\t\t10.1177/0037549712462620Publisher\n\t\n\t\n\t\tSIMULATION\n\t\t\n\t\t\t89\n\t\t\t\n\t\t\t2013. Oct. 2013\n\t\t\tSAGE Publications Ltd STM"
+    },
+    {
+      "id": 34,
+      "text": "Toward the New Version of D-MASON: Efficiency, Effectiveness and Correctness in Parallel and Distributed Agent-Based Simulations\n\t\t\n\t\t\tGennaroCordasco\n\t\t\n\t\t\n\t\t\tCarmineSpagnuolo\n\t\t\n\t\t\n\t\t\tVittorioScarano\n\t\t\n\t\t10.1109/ipdpsw.2016.52\n\t\n\t\n\t\t2016 IEEE International Parallel and Distributed Processing Symposium Workshops (IPDPSW)\n\t\tNew York, NY, USA\n\t\t\n\t\t\tIEEE\n\t\t\t2016"
+    },
+    {
+      "id": 35,
+      "text": "Large-Scale Parallel Simulations of 3D Cell Colony Dynamics: The Cellular Environment\n\t\t\n\t\t\tMaciejCytowski\n\t\t\n\t\t\n\t\t\tZuzannaSzymanska\n\t\t\n\t\t10.1109/mcse.2015.66\n\t\n\t\n\t\tComputing in Science & Engineering\n\t\tComput. Sci. Eng.\n\t\t1521-9615\n\t\t\n\t\t\t17\n\t\t\t5\n\t\t\t\n\t\t\t2015. Sept. 2015\n\t\t\tInstitute of Electrical and Electronics Engineers (IEEE)"
+    },
+    {
+      "id": 36,
+      "text": "NetLogo agent-based models as tools for understanding the self-organization of cell fate, morphogenesis and collective migration of the zebrafish posterior Lateral Line primordium\n\t\t\n\t\t\tDamianDalle\n\t\t\n\t\t\n\t\t\tNogare\n\t\t\n\t\t\n\t\t\tAjayBChitnis\n\t\t\n\t\t10.1016/j.semcdb.2019.12.015\n\t\n\t\n\t\tSeminars in Cell & Developmental Biology\n\t\t\n\t\t\t100\n\t\t\t\n\t\t\t2020. April 2020"
+    },
+    {
+      "id": 37,
+      "text": "An in silico hybrid continuum-/agent-based procedure to modelling cancer development: Interrogating the interplay amongst glioma invasion, vascularity and necrosis\n\t\t\n\t\t\tJeanDe Montigny\n\t\t\n\t\t\n\t\t\tAlexandrosIosif\n\t\t\n\t\t\n\t\t\tLukasBreitwieser\n\t\t\n\t\t\n\t\t\tMarcoManca\n\t\t\n\t\t\n\t\t\tRomanBauer\n\t\t\n\t\t\n\t\t\tVasileiosVavourakis\n\t\t\n\t\t10.1016/j.ymeth.2020.01.006\n\t\n\t\n\t\tMethods\n\t\tMethods\n\t\t1046-2023\n\t\t\n\t\t\t185\n\t\t\t\n\t\t\t2021. 2021\n\t\t\tElsevier BV"
+    },
+    {
+      "id": 38,
+      "text": "Retinal selforganization: a model of retinal ganglion cells and starburst amacrine cells mosaic formation\n\t\t\n\t\t\tJeanDe Montigny\n\t\t\n\t\t\n\t\t\tEvelyneSernagor\n\t\t\n\t\t\n\t\t\tRomanBauer\n\t\t\n\t\t10.1098/rsob.220217Publisher\n\t\n\t\n\t\tOpen Biology\n\t\t\n\t\t\t13\n\t\t\t220217\n\t\t\t2023. April 2023\n\t\t\tRoyal Society"
+    },
+    {
+      "id": 39,
+      "text": "Efficient simulation of neural development using shared memory parallelization\n\t\t\n\t\t\tErikDe\n\t\t\n\t\t\n\t\t\tSchutter\n\t\t\n\t\t10.3389/fninf.2023.1212384\n\t\t\n\t\n\t\n\t\tFrontiers in Neuroinformatics\n\t\t\n\t\t\t17\n\t\t\t2023. 2023"
+    },
+    {
+      "id": 40,
+      "text": "Interrogating and Quantifying In Vitro Cancer Drug Pharmacodynamics via Agent-Based and Bayesian Monte Carlo Modelling\n\t\t\n\t\t\tMariosDemetriades\n\t\t\n\t\t\n\t\t\tMarkoZivanovic\n\t\t\n\t\t\n\t\t\tMyrianthiHadjicharalambous\n\t\t\n\t\t\n\t\t\tEleftheriosIoannou\n\t\t\n\t\t\n\t\t\tBiljanaLjujic\n\t\t\n\t\t\n\t\t\tKsenijaVucicevic\n\t\t\n\t\t\n\t\t\tZeljkoIvosevic\n\t\t\n\t\t\n\t\t\tAleksandarDagovic\n\t\t\n\t\t\n\t\t\tNevenaMilivojevic\n\t\t\n\t\t\n\t\t\tOdysseasKokkinos\n\t\t\n\t\t\n\t\t\tRomanBauer\n\t\t\n\t\t\n\t\t\tVasileiosVavourakis\n\t\t\n\t\t10.3390/pharmaceutics14040749Number:4Publisher\n\t\n\t\n\t\tPharmaceutics\n\t\t\n\t\t\t14\n\t\t\t4\n\t\t\t749\n\t\t\t2022. April 2022\n\t\t\tMultidisciplinary Digital Publishing Institute"
+    },
+    {
+      "id": 41,
+      "text": "Does Choice of Influenza Vaccine Type Change Disease Burden and Cost-Effectiveness in the United States? An Agent-Based Modeling Study\n\t\t\n\t\t\tJayVDepasse\n\t\t\n\t\t\n\t\t\tKennethJSmith\n\t\t\n\t\t\n\t\t\tJonathanMRaviotta\n\t\t\n\t\t\n\t\t\tEunhaShim\n\t\t\n\t\t\n\t\t\tMaryPatriciaNowalk\n\t\t\n\t\t\n\t\t\tRichardKZimmerman\n\t\t\n\t\t\n\t\t\tShawnTBrown\n\t\t\n\t\t10.1093/aje/kww229\n\t\n\t\n\t\tAmerican Journal of Epidemiology\n\t\t\n\t\t\t185\n\t\t\t\n\t\t\t2017. May 2017"
+    },
+    {
+      "id": 42,
+      "text": "Calibration of stochastic, agent-based neuron growth models with approximate Bayesian computation\n\t\t\n\t\t\tTobiasDuswald\n\t\t\n\t\t\n\t\t\tLukasBreitwieser\n\t\t\n\t\t\n\t\t\tThomasThorne\n\t\t\n\t\t\n\t\t\tBarbaraWohlmuth\n\t\t\n\t\t\n\t\t\tRomanBauer\n\t\t\n\t\t10.1007/s00285-024-02144-2arXiv:2405.13905[cs.CE]\n\t\n\t\n\t\tJournal of Mathematical Biology\n\t\t\n\t\t\t89\n\t\t\t50\n\t\t\t2024. 08 Oct 2024"
+    },
+    {
+      "id": 43,
+      "text": "Bridging scales: A hybrid model to simulate vascular tumor growth and treatment response\n\t\t\n\t\t\tTobiasDuswald\n\t\t\t0009-0000-6937-1676\n\t\t\n\t\t\n\t\t\tErnestoA B FLima\n\t\t\t0000-0002-9219-8784\n\t\t\n\t\t\n\t\t\tJTinsleyOden\n\t\t\n\t\t\n\t\t\tBarbaraWohlmuth\n\t\t\t0000-0001-6908-6015\n\t\t\n\t\t10.1016/j.cma.2023.116566\n\t\n\t\n\t\tComputer Methods in Applied Mechanics and Engineering\n\t\tComputer Methods in Applied Mechanics and Engineering\n\t\t0045-7825\n\t\t\n\t\t\t418\n\t\t\t116566\n\t\t\t2024. 2024\n\t\t\tElsevier BV"
+    },
+    {
+      "id": 44,
+      "text": "Kokkos: Enabling Performance Portability Across Manycore Architectures\n\t\t\n\t\t\tH\n\t\t\n\t\t\n\t\t\tCarterEdwards\n\t\t\n\t\t\n\t\t\tChristianRTrott\n\t\t\n\t\t10.1109/XSW.2013.7\n\t\n\t\n\t\t2013 Extreme Scaling Workshop\n\t\t\n\t\t\t2013. 2013"
+    },
+    {
+      "id": 45,
+      "text": "Growing artificial societies: social science from the bottom up\n\t\t\n\t\t\tMJoshua\n\t\t\n\t\t\n\t\t\tRobertEpstein\n\t\t\n\t\t\n\t\t\tAxtell\n\t\t\n\t\t\n\t\t\t1996\n\t\t\tBrookings Institution Press"
+    },
+    {
+      "id": 46,
+      "text": "The spatial spread of HIV in Malawi: An individual-based mathematical model\n\t\t\n\t\t\tJanneEstill\n\t\t\n\t\t\n\t\t\tWingstonNg'ambi\n\t\t\n\t\t\n\t\t\tLiudmilaRozanova\n\t\t\n\t\t\n\t\t\tOliviaKeiser\n\t\t\n\t\t10.1101/2020.12.23.20248757arXiv\n\t\t\n\t\n\t\n\t\tmedRxiv\n\t\t\n\t\t\t2021. 2021"
+    },
+    {
+      "id": 47,
+      "text": "The economy needs agent-based modelling\n\t\t\n\t\t\tJ\n\t\t\n\t\t\n\t\t\tDoyneFarmer\n\t\t\n\t\t\n\t\t\tDuncanFoley\n\t\t\n\t\t10.1038/460685a\n\t\n\t\n\t\tNature\n\t\t\n\t\t\t460\n\t\t\t\n\t\t\t2009. 01 Aug 2009"
+    },
+    {
+      "id": 48,
+      "text": "Agent-based modelling of reactive vaccination of workplaces and schools against COVID-19\n\t\t\n\t\t\tBenjaminFaucher\n\t\t\n\t\t\n\t\t\tRaniaAssab\n\t\t\n\t\t\n\t\t\tJonathanRoux\n\t\t\n\t\t\n\t\t\tDanielLevy-Bruhl\n\t\t\n\t\t\n\t\t\tCécileTran Kiem\n\t\t\n\t\t\n\t\t\tSimonCauchemez\n\t\t\n\t\t\n\t\t\tLauraZanetti\n\t\t\n\t\t\n\t\t\tVittoriaColizza\n\t\t\n\t\t\n\t\t\tPierre-YvesBoëlle\n\t\t\n\t\t\n\t\t\tChiaraPoletto\n\t\t\n\t\t10.1038/s41467-022-29015-yPublisher\n\t\n\t\n\t\tNature Communications\n\t\t\n\t\t\t13\n\t\t\t1\n\t\t\t1414\n\t\t\t2022. March 2022\n\t\t\tNature Publishing Group"
+    },
+    {
+      "id": 49,
+      "text": "The Basic Immune Simulator: An agent-based model to study the interactions between innate and adaptive immunity\n\t\t\n\t\t\tVirginiaAFolcik\n\t\t\n\t\t\n\t\t\tGaryCAn\n\t\t\n\t\t\n\t\t\tCharlesGOrosz\n\t\t\n\t\t10.1186/1742-4682-4-39\n\t\n\t\n\t\tTheoretical Biology and Medical Modelling\n\t\tTheor Biol Med Model\n\t\t1742-4682\n\t\t\n\t\t\t4\n\t\t\t1\n\t\t\t39\n\t\t\t2007. Sept. 2007\n\t\t\tSpringer Science and Business Media LLC"
+    },
+    {
+      "id": 50,
+      "text": "Using an agent-based model to analyze the dynamic communication network of the immune response\n\t\t\n\t\t\tVirginiaAFolcik\n\t\t\n\t\t\n\t\t\tGordonBroderick\n\t\t\n\t\t\n\t\t\tShunmugamMohan\n\t\t\n\t\t\n\t\t\tBrianBlock\n\t\t\n\t\t\n\t\t\tChirantanEkbote\n\t\t\n\t\t\n\t\t\tJohnDoolittle\n\t\t\n\t\t\n\t\t\tMarcKhoury\n\t\t\n\t\t\n\t\t\tLukeDavis\n\t\t\n\t\t\n\t\t\tClayBMarsh\n\t\t\n\t\t10.1186/1742-4682-8-1\n\t\n\t\n\t\tTheoretical Biology and Medical Modelling\n\t\tTheor Biol Med Model\n\t\t1742-4682\n\t\t\n\t\t\t8\n\t\t\t1\n\t\t\t1\n\t\t\t2011. Jan. 2011\n\t\t\tSpringer Science and Business Media LLC"
+    },
+    {
+      "id": 51,
+      "text": "Developing an Agent-Based Drug Model to Investigate the Synergistic Effects of Drug Combinations\n\t\t\n\t\t\tHongjieGao\n\t\t\n\t\t\n\t\t\tZuojingYin\n\t\t\n\t\t\n\t\t\tZhiweiCao\n\t\t\n\t\t\n\t\t\tLeZhang\n\t\t\n\t\t10.3390/molecules22122209Number:12Publisher\n\t\n\t\n\t\tMolecules\n\t\t\n\t\t\t22\n\t\t\t2209\n\t\t\t2017. Dec. 2017\n\t\t\tMultidisciplinary Digital Publishing Institute"
+    },
+    {
+      "id": 52,
+      "text": "Validating agent-based marketing models through conjoint analysis\n\t\t\n\t\t\tRosannaGarcia\n\t\t\n\t\t\n\t\t\tPaulRummel\n\t\t\n\t\t\n\t\t\tJohnHauser\n\t\t\n\t\t10.1016/j.jbusres.2007.02.007\n\t\n\t\n\t\tJournal of Business Research\n\t\tJournal of Business Research\n\t\t0148-2963\n\t\t\n\t\t\t60\n\t\t\t8\n\t\t\t\n\t\t\t2007. Aug. 2007\n\t\t\tElsevier BV"
+    },
+    {
+      "id": 53,
+      "text": "Interrogating an <i>in silico</i> model to determine helium plasma jet and chemotherapy efficacy against B16F10 melanoma cells\n\t\t\n\t\t\tKGazeli\n\t\t\t0000-0002-5479-0373\n\t\t\n\t\t\n\t\t\tMHadjicharalambous\n\t\t\t0000-0003-1212-5882\n\t\t\n\t\t\n\t\t\tEleftheriosIoannou\n\t\t\t0000-0002-9408-5089\n\t\t\n\t\t\n\t\t\tOGazeli\n\t\t\t0000-0003-0352-3213\n\t\t\n\t\t\n\t\t\tCLazarou\n\t\t\t0000-0001-7143-3426\n\t\t\n\t\t\n\t\t\tCAnastassiou\n\t\t\t0000-0002-0080-9673\n\t\t\n\t\t\n\t\t\tPSvarnas\n\t\t\t0000-0002-2818-744X\n\t\t\n\t\t\n\t\t\tVVavourakis\n\t\t\t0000-0002-4102-2084\n\t\t\n\t\t\n\t\t\tGEGeorghiou\n\t\t\t0000-0002-5872-5851\n\t\t\n\t\t10.1063/5.0077694\n\t\n\t\n\t\tApplied Physics Letters\n\t\t0003-6951\n\t\t1077-3118\n\t\t\n\t\t\t120\n\t\t\t5\n\t\t\t54101\n\t\t\t2022. Jan. 2022\n\t\t\tAIP Publishing"
+    },
+    {
+      "id": 54,
+      "text": "Using Agent-Based Models to Develop Public Policy about Food Behaviours: Future Directions and Recommendations\n\t\t\n\t\t\tPhilippeJGiabbanelli\n\t\t\t0000-0001-6816-355X\n\t\t\n\t\t\n\t\t\tRikCrutzen\n\t\t\n\t\t10.1155/2017/5742629\n\t\t\n\t\n\t\n\t\tComputational and Mathematical Methods in Medicine\n\t\tComputational and Mathematical Methods in Medicine\n\t\t1748-670X\n\t\t1748-6718\n\t\t\n\t\t\t2017\n\t\t\t\n\t\t\t2017. 2017\n\t\t\tWiley"
+    },
+    {
+      "id": 55,
+      "text": "The application of modeling and simulation to public health: Assessing the quality of Agent-Based Models for obesity\n\t\t\n\t\t\tPhilippeJGiabbanelli\n\t\t\t0000-0001-6816-355X\n\t\t\n\t\t\n\t\t\tBooneTison\n\t\t\t0000-0002-1623-742X\n\t\t\n\t\t\n\t\t\tJamesKeith\n\t\t\n\t\t10.1016/j.simpat.2020.102268\n\t\n\t\n\t\tSimulation Modelling Practice and Theory\n\t\tSimulation Modelling Practice and Theory\n\t\t1569-190X\n\t\t\n\t\t\t108\n\t\t\t102268\n\t\t\t2021. April 2021\n\t\t\tElsevier BV"
+    },
+    {
+      "id": 56,
+      "text": "Agent-based modeling of morphogenetic systems: Advantages and challenges\n\t\t\n\t\t\tChadMGlen\n\t\t\n\t\t\n\t\t\tMelissaLKemp\n\t\t\n\t\t\n\t\t\tEberhardOVoit\n\t\t\n\t\t10.1371/journal.pcbi.1006577Publisher\n\t\n\t\n\t\tPLOS Computational Biology\n\t\t\n\t\t\t15\n\t\t\t3\n\t\t\t1006577\n\t\t\t2019. March 2019\n\t\t\tPublic Library of Science"
+    },
+    {
+      "id": 57,
+      "text": "State of the Art in Agent-Based Modeling of Urban Crime: An Overview\n\t\t\n\t\t\tElizabethRGroff\n\t\t\n\t\t\n\t\t\tShaneDJohnson\n\t\t\n\t\t\n\t\t\tAmyThornton\n\t\t\n\t\t10.1007/s10940-018-9376-y\n\t\n\t\n\t\tJournal of Quantitative Criminology\n\t\tJ Quant Criminol\n\t\t0748-4518\n\t\t1573-7799\n\t\t\n\t\t\t35\n\t\t\t1\n\t\t\t\n\t\t\t2019. March 2019\n\t\t\tSpringer Science and Business Media LLC"
+    },
+    {
+      "id": 58,
+      "text": "patch 1\n\t\t\n\t\t\tHdfThe\n\t\t\n\t\t\n\t\t\tGroup\n\t\t\n\t\t10.1088/1742-6596/1085/3/032020\n\t\t1.10/hdf5-1.10.0-patch1/ [software] version 1.10.0\n\t\t\n\t\t\n\t\t\t2017"
+    },
+    {
+      "id": 59,
+      "text": "Epidemic Spreading in Urban Areas Using Agent-Based Transportation Models\n\t\t\n\t\t\tJürgenHackl\n\t\t\n\t\t\n\t\t\tThibautDubernet\n\t\t\n\t\t10.3390/fi11040092Number:4Publisher\n\t\n\t\n\t\tFuture Internet\n\t\t\n\t\t\t11\n\t\t\t92\n\t\t\t2019. April 2019\n\t\t\tMultidisciplinary Digital Publishing Institute"
+    },
+    {
+      "id": 60,
+      "text": "The double-edged sword role of fibroblasts in the interaction with cancer cells; an agent-based modeling approach\n\t\t\n\t\t\tZarifehHeidary\n\t\t\n\t\t\n\t\t\tJafarGhaisari\n\t\t\n\t\t\n\t\t\tShivaMoein\n\t\t\n\t\t\n\t\t\tShaghayeghHaghjooy\n\t\t\n\t\t\n\t\t\tJavanmard\n\t\t\n\t\t10.1371/journal.pone.0232965Publisher\n\t\n\t\n\t\tPLOS ONE\n\t\t\n\t\t\t15\n\t\t\t232965\n\t\t\t2020. May 2020\n\t\t\tPublic Library of Science"
+    },
+    {
+      "id": 61,
+      "text": "Future Developments in Geographical Agent‐Based Models: Challenges and Opportunities\n\t\t\n\t\t\tAlisonHeppenstall\n\t\t\t0000-0002-0663-3437\n\t\t\n\t\t\n\t\t\tAndrewCrooks\n\t\t\n\t\t\n\t\t\tNickMalleson\n\t\t\n\t\t\n\t\t\tEdManley\n\t\t\n\t\t\n\t\t\tJiaqiGe\n\t\t\n\t\t\n\t\t\tMichaelBatty\n\t\t\n\t\t10.1111/gean.12267\n\t\t\n\t\n\t\n\t\tGeographical Analysis\n\t\tGeographical Analysis\n\t\t0016-7363\n\t\t1538-4632\n\t\t\n\t\t\t53\n\t\t\t1\n\t\t\t\n\t\t\t2021. 2021\n\t\t\tWiley"
+    },
+    {
+      "id": 62,
+      "text": "Country-Wide Agent-Based Epidemiological Modeling Using 17 Million Individual-Level Microdata\n\t\t\n\t\t\tAhmadHesam\n\t\t\t0000-0001-7331-1000\n\t\t\n\t\t\n\t\t\tFrankPPijpers\n\t\t\n\t\t\n\t\t\tLukasBreitwieser\n\t\t\n\t\t\n\t\t\tPeterHofstee\n\t\t\n\t\t\n\t\t\tZaidAl-Ars\n\t\t\n\t\t10.1101/2024.05.27.24307982\n\t\n\t\n\t\tmedRxiv\n\t\t\n\t\t\t2024. 2024\n\t\t\tCold Spring Harbor Laboratory"
+    },
+    {
+      "id": 63,
+      "text": "Facing the COVID-19 epidemic in NYC: a stochastic agent-based model of various intervention strategies\n\t\t\n\t\t\tNicolasHoertel\n\t\t\n\t\t\n\t\t\tMartinBlachier\n\t\t\n\t\t\n\t\t\tCarlosBlanco\n\t\t\n\t\t\n\t\t\tMarkOlfson\n\t\t\n\t\t\n\t\t\tMarcMassetti\n\t\t\n\t\t\n\t\t\tFrédéricLimosin\n\t\t\n\t\t\n\t\t\tHenriLeleu\n\t\t\n\t\t10.1101/2020.04.23.20076885Pages:2020.04.23.20076885\n\t\t\n\t\t\t2020"
+    },
+    {
+      "id": 64,
+      "text": "Parallel grid library for rapid and flexible simulation development\n\t\t\n\t\t\tIHonkonen\n\t\t\n\t\t\n\t\t\tSVon Alfthan\n\t\t\n\t\t\n\t\t\tASandroos\n\t\t\n\t\t\n\t\t\tPJanhunen\n\t\t\n\t\t\n\t\t\tMPalmroth\n\t\t\n\t\t10.1016/j.cpc.2012.12.017\n\t\n\t\n\t\tComputer Physics Communications\n\t\tComputer Physics Communications\n\t\t0010-4655\n\t\t\n\t\t\t184\n\t\t\t4\n\t\t\t\n\t\t\t2013. April 2013\n\t\t\tElsevier BV"
+    },
+    {
+      "id": 65,
+      "text": "Representation of decision-making in European agricultural agent-based models\n\t\t\n\t\t\tRobertHuber\n\t\t\t0000-0003-4545-456X\n\t\t\n\t\t\n\t\t\tMarthaBakker\n\t\t\n\t\t\n\t\t\tAlfonsBalmann\n\t\t\n\t\t\n\t\t\tThomasBerger\n\t\t\t0000-0003-3316-9614\n\t\t\n\t\t\n\t\t\tMikeBithell\n\t\t\n\t\t\n\t\t\tCalumBrown\n\t\t\t0000-0001-9331-1008\n\t\t\n\t\t\n\t\t\tAdrienneGrêt-Regamey\n\t\t\n\t\t\n\t\t\tHangXiong\n\t\t\n\t\t\n\t\t\tQuangBaoLe\n\t\t\t0000-0001-8514-1088\n\t\t\n\t\t\n\t\t\tGabrieleMack\n\t\t\n\t\t\n\t\t\tPatrickMeyfroidt\n\t\t\t0000-0002-1047-9794\n\t\t\n\t\t\n\t\t\tJamesMillington\n\t\t\n\t\t\n\t\t\tBirgitMüller\n\t\t\t0000-0001-8780-4420\n\t\t\n\t\t\n\t\t\tJGarethPolhill\n\t\t\n\t\t\n\t\t\tZhanliSun\n\t\t\t0000-0001-6204-4533\n\t\t\n\t\t\n\t\t\tRomanSeidl\n\t\t\t0000-0002-6658-8789\n\t\t\n\t\t\n\t\t\tChristianTroost\n\t\t\n\t\t\n\t\t\tRobertFinger\n\t\t\n\t\t10.1016/j.agsy.2018.09.007\n\t\n\t\n\t\tAgricultural Systems\n\t\tAgricultural Systems\n\t\t0308-521X\n\t\t\n\t\t\t167\n\t\t\t\n\t\t\t2018. Nov. 2018\n\t\t\tElsevier BV"
+    },
+    {
+      "id": 66,
+      "text": "MURRAY HILL LABORATORY OF BELL TELEPHONE LABORATORIES\n\t\t\n\t\t\tJ WHunt\n\t\t\n\t\t\n\t\t\tM DMcilroy\n\t\t\n\t\t10.1038/151674a0\n\t\n\t\n\t\tNature\n\t\tNature\n\t\t0028-0836\n\t\t1476-4687\n\t\t\n\t\t\t151\n\t\t\t3841\n\t\t\t\n\t\t\t1976\n\t\t\tSpringer Science and Business Media LLC"
+    },
+    {
+      "id": 67,
+      "text": "A Taxonomy for Agent-Based Models in Human Infectious Disease Epidemiology\n\t\t\n\t\t\tElizabethHunter\n\t\t\n\t\t\n\t\t\tBrianMac Namee\n\t\t\n\t\t\n\t\t\tJohnDKelleher\n\t\t\n\t\t10.18564/jasss.3414\n\t\n\t\n\t\tJournal of Artificial Societies and Social Simulation\n\t\tJASSS\n\t\t1460-7425\n\t\t\n\t\t\t20\n\t\t\t3\n\t\t\t2\n\t\t\t2017. 2017\n\t\t\tJournal of Artificial Societies and Social Simulation"
+    },
+    {
+      "id": 68,
+      "text": "Swarm-Based Simulations for Immunobiology\n\t\t\n\t\t\tChristianJacob\n\t\t\n\t\t\n\t\t\tVladimirSarpe\n\t\t\n\t\t\n\t\t\tCareyGingras\n\t\t\n\t\t\n\t\t\tRolandoPajonFeyt\n\t\t\n\t\t10.1007/978-3-642-19621-8_3\n\t\n\t\n\t\tIntelligent Systems Reference Library\n\t\t\n\t\t\tSamuliNiiranen\n\t\t\n\t\t\n\t\t\tAndreRibeiro\n\t\t\n\t\tBerlin, Heidelberg\n\t\t\n\t\t\tSpringer Berlin Heidelberg\n\t\t\t2011"
+    },
+    {
+      "id": 69,
+      "text": "Compressing TCP/IP Headers for Low-Speed Serial Links\n\t\t\n\t\t\tVJacobson\n\t\t\n\t\t10.17487/rfc1144\n\t\t\n\t\t\t1990\n\t\t\tRFC Editor\n\t\t\tUSA"
+    },
+    {
+      "id": 70,
+      "text": "Computational Modelling Of Slow Freezing Using The Biodynamo Software Package Cryodynamo\n\t\t\n\t\t\tJackJennings\n\t\t\n\t\t\n\t\t\tRomanBauer\n\t\t\n\t\t\n\t\t\tLukasBreitwieser\n\t\t\n\t\t10.1016/j.cryobiol.2019.10.175\n\t\n\t\n\t\tCryobiology\n\t\tCryobiology\n\t\t0011-2240\n\t\t\n\t\t\t91\n\t\t\t\n\t\t\t2019. 2019\n\t\t\tElsevier BV"
+    },
+    {
+      "id": 71,
+      "text": "Computational modelling and optimisation of slow cooling profiles for the cryopreservation of cells in suspension\n\t\t\n\t\t\tJackLJennings\n\t\t\n\t\t\n\t\t\tSanjaBojic\n\t\t\n\t\t\n\t\t\tLukasBreitweiser\n\t\t\n\t\t\n\t\t\tAlexSharp\n\t\t\n\t\t\n\t\t\tRomanBauer\n\t\t\n\t\t10.1016/j.cryobiol.2022.11.068\n\t\n\t\n\t\tCryobiology\n\t\tCryobiology\n\t\t0011-2240\n\t\t\n\t\t\t109\n\t\t\t\n\t\t\t2022. Dec. 2022\n\t\t\tElsevier BV"
+    },
+    {
+      "id": 72,
+      "text": "<i>Biocellion</i> : accelerating computer simulation of multicellular biological system models\n\t\t\n\t\t\tSeunghwaKang\n\t\t\n\t\t\n\t\t\tSimonKahan\n\t\t\n\t\t\n\t\t\tJasonMcdermott\n\t\t\n\t\t\n\t\t\tNicholasFlann\n\t\t\n\t\t\n\t\t\tIlyaShmulevich\n\t\t\n\t\t10.1093/bioinformatics/btu498\n\t\n\t\n\t\tBioinformatics\n\t\t1367-4803\n\t\t1367-4811\n\t\t\n\t\t\t30\n\t\t\t21\n\t\t\t\n\t\t\t2014. Nov. 2014\n\t\t\tOxford University Press (OUP)"
+    },
+    {
+      "id": 73,
+      "text": "Effect of individual protective behaviors on influenza transmission: an agent-based model\n\t\t\n\t\t\tElnazKarimi\n\t\t\n\t\t\n\t\t\tKetraSchmitt\n\t\t\n\t\t\n\t\t\tAliAkgunduz\n\t\t\n\t\t10.1007/s10729-014-9310-2\n\t\n\t\n\t\tHealth Care Management Science\n\t\tHealth Care Manag Sci\n\t\t1386-9620\n\t\t1572-9389\n\t\t\n\t\t\t18\n\t\t\t3\n\t\t\t\n\t\t\t2015. Sept. 2015\n\t\t\tSpringer Science and Business Media LLC"
+    },
+    {
+      "id": 74,
+      "text": "Covasim: An agent-based model of COVID-19 dynamics and interventions\n\t\t\n\t\t\tCliffCKerr\n\t\t\n\t\t\n\t\t\tRobynMStuart\n\t\t\n\t\t\n\t\t\tDinaMistry\n\t\t\n\t\t\n\t\t\tRomeshGAbeysuriya\n\t\t\n\t\t\n\t\t\tKatherineRosenfeld\n\t\t\n\t\t\n\t\t\tGregoryRHart\n\t\t\n\t\t\n\t\t\tRafaelCNúñez\n\t\t\n\t\t\n\t\t\tJamieACohen\n\t\t\n\t\t\n\t\t\tPrashanthSelvaraj\n\t\t\n\t\t\n\t\t\tBrittanyHagedorn\n\t\t\n\t\t\n\t\t\tLaurenGeorge\n\t\t\n\t\t\n\t\t\tMichałJastrzębski\n\t\t\n\t\t\n\t\t\tAmandaSIzzo\n\t\t\n\t\t\n\t\t\tGreerFowler\n\t\t\n\t\t\n\t\t\tAnnaPalmer\n\t\t\n\t\t\n\t\t\tDominicDelport\n\t\t\n\t\t\n\t\t\tNickScott\n\t\t\n\t\t\n\t\t\tSherrieLKelly\n\t\t\n\t\t\n\t\t\tCarolineSBennette\n\t\t\n\t\t\n\t\t\tBradleyGWagner\n\t\t\n\t\t\n\t\t\tStewartTChang\n\t\t\n\t\t\n\t\t\tAssafPOron\n\t\t\n\t\t\n\t\t\tEdwardAWenger\n\t\t\n\t\t\n\t\t\tJasminaPanovska-Griffiths\n\t\t\n\t\t\n\t\t\tMichaelFamulare\n\t\t\n\t\t\n\t\t\tDanielJKlein\n\t\t\n\t\t10.1371/journal.pcbi.1009149Publisher\n\t\n\t\n\t\tPLOS Computational Biology\n\t\t\n\t\t\t17\n\t\t\t7\n\t\t\t1009149\n\t\t\t2021. July 2021\n\t\t\tPublic Library of Science"
+    },
+    {
+      "id": 75,
+      "text": "An Agent-Based Model of Healthy Eating with Applications to Hypertension\n\t\t\n\t\t\tAminKhademi\n\t\t\n\t\t\n\t\t\tDonglanZhang\n\t\t\n\t\t\n\t\t\tPhilippeJGiabbanelli\n\t\t\n\t\t\n\t\t\tShirleyTimmons\n\t\t\n\t\t\n\t\t\tChengqianLuo\n\t\t\n\t\t\n\t\t\tLuShi\n\t\t\n\t\t10.1007/978-3-319-77911-9_3\n\t\n\t\n\t\tSmart Innovation, Systems and Technologies\n\t\t\n\t\t\tPhilippeJGiabbanelli\n\t\t\n\t\t\n\t\t\tVijayKMago\n\t\t\n\t\t\n\t\t\tElpinikiIPapageorgiou\n\t\t\n\t\tCham\n\t\t\n\t\t\tSpringer International Publishing\n\t\t\t2018"
+    },
+    {
+      "id": 76,
+      "text": "Agent Based Models of Polymicrobial Biofilms and the Microbiome-A Review\n\t\t\n\t\t\tSherliKoshy-Chenthittayil\n\t\t\n\t\t\n\t\t\tLindaArchambault\n\t\t\n\t\t\n\t\t\tDhananjaiSenthilkumar\n\t\t\n\t\t\n\t\t\tReinhardLaubenbacher\n\t\t\n\t\t\n\t\t\tPedroMendes\n\t\t\n\t\t\n\t\t\tAnnaDongari-Bagtzoglou\n\t\t\n\t\t10.3390/microorganisms9020417Number:2Publisher\n\t\n\t\n\t\tMicroorganisms\n\t\t\n\t\t\t9\n\t\t\t417\n\t\t\t2021. Feb. 2021\n\t\t\tMultidisciplinary Digital Publishing Institute"
+    },
+    {
+      "id": 77,
+      "text": "A multi-scale agent-based model of infectious disease transmission to assess the impact of vaccination and non-pharmaceutical interventions: The COVID-19 case\n\t\t\n\t\t\tLuyaoKou\n\t\t\n\t\t\n\t\t\tXinzhiWang\n\t\t\n\t\t\n\t\t\tYangLi\n\t\t\n\t\t\n\t\t\tXiaojingGuo\n\t\t\n\t\t\n\t\t\tHuiZhang\n\t\t\n\t\t10.1016/j.jnlssr.2021.08.005\n\t\n\t\n\t\tJournal of Safety Science and Resilience\n\t\tJournal of Safety Science and Resilience\n\t\t2666-4496\n\t\t\n\t\t\t2\n\t\t\t4\n\t\t\t\n\t\t\t2021. Dec. 2021\n\t\t\tElsevier BV"
+    },
+    {
+      "id": 78,
+      "text": "OpenLB—Open source lattice Boltzmann code\n\t\t\n\t\t\tMathiasJKrause\n\t\t\t0000-0003-1026-6462\n\t\t\n\t\t\n\t\t\tAdrianKummerländer\n\t\t\n\t\t\n\t\t\tSamuelJAvis\n\t\t\t0000-0001-9637-9489\n\t\t\n\t\t\n\t\t\tHalimKusumaatmaja\n\t\t\n\t\t\n\t\t\tDavideDapelo\n\t\t\n\t\t\n\t\t\tFabianKlemens\n\t\t\n\t\t\n\t\t\tMaximilianGaedtke\n\t\t\n\t\t\n\t\t\tNicolasHafen\n\t\t\n\t\t\n\t\t\tAlbertMink\n\t\t\n\t\t\n\t\t\tRobinTrunk\n\t\t\n\t\t\n\t\t\tJanEMarquardt\n\t\t\n\t\t\n\t\t\tMarie-LuiseMaier\n\t\t\n\t\t\n\t\t\tMarcHaussmann\n\t\t\n\t\t\n\t\t\tStephanSimonis\n\t\t\t0000-0001-8555-4245\n\t\t\n\t\t10.1016/j.camwa.2020.04.033\n\t\n\t\n\t\tComputers & Mathematics with Applications\n\t\tComputers & Mathematics with Applications\n\t\t0898-1221\n\t\t\n\t\t\t81\n\t\t\t\n\t\t\t2021. Jan. 2021\n\t\t\tElsevier BV"
+    },
+    {
+      "id": 79,
+      "text": "Individual-based modelling of biofilms\n\t\t\n\t\t\tJan-UlrichKreft\n\t\t\n\t\t\n\t\t\tCristianPicioreanu\n\t\t\n\t\t\n\t\t\tJulianW TWimpenny\n\t\t\n\t\t\n\t\t\tMarkC MVan Loosdrecht\n\t\t\n\t\t10.1099/00221287-147-11-2897Publisher\n\t\n\t\n\t\tMicrobiology\n\t\t\n\t\t\t147\n\t\t\t\n\t\t\t2001. 2001\n\t\t\tMicrobiology Society"
+    },
+    {
+      "id": 80,
+      "text": "Policies to Reduce Influenza in the Workplace: Impact Assessments Using an Agent-Based Model\n\t\t\n\t\t\tSupriyaKumar\n\t\t\n\t\t\n\t\t\tJohnJGrefenstette\n\t\t\n\t\t\n\t\t\tDavidGalloway\n\t\t\n\t\t\n\t\t\tStevenMAlbert\n\t\t\n\t\t\n\t\t\tDonaldSBurke\n\t\t\n\t\t10.2105/AJPH.2013.301269Publisher\n\t\n\t\n\t\tAmerican Journal of Public Health\n\t\t\n\t\t\t103\n\t\t\t\n\t\t\t2013. Aug. 2013\n\t\t\tAmerican Public Health Association"
+    },
+    {
+      "id": 81,
+      "text": "Fitting and validation of an agent-based model for COVID-19 case forecasting in workplaces and universities\n\t\t\n\t\t\tNiranjanVignesh Kumaresan\n\t\t\n\t\t\n\t\t\tSarahFBalachandar\n\t\t\n\t\t\n\t\t\tLanceJPoole\n\t\t\n\t\t\n\t\t\tPaulMyers\n\t\t\n\t\t\n\t\t\tVindellVarghese\n\t\t\n\t\t\n\t\t\tYugangWashington\n\t\t\n\t\t\n\t\t\tVivianSJia\n\t\t\n\t\t\n\t\t\tLee\n\t\t\n\t\t10.1371/journal.pone.0283517Publisher\n\t\n\t\n\t\tPLOS ONE\n\t\t\n\t\t\t18\n\t\t\t3\n\t\t\t283517\n\t\t\t2023. March 2023\n\t\t\tPublic Library of Science"
+    },
+    {
+      "id": 82,
+      "text": "Bayesian inference of agent-based models: a tool for studying kidney branching morphogenesis\n\t\t\n\t\t\tBenLambert\n\t\t\t0000-0003-4274-4158\n\t\t\n\t\t\n\t\t\tAdamLMaclean\n\t\t\n\t\t\n\t\t\tAlexanderGFletcher\n\t\t\n\t\t\n\t\t\tAlexanderNCombes\n\t\t\n\t\t\n\t\t\tMelissaHLittle\n\t\t\n\t\t\n\t\t\tHelenMByrne\n\t\t\n\t\t10.1007/s00285-018-1208-z\n\t\n\t\n\t\tJournal of Mathematical Biology\n\t\tJ. Math. Biol.\n\t\t0303-6812\n\t\t1432-1416\n\t\t\n\t\t\t76\n\t\t\t7\n\t\t\t\n\t\t\t2018. June 2018\n\t\t\tSpringer Science and Business Media LLC"
+    },
+    {
+      "id": 83,
+      "text": "Agent-Based Modeling of the Spread of Influenza-Like Illness in an Emergency Department: A Simulation Study\n\t\t\n\t\t\tMarekLaskowski\n\t\t\n\t\t\n\t\t\tBC PDemianyk\n\t\t\n\t\t\n\t\t\tJWitt\n\t\t\n\t\t\n\t\t\tSNMukhi\n\t\t\n\t\t\n\t\t\tMRFriesen\n\t\t\n\t\t\n\t\t\tRDMcleod\n\t\t\n\t\t10.1109/titb.2011.2163414\n\t\n\t\n\t\tIEEE Transactions on Information Technology in Biomedicine\n\t\tIEEE Trans. Inform. Technol. Biomed.\n\t\t1089-7771\n\t\t1558-0032\n\t\t\n\t\t\t15\n\t\t\t6\n\t\t\t\n\t\t\t2011. Nov. 2011\n\t\t\tInstitute of Electrical and Electronics Engineers (IEEE)"
+    },
+    {
+      "id": 84,
+      "text": "A Multiscale Agent-Based Model for the Investigation of E. coli K12 Metabolic Response During Biofilm Formation\n\t\t\n\t\t\tMajidLatif\n\t\t\n\t\t\n\t\t\tElebeobaEMay\n\t\t\n\t\t10.1007/s11538-018-0494-3\n\t\n\t\n\t\tBulletin of Mathematical Biology\n\t\tBull Math Biol\n\t\t0092-8240\n\t\t1522-9602\n\t\t\n\t\t\t80\n\t\t\t11\n\t\t\t\n\t\t\t2018. Nov. 2018\n\t\t\tSpringer Science and Business Media LLC"
+    },
+    {
+      "id": 85,
+      "text": "Adaptive-latency DRAM: Optimizing DRAM timing for the common-case\n\t\t\n\t\t\tDonghyukLee\n\t\t\n\t\t\n\t\t\tYoonguKim\n\t\t\n\t\t\n\t\t\tGennadyPekhimenko\n\t\t\n\t\t\n\t\t\tSamiraKhan\n\t\t\n\t\t\n\t\t\tVivekSeshadri\n\t\t\n\t\t\n\t\t\tKevinChang\n\t\t\n\t\t\n\t\t\tOnurMutlu\n\t\t\n\t\t10.1109/hpca.2015.7056057\n\t\n\t\n\t\t2015 IEEE 21st International Symposium on High Performance Computer Architecture (HPCA)\n\t\t\n\t\t\tIEEE\n\t\t\t2015"
+    },
+    {
+      "id": 86,
+      "text": "Agent-based modeling of stress anisotropy driven nematic ordering in growing biofilms\n\t\t\n\t\t\tChanghaoLi\n\t\t\n\t\t\n\t\t\tJapinderNijjer\n\t\t\n\t\t\n\t\t\tLuyiFeng\n\t\t\n\t\t\n\t\t\tQiutingZhang\n\t\t\n\t\t\n\t\t\tJingYan\n\t\t\n\t\t\n\t\t\tSulinZhang\n\t\t\n\t\t10.1039/D3SM01535APublisher\n\t\n\t\n\t\tSoft Matter\n\t\t\n\t\t\t20\n\t\t\t\n\t\t\t2024. 2024\n\t\t\tRoyal Society of Chemistry"
+    },
+    {
+      "id": 87,
+      "text": "Agent-Based Modeling of Chronic Diseases: A Narrative Review and Future Research Directions\n\t\t\n\t\t\tYanLi\n\t\t\n\t\t\n\t\t\tMarkALawley\n\t\t\n\t\t\n\t\t\tDavidSSiscovick\n\t\t\n\t\t\n\t\t\tDonglanZhang\n\t\t\n\t\t\n\t\t\tJoséAPagán\n\t\t\n\t\t10.5888/pcd13.150561\n\t\n\t\n\t\tPreventing Chronic Disease\n\t\tPrev. Chronic Dis.\n\t\t1545-1151\n\t\t\n\t\t\t13\n\t\t\t2016. 2016\n\t\t\tCenters for Disease Control and Prevention - Preventing Chronic Disease"
+    },
+    {
+      "id": 88,
+      "text": "Assessing lifestyle interventions to improve cardiovascular health using an agent-based model\n\t\t\n\t\t\tYanLi\n\t\t\n\t\t\n\t\t\tNanKong\n\t\t\n\t\t\n\t\t\tMarkLawley\n\t\t\n\t\t\n\t\t\tJoséAPagán\n\t\t\n\t\t10.1109/WSC.2014.7019979ISSN:1558-4305\n\t\n\t\n\t\tProceedings of the Winter Simulation Conference\n\t\tthe Winter Simulation Conference\n\t\t\n\t\t\t2014. 2014"
+    },
+    {
+      "id": 89,
+      "text": "An Agent-Based Model for Ideal Cardiovascular Health\n\t\t\n\t\t\tYanLi\n\t\t\n\t\t\n\t\t\tNanKong\n\t\t\n\t\t\n\t\t\tMarkALawley\n\t\t\n\t\t\n\t\t\tJoséAPagán\n\t\t\n\t\t10.1002/9781118960158.ch11Section:11_eprint\n\t\t\n\t\n\t\n\t\tDecision Analytics and Optimization in Disease Prevention and Treatment\n\t\t\n\t\t\tLtd\n\t\t\t2018"
+    },
+    {
+      "id": 90,
+      "text": "Introductory tutorial: Agent-based modeling and simulation\n\t\t\n\t\t\tCMacal\n\t\t\n\t\t\n\t\t\tMNorth\n\t\t\n\t\t10.1109/WSC.2014.7019874ISSN:1558-4305\n\t\n\t\n\t\tProceedings of the Winter Simulation Conference\n\t\tthe Winter Simulation ConferenceNew York, NY, USA\n\t\t\n\t\t\tIEEE\n\t\t\t2014. 2014"
+    },
+    {
+      "id": 91,
+      "text": "CHISIM: AN AGENT-BASED SIMULATION MODEL OF SOCIAL INTERACTIONS IN A LARGE URBAN AREA\n\t\t\n\t\t\tCharlesMMacal\n\t\t\n\t\t\n\t\t\tTNicholson\n\t\t\n\t\t\n\t\t\tJonathanCollier\n\t\t\n\t\t\n\t\t\tEricROzik\n\t\t\n\t\t\n\t\t\tJohnTTatara\n\t\t\n\t\t\n\t\t\tMurphy\n\t\t\n\t\t10.1109/WSC.2018.8632409ISSN:1558-4305\n\t\n\t\n\t\t2018 Winter Simulation Conference (WSC)\n\t\t\n\t\t\t2018"
+    },
+    {
+      "id": 92,
+      "text": "FACE RECOGNITION SYSTEM FOR AUTOMATIC DOOR ACCESS CONTROL\n\t\t\n\t\t\tOghoghoIkponmwosa\n\t\t\n\t\t\n\t\t\tOtuagomaS.\n\t\t\n\t\t\n\t\t\tUfuomaJeffrey Okieke\n\t\t\n\t\t\n\t\t\tEbimeneE. E.\n\t\t\n\t\t\n\t\t\tDaniaB. P.\n\t\t\n\t\t\n\t\t\tAzuboguD. I.\n\t\t\n\t\t\n\t\t\tAnamonyeU.G.\n\t\t\n\t\t\n\t\t\tOyubuA. O.\n\t\t\n\t\t\n\t\t\tOkpareA.O.\n\t\t\n\t\t\n\t\t\tEyenuboO.J.\n\t\t\n\t\t\n\t\t\tEfenedoG. I.\n\t\t\n\t\t\n\t\t\tOkpekiK. U\n\t\t\n\t\t10.47191/etj/v8i2.03\n\t\n\t\n\t\tEngineering and Technology Journal\n\t\tETJ\n\t\t2456-3358\n\t\t\n\t\t\t08\n\t\t\t02\n\t\t\t\n\t\t\t2000\n\t\t\tEverant Journals\n\t\t\n\t\t\n\t\t\tDepartment of Electrical Engineering and Computer Science . . .\n\t\t\n\t\n\tPh. D. Dissertation. Masters thesis"
+    },
+    {
+      "id": 93,
+      "text": "Analysis of crime patterns through the integration of an agent-based model and a population microsimulation\n\t\t\n\t\t\tNickMalleson\n\t\t\n\t\t\n\t\t\tMarkBirkin\n\t\t\n\t\t10.1016/j.compenvurbsys.2012.04.003\n\t\n\t\n\t\tComputers, Environment and Urban Systems\n\t\tComputers, Environment and Urban Systems\n\t\t0198-9715\n\t\t\n\t\t\t36\n\t\t\t6\n\t\t\t\n\t\t\t2012. Nov. 2012\n\t\t\tElsevier BV"
+    },
+    {
+      "id": 94,
+      "text": "Crime reduction through simulation: An agent-based model of burglary\n\t\t\n\t\t\tNickMalleson\n\t\t\n\t\t\n\t\t\tAlisonHeppenstall\n\t\t\n\t\t\n\t\t\tLindaSee\n\t\t\n\t\t10.1016/j.compenvurbsys.2009.10.005\n\t\n\t\n\t\tComputers, Environment and Urban Systems\n\t\tComputers, Environment and Urban Systems\n\t\t0198-9715\n\t\t\n\t\t\t34\n\t\t\t3\n\t\t\t\n\t\t\t2010. May 2010\n\t\t\tElsevier BV"
+    },
+    {
+      "id": 95,
+      "text": "Agent-Based Modeling of Vaccine Hesitancy: Exploring the Role of Trust, Policy, and Socioeconomic Factors\n\t\t\n\t\t\tNikenPrasasti\n\t\t\n\t\t\n\t\t\tMartono\n\t\t\n\t\t\n\t\t\tHayatoOhwada\n\t\t\n\t\t10.1007/978-3-031-66428-1_15\n\t\tIntelligent Systems and Applications, Kohei Arai\n\t\t\n\t\t\t2024\n\t\t\tSpringer Nature Switzerland\n\t\t\t\n\t\t\tCham"
+    },
+    {
+      "id": 96,
+      "text": "A Review of Cell-Based Computational Modeling in Cancer Biology\n\t\t\n\t\t\tJohnMetzcar\n\t\t\n\t\t\n\t\t\tYafeiWang\n\t\t\n\t\t\n\t\t\tRandyHeiland\n\t\t\n\t\t\n\t\t\tPaulMacklin\n\t\t\n\t\t10.1200/CCI.18.00069Publisher\n\t\n\t\n\t\tJCO Clinical Cancer Informatics\n\t\t\n\t\t\t3\n\t\t\t3\n\t\t\t\n\t\t\t2019. Feb. 2019\n\t\t\tWolters Kluwer"
+    },
+    {
+      "id": 97,
+      "text": "Agent-based model of inflammation and wound healing: insights into diabetic foot ulcer pathology and the role of transforming growth factor-𝛽1\n\t\t\n\t\t\tQiMi\n\t\t\n\t\t\n\t\t\tBeatriceRivière\n\t\t\n\t\t\n\t\t\tGillesClermont\n\t\t\n\t\t\n\t\t\tDavidLSteed\n\t\t\n\t\t\n\t\t\tYoramVodovotz\n\t\t\n\t\t10.1111/j.1524-475X.2007.00271\n\t\t\n\t\n\t\n\t\tWound Repair and Regeneration\n\t\t\n\t\t\t15\n\t\t\t\n\t\t\t2007. 2007"
+    },
+    {
+      "id": 98,
+      "text": "Why should we apply ABM for decision analysis for infectious diseases?-An example for dengue interventions\n\t\t\n\t\t\tFlorianMiksch\n\t\t\n\t\t\n\t\t\tBeateJahn\n\t\t\n\t\t\n\t\t\tKurtJunsheanEspinosa\n\t\t\n\t\t\n\t\t\tJagpreetChhatwal\n\t\t\n\t\t\n\t\t\tUweSiebert\n\t\t\n\t\t\n\t\t\tNikolasPopper\n\t\t\n\t\t10.1371/journal.pone.0221564Publisher\n\t\n\t\n\t\tPLOS ONE\n\t\t\n\t\t\t14\n\t\t\t221564\n\t\t\t2019. Aug. 2019\n\t\t\tPublic Library of Science"
+    },
+    {
+      "id": 99,
+      "text": "EXODUS: A finite element file format for pre- and postprocessing\n\t\t\n\t\t\tW CCMills-Curran\n\t\t\n\t\t\n\t\t\tA PPGilkey\n\t\t\n\t\t\n\t\t\tD PPFlanagan\n\t\t\n\t\t10.2172/6902151\n\t\t\n\t\t\t1988. 1988\n\t\t\tOffice of Scientific and Technical Information (OSTI)"
+    },
+    {
+      "id": 100,
+      "text": "RGary\n\t\t\n\t\t\n\t\t\tChristopherJMirams\n\t\t\n\t\t\n\t\t\tMiguelOArthurs\n\t\t\n\t\t\n\t\t\tRafelBernabeu\n\t\t\n\t\t\n\t\t\tJonathanBordas\n\t\t\n\t\t\n\t\t\tAlbertoCooper\n\t\t\n\t\t\n\t\t\tYohanCorrias\n\t\t\n\t\t\n\t\t\tSara-JaneDavit\n\t\t\n\t\t\n\t\t\tAlexanderGDunn\n\t\t\n\t\t\n\t\t\tDanielGFletcher\n\t\t\n\t\t\n\t\t\tMeganEHarvey\n\t\t\n\t\t\n\t\t\tJamesMMarsh\n\t\t\n\t\t\n\t\t\tPrasOsborne\n\t\t\n\t\t\n\t\t\tJoePathmanathan\n\t\t\n\t\t\n\t\t\tJamesPitt-Francis\n\t\t\n\t\t\n\t\t\tNejibSouthern\n\t\t\n\t\t\n\t\t\tDavidJZemzemi\n\t\t\n\t\t\n\t\t\tGavaghan\n\t\t\n\t\t10.1371/journal.pcbi.1002970\n\t\n\t\n\t\tChaste: An Open Source C++ Library for Computational Physiology and Biology. PLOS Computational Biology\n\t\t\n\t\t\t9\n\t\t\t3\n\t\t\t2013. March 2013"
+    },
+    {
+      "id": 101,
+      "text": "An Agent-Based Model of Residential Energy Efficiency Adoption\n\t\t\n\t\t\tMagnusMoglia\n\t\t\n\t\t\n\t\t\tAnetaPodkalicka\n\t\t\n\t\t\n\t\t\tJamesMcgregor\n\t\t\n\t\n\t\n\t\tJournal of Artificial Societies and Social Simulation\n\t\t\n\t\t\t21\n\t\t\t3\n\t\t\t2018. 2018"
+    },
+    {
+      "id": 102,
+      "text": "Delta encoding in HTTP\n\t\t\n\t\t\tJeffreyMogul\n\t\t\n\t\t\n\t\t\tBalachanderKrishnamurthy\n\t\t\n\t\t\n\t\t\tFredDouglis\n\t\t\n\t\t\n\t\t\tAnjaFeldmann\n\t\t\n\t\t\n\t\t\tYaronGoland\n\t\t\n\t\t\n\t\t\tAVan\n\t\t\n\t\t\n\t\t\tDHellerstein\n\t\t\n\t\t10.17487/rfc3229\n\t\n\t\n\t\tDelta encoding in HTTP\n\t\t\n\t\t\tRFC Editor\n\t\t\t2002\n\t\t\n\t\n\tTechnical Report"
+    },
+    {
+      "id": 103,
+      "text": "Agent-based modeling for the self-management of chronic diseases: An exploratory study\n\t\t\n\t\t\tSaraMontagna\n\t\t\n\t\t\n\t\t\tAndreaOmicini\n\t\t\n\t\t10.1177/0037549717712605Publisher\n\t\n\t\n\t\tSIMULATION\n\t\t\n\t\t\t93\n\t\t\t\n\t\t\t2017. Sept. 2017\n\t\t\tSAGE Publications Ltd STM"
+    },
+    {
+      "id": 104,
+      "text": "Agent-Based Modeling and Simulation of Artificial Immune Systems\n\t\t\n\t\t\tNormaMontealegre\n\t\t\n\t\t\n\t\t\tFranzJRammig\n\t\t\n\t\t10.1109/ISORCW.2012.43\n\t\n\t\n\t\t2012 IEEE 15th International Symposium on Object/ Component/Service-Oriented Real-Time Distributed Computing Workshops\n\t\t\n\t\t\t2012"
+    },
+    {
+      "id": 105,
+      "text": "A systematic review of system dynamics and agent‐based obesity models: Evaluating obesity as part of the global syndemic\n\t\t\n\t\t\tAlexandraBMorshed\n\t\t\t0000-0001-9960-0409\n\t\t\n\t\t\n\t\t\tMattKasman\n\t\t\n\t\t\n\t\t\tBenjaminHeuberger\n\t\t\n\t\t\n\t\t\tRossAHammond\n\t\t\n\t\t\n\t\t\tPeterSHovmand\n\t\t\n\t\t10.1111/obr.12877\n\t\t\n\t\n\t\n\t\tObesity Reviews\n\t\tObesity Reviews\n\t\t1467-7881\n\t\t1467-789X\n\t\t\n\t\t\t20\n\t\t\tS2\n\t\t\t\n\t\t\t2019. 2019\n\t\t\tWiley"
+    },
+    {
+      "id": 106,
+      "text": "MPI: A Message-Passing Interface\n\t\t\n\t\t\tMpiForum\n\t\t\n\t\t\n\t\t\t1994\n\t\t\n\t\n\tTechnical Report"
+    },
+    {
+      "id": 107,
+      "text": "Agent-Based Modeling of Microbial Communities\n\t\t\n\t\t\tCongjianKarthik Nagarajan\n\t\t\n\t\t\n\t\t\tTingNi\n\t\t\n\t\t\n\t\t\tLu\n\t\t\n\t\t10.1021/acssynbio.2c00411Publisher\n\t\n\t\n\t\tACS Synthetic Biology\n\t\t\n\t\t\t11\n\t\t\t\n\t\t\t2022. Nov. 2022\n\t\t\tAmerican Chemical Society"
+    },
+    {
+      "id": 108,
+      "text": "Agent-based simulation applications in marketing research: an integrated review\n\t\t\n\t\t\tANegahban\n\t\t\n\t\t\n\t\t\tLYilmaz\n\t\t\n\t\t10.1057/jos.2013.21\n\t\t\n\t\n\t\n\t\tPublisher: Taylor & Francis _eprint\n\t\t\n\t\t\t2014. May 2014\n\t\t\t8"
+    },
+    {
+      "id": 109,
+      "text": "Agent-Based Modeling of Noncommunicable Diseases: A Systematic Review\n\t\t\n\t\t\tRochANianogo\n\t\t\n\t\t\n\t\t\tOnyebuchiAArah\n\t\t\n\t\t10.2105/AJPH.2014.302426Publisher\n\t\n\t\n\t\tAmerican Journal of Public Health\n\t\t\n\t\t\t105\n\t\t\t\n\t\t\t2015. March 2015\n\t\t\tAmerican Public Health Association"
+    },
+    {
+      "id": 110,
+      "text": "Agent-based modeling in cancer biomedicine: applications and tools for calibration and validation\n\t\t\n\t\t\tRomanBauer\n\t\t\n\t\t\n\t\t\tNicolòCogno\n\t\t\n\t\t\n\t\t\tCristianAxenie\n\t\t\n\t\t\n\t\t\tVasileiosVavourakis\n\t\t\n\t\t10.1080/15384047.2024.2344600\n\t\t38678381\n\t\t\n\t\n\t\n\t\tCancer Biology & Therapy\n\t\t\n\t\t\t25\n\t\t\t2344600\n\t\t\t2024. 2024"
+    },
+    {
+      "id": 111,
+      "text": "Multiscale agent-based consumer market modeling\n\t\t\n\t\t\tJMichael\n\t\t\n\t\t\n\t\t\tCharlesMNorth\n\t\t\n\t\t\n\t\t\tJamesMacal\n\t\t\n\t\t\n\t\t\tSt\n\t\t\n\t\t\n\t\t\tPrakashAubin\n\t\t\n\t\t\n\t\t\tMarkThimmapuram\n\t\t\n\t\t\n\t\t\tJuneBragen\n\t\t\n\t\t\n\t\t\tJamesHahn\n\t\t\n\t\t\n\t\t\tNancyKarr\n\t\t\n\t\t\n\t\t\tMarkEBrigham\n\t\t\n\t\t\n\t\t\tDelaineLacy\n\t\t\n\t\t\n\t\t\tHampton\n\t\t\n\t\t10.1002/cplx.20304\n\t\t\n\t\n\t\n\t\tComplexity\n\t\t\n\t\t\t15\n\t\t\t\n\t\t\t2010. 2010"
+    },
+    {
+      "id": 112,
+      "text": "Multiscale Agent-Based and Hybrid Modeling of the Tumor Immune Microenvironment\n\t\t\n\t\t\tKerri-AnnNorton\n\t\t\n\t\t\n\t\t\tChangGong\n\t\t\n\t\t\n\t\t\tSamiraJamalian\n\t\t\n\t\t\n\t\t\tAleksanderSPopel\n\t\t\n\t\t10.3390/pr7010037Number:1Publisher\n\t\n\t\n\t\tProcesses\n\t\t\n\t\t\t7\n\t\t\t37\n\t\t\t2019. Jan. 2019\n\t\t\tMultidisciplinary Digital Publishing Institute"
+    },
+    {
+      "id": 113,
+      "text": "Mathematical modelling for pandemic preparedness in Canada: Learning from COVID-19\n\t\t\n\t\t\tEmilySNicholas H Ogden\n\t\t\n\t\t\n\t\t\tKevinAcheson\n\t\t\n\t\t\n\t\t\tDavidBrown\n\t\t\n\t\t\n\t\t\tCarolineChampredon\n\t\t\n\t\t\n\t\t\tAlanColijn\n\t\t\n\t\t\n\t\t\tJonathanDiener\n\t\t\n\t\t\n\t\t\tDushoff\n\t\t\n\t\t\n\t\t\tVanessaDavid Jd Earn\n\t\t\n\t\t\n\t\t\tMarcellinGabriele-Rivet\n\t\t\n\t\t\n\t\t\tGangbè\n\t\t\n\t\t\n\t\t\tOthers\n\t\t\n\t\t10.14745/ccdr.v50i10a03\n\t\n\t\n\t\tCanada Communicable Disease Report\n\t\t\n\t\t\t50\n\t\t\t345\n\t\t\t2024. 2024"
+    },
+    {
+      "id": 114,
+      "text": "Multiscale Agent-based Model of Tumor Angiogenesis\n\t\t\n\t\t\tMeganMOlsen\n\t\t\n\t\t\n\t\t\tHavaTSiegelmann\n\t\t\n\t\t10.1016/j.procs.2013.05.267\n\t\n\t\n\t\tProcedia Computer Science\n\t\tProcedia Computer Science\n\t\t1877-0509\n\t\t\n\t\t\t18\n\t\t\t\n\t\t\t2013. Jan. 2013\n\t\t\tElsevier BV"
+    },
+    {
+      "id": 115,
+      "text": "Support for parallel scan in OpenMP\n\t\t\n\t\t\tEderMaicol Gomez Zegarra\n\t\t\n\t\t10.47749/t/unicamp.2018.1045562\n\t\t\n\t\n\t\n\t\tOpenMP Architecture Review Board\n\t\t\n\t\t\t2015\n\t\t\tUniversidade Estadual de Campinas"
+    },
+    {
+      "id": 116,
+      "text": "A population data-driven workflow for COVID-19 modeling and learning\n\t\t\n\t\t\tJonathanOzik\n\t\t\n\t\t\n\t\t\tJustinMWozniak\n\t\t\n\t\t\n\t\t\tNicholsonCollier\n\t\t\n\t\t\n\t\t\tCharlesMMacal\n\t\t\n\t\t\n\t\t\tMickaëlBinois\n\t\t\n\t\t10.1177/10943420211035164arXiv\n\t\t\n\t\n\t\n\t\tThe International Journal of High Performance Computing Applications\n\t\t\n\t\t\t35\n\t\t\t\n\t\t\t2021. 2021"
+    },
+    {
+      "id": 117,
+      "text": "Artificial economic life: a simple model of a stockmarket\n\t\t\n\t\t\tRGPalmer\n\t\t\n\t\t\n\t\t\tWBrian Arthur\n\t\t\n\t\t\n\t\t\tJohnHHolland\n\t\t\n\t\t\n\t\t\tBlakeLebaron\n\t\t\n\t\t\n\t\t\tPaulTayler\n\t\t\n\t\t10.1016/0167-2789(94)90287-9\n\t\n\t\n\t\tPhysica D: Nonlinear Phenomena\n\t\tPhysica D: Nonlinear Phenomena\n\t\t0167-2789\n\t\t\n\t\t\t75\n\t\t\t1-3\n\t\t\t\n\t\t\t1994. Aug. 1994\n\t\t\tElsevier BV"
+    },
+    {
+      "id": 118,
+      "text": "An agent based modeling approach for the analysis of tuberculosis – immune system dynamics\n\t\t\n\t\t\tFrancescoPappalardo\n\t\t\n\t\t\n\t\t\tGiuliaRusso\n\t\t\n\t\t\n\t\t\tMarzioPennisi\n\t\t\n\t\t\n\t\t\tGiuseppeSgroi\n\t\t\n\t\t\n\t\t\tGiuseppeAlessandroParasiliti Palumbo\n\t\t\n\t\t\n\t\t\tSantoMotta\n\t\t\n\t\t\n\t\t\tEpifanioFichera\n\t\t\n\t\t10.1109/bibm.2018.8621355\n\t\n\t\n\t\t2018 IEEE International Conference on Bioinformatics and Biomedicine (BIBM)\n\t\t\n\t\t\tIEEE\n\t\t\t2018\n\t\t\t\n\t\t\n\t\n\tGiuseppe Alessandro Parasiliti Palumbo, Santo Motta, and Epifanio Fichera"
+    },
+    {
+      "id": 119,
+      "text": "A flexible, large-scale, distributed agent based epidemic model\n\t\t\n\t\t\tJonParker\n\t\t\n\t\t10.1109/wsc.2007.4419769\n\t\n\t\n\t\t2007 Winter Simulation Conference\n\t\t\n\t\t\tIEEE\n\t\t\t2007"
+    },
+    {
+      "id": 120,
+      "text": "Linearly compressed pages\n\t\t\n\t\t\tGennadyPekhimenko\n\t\t\n\t\t\n\t\t\tVivekSeshadri\n\t\t\n\t\t\n\t\t\tYoonguKim\n\t\t\n\t\t\n\t\t\tHongyiXin\n\t\t\n\t\t\n\t\t\tOnurMutlu\n\t\t\n\t\t\n\t\t\tPhillipBGibbons\n\t\t\n\t\t\n\t\t\tMichaelAKozuch\n\t\t\n\t\t\n\t\t\tToddCMowry\n\t\t\n\t\t10.1145/2540708.2540724\n\t\n\t\n\t\tProceedings of the 46th Annual IEEE/ACM International Symposium on Microarchitecture\n\t\tthe 46th Annual IEEE/ACM International Symposium on MicroarchitectureNew York, NY, USA\n\t\t\n\t\t\tACM\n\t\t\t2013"
+    },
+    {
+      "id": 121,
+      "text": "Base-delta-immediate compression: practical data compression for on-chip caches\n\t\t\n\t\t\tGennadyPekhimenko\n\t\t\n\t\t\n\t\t\tVivekSeshadri\n\t\t\n\t\t\n\t\t\tOnurMutlu\n\t\t\n\t\t\n\t\t\tPhillipBGibbons\n\t\t\n\t\t\n\t\t\tMichaelAKozuch\n\t\t\n\t\t\n\t\t\tToddCMowry\n\t\t\n\t\t10.1145/2370816.2370870\n\t\n\t\n\t\tProceedings of the 21st international conference on Parallel architectures and compilation techniques (PACT '12)\n\t\tthe 21st international conference on Parallel architectures and compilation techniques (PACT '12)New York, NY, USA\n\t\t\n\t\t\tAssociation for Computing Machinery\n\t\t\t2012"
+    },
+    {
+      "id": 122,
+      "text": "Agent based modeling of the effects of potential treatments over the blood–brain barrier in multiple sclerosis\n\t\t\n\t\t\tMarzioPennisi\n\t\t\n\t\t\n\t\t\tGiuliaRusso\n\t\t\n\t\t\n\t\t\tSantoMotta\n\t\t\n\t\t\n\t\t\tFrancescoPappalardo\n\t\t\n\t\t10.1016/j.jim.2015.08.014\n\t\n\t\n\t\tJournal of Immunological Methods\n\t\tJournal of Immunological Methods\n\t\t0022-1759\n\t\t\n\t\t\t427\n\t\t\t\n\t\t\t2015. Dec. 2015\n\t\t\tElsevier BV"
+    },
+    {
+      "id": 123,
+      "text": "An Agent-Based Approach to Immune Modelling\n\t\t\n\t\t\tDimitriPerrin\n\t\t\n\t\t\n\t\t\tHeatherJRuskin\n\t\t\n\t\t\n\t\t\tJohnBurns\n\t\t\n\t\t\n\t\t\tMartinCrane\n\t\t\n\t\t10.1007/11751540_65\n\t\n\t\n\t\tLecture Notes in Computer Science\n\t\t\n\t\t\tMarinaGavrilova\n\t\t\n\t\t\n\t\t\tOsvaldoGervasi\n\t\t\n\t\t\n\t\t\tVipinKumar\n\t\t\n\t\t\n\t\t\tCJKenneth Tan\n\t\t\n\t\t\n\t\t\tDavidTaniar\n\t\t\n\t\t\n\t\t\tAntonioLaganá\n\t\t\n\t\t\n\t\t\tYoungsongMun\n\t\t\n\t\t\n\t\t\tHyunseungChoo\n\t\t\n\t\tBerlin, Heidelberg\n\t\t\n\t\t\tSpringer Berlin Heidelberg\n\t\t\t2006"
+    },
+    {
+      "id": 124,
+      "text": "An Agent-Based Model of COVID-19 Diffusion to Plan and Evaluate Intervention Policies\n\t\t\n\t\t\tGianpieroPescarmona\n\t\t\n\t\t\n\t\t\tPietroTerna\n\t\t\n\t\t\n\t\t\tAlbertoAcquadro\n\t\t\n\t\t\n\t\t\tPaoloPescarmona\n\t\t\n\t\t\n\t\t\tGiuseppeRusso\n\t\t\n\t\t\n\t\t\tEmilioSulis\n\t\t\n\t\t\n\t\t\tStefanoTerna\n\t\t\n\t\t10.1007/978-3-030-91646-6_9\n\t\n\t\n\t\tModeling and Simulation in Science, Engineering and Technology\n\t\t\n\t\t\tNicolaBellomo\n\t\t\n\t\t\n\t\t\tLivioGibelli\n\t\t\n\t\tCham\n\t\t\n\t\t\tSpringer International Publishing\n\t\t\t2021\n\t\t\t3\n\t\t\t\n\t\t\n\t\n\tModeling and Social Applications in the Time of COVID-19"
+    },
+    {
+      "id": 125,
+      "text": "Agent-Based Modeling of Cancer Stem Cell Driven Solid Tumor Growth\n\t\t\n\t\t\tJanPoleszczuk\n\t\t\n\t\t\n\t\t\tPaulMacklin\n\t\t\n\t\t\n\t\t\tHeikoEnderling\n\t\t\n\t\t10.1007/7651_2016_346\n\t\n\t\n\t\tMethods in Molecular Biology\n\t\t\n\t\t\tKursadTurksen\n\t\t\n\t\tNew York, NY\n\t\t\n\t\t\tSpringer New York\n\t\t\t2016"
+    },
+    {
+      "id": 126,
+      "text": "Agent-based modelling of consumer energy choices\n\t\t\n\t\t\tVarunRai\n\t\t\n\t\t\n\t\t\tAdamDouglas\n\t\t\n\t\t\n\t\t\tHenry\n\t\t\n\t\t10.1038/nclimate2967Publisher\n\t\n\t\n\t\tNature Climate Change\n\t\t\n\t\t\t6\n\t\t\t6\n\t\t\t\n\t\t\t2016. June 2016\n\t\t\tNature Publishing Group"
+    },
+    {
+      "id": 127,
+      "text": "Agent-based modeling in marketing: Guidelines for rigor\n\t\t\n\t\t\tWilliamRand\n\t\t\n\t\t\n\t\t\tRolandTRust\n\t\t\n\t\t10.1016/j.ijresmar.2011.04.002\n\t\n\t\n\t\tInternational Journal of Research in Marketing\n\t\tInternational Journal of Research in Marketing\n\t\t0167-8116\n\t\t\n\t\t\t28\n\t\t\t3\n\t\t\t\n\t\t\t2011. Sept. 2011\n\t\t\tElsevier BV"
+    },
+    {
+      "id": 128,
+      "text": "Agent‐based modeling of new product market diffusion: an overview of strengths and criticisms\n\t\t\n\t\t\tWilliamRand\n\t\t\t0000-0002-8294-1757\n\t\t\n\t\t\n\t\t\tChristianStummer\n\t\t\t0000-0001-5495-5740\n\t\t\n\t\t10.1007/s10479-021-03944-1\n\t\n\t\n\t\tAnnals of Operations Research\n\t\tAnn Oper Res\n\t\t0254-5330\n\t\t1572-9338\n\t\t\n\t\t\t305\n\t\t\t1-2\n\t\t\t\n\t\t\t2021. Oct. 2021\n\t\t\tSpringer Science and Business Media LLC"
+    },
+    {
+      "id": 129,
+      "text": "Flocks, herds and schools: A distributed behavioral model\n\t\t\n\t\t\tCraigWReynolds\n\t\t\n\t\t10.1145/37401.37406\n\t\n\t\n\t\tProceedings of the 14th annual conference on Computer graphics and interactive techniques\n\t\tthe 14th annual conference on Computer graphics and interactive techniquesNew York, NY, USA\n\t\t\n\t\t\tACM\n\t\t\t1987"
+    },
+    {
+      "id": 130,
+      "text": "High performance cellular level agent-based simulation with FLAME for the GPU\n\t\t\n\t\t\tPaulRichmond\n\t\t\n\t\t\n\t\t\tDawnWalker\n\t\t\n\t\t\n\t\t\tSimonCoakley\n\t\t\n\t\t\n\t\t\tDanielaRomano\n\t\t\n\t\t10.1093/bib/bbp073\n\t\n\t\n\t\tBriefings in Bioinformatics\n\t\t\n\t\t\t11\n\t\t\t3\n\t\t\t\n\t\t\t2010. May 2010"
+    },
+    {
+      "id": 131,
+      "text": "ErikLee Ann Riesen\n\t\t\n\t\t\n\t\t\tKarenBoman\n\t\t\n\t\t\n\t\t\tDevine\n\t\t\n\t\t10.11578/dc.20210416.37\n\t\n\t\n\t\tSiva Rajamanicakam, and USDOE\n\t\t\n\t\t\t2012\n\t\t\t2"
+    },
+    {
+      "id": 132,
+      "text": "Agent-based modeling predicts RAC1 is critical for ovarian cancer metastasis\n\t\t\n\t\t\tMelanieRivera\n\t\t\n\t\t\n\t\t\tLeslieToledo-Jacobo\n\t\t\n\t\t\n\t\t\tElsaRomero\n\t\t\n\t\t\n\t\t\tTudorIOprea\n\t\t\n\t\t\n\t\t\tMelanieEMoses\n\t\t\n\t\t\n\t\t\tLaurieGHudson\n\t\t\n\t\t\n\t\t\tAngelaWandinger-Ness\n\t\t\n\t\t\n\t\t\tMarthaMGrimes\n\t\t\n\t\t10.1091/mbc.E21-11-0540Publisher\n\t\n\t\n\t\tMolecular Biology of the Cell\n\t\t\n\t\t\t33\n\t\t\t138\n\t\t\t2022. Dec. 2022\n\t\t\tAmerican Society for Cell Biology\n\t\t\n\t\n\tmboc"
+    },
+    {
+      "id": 133,
+      "text": "Determinants of spatio-temporal patterns of energy technology adoption: An agent-based modeling approach\n\t\t\n\t\t\tScottARobinson\n\t\t\n\t\t\n\t\t\tVarunRai\n\t\t\n\t\t10.1016/j.apenergy.2015.04.071\n\t\n\t\n\t\tApplied Energy\n\t\tApplied Energy\n\t\t0306-2619\n\t\t\n\t\t\t151\n\t\t\t\n\t\t\t2015. Aug. 2015\n\t\t\tElsevier BV"
+    },
+    {
+      "id": 134,
+      "text": "Two decades of agent-based modeling in marketing: a bibliometric analysis\n\t\t\n\t\t\tElenaRomero\n\t\t\t0000-0001-8757-4864\n\t\t\n\t\t\n\t\t\tManuelChica\n\t\t\n\t\t\n\t\t\tSergioDamas\n\t\t\n\t\t\n\t\t\tWilliamRand\n\t\t\n\t\t10.1007/s13748-023-00303-y\n\t\n\t\n\t\tProgress in Artificial Intelligence\n\t\tProg Artif Intell\n\t\t2192-6352\n\t\t2192-6360\n\t\t\n\t\t\t12\n\t\t\t3\n\t\t\t\n\t\t\t2023. Sept. 2023\n\t\t\tSpringer Science and Business Media LLC"
+    },
+    {
+      "id": 135,
+      "text": "An agent-based model for energy investment decisions in the residential sector\n\t\t\n\t\t\tJuliaSachs\n\t\t\t0000-0003-4219-5427\n\t\t\n\t\t\n\t\t\tYimingMeng\n\t\t\n\t\t\n\t\t\tSaraGiarola\n\t\t\t0000-0002-0233-6646\n\t\t\n\t\t\n\t\t\tAdamHawkes\n\t\t\t0000-0001-9720-332X\n\t\t\n\t\t10.1016/j.energy.2019.01.161\n\t\n\t\n\t\tEnergy\n\t\tEnergy\n\t\t0360-5442\n\t\t\n\t\t\t172\n\t\t\t\n\t\t\t2019. April 2019\n\t\t\tElsevier BV"
+    },
+    {
+      "id": 136,
+      "text": "Dynamic models of segregation †\n\t\t\n\t\t\tCThomas\n\t\t\n\t\t\n\t\t\tSchelling\n\t\t\n\t\t10.1080/0022250X.1971.9989794arXiv\n\t\t\n\t\n\t\n\t\tThe Journal of Mathematical Sociology\n\t\t\n\t\t\t1\n\t\t\t\n\t\t\t1971. 1971"
+    },
+    {
+      "id": 137,
+      "text": "An agent-based diffusion model with consumer and brand agents\n\t\t\n\t\t\tMaryESchramm\n\t\t\n\t\t\n\t\t\tKevinJTrainor\n\t\t\n\t\t\n\t\t\tMuraliShanker\n\t\t\n\t\t\n\t\t\tMichaelYHu\n\t\t\n\t\t10.1016/j.dss.2010.08.004\n\t\n\t\n\t\tDecision Support Systems\n\t\tDecision Support Systems\n\t\t0167-9236\n\t\t\n\t\t\t50\n\t\t\t1\n\t\t\t\n\t\t\t2010. Dec. 2010\n\t\t\tElsevier BV"
+    },
+    {
+      "id": 138,
+      "text": "Emulating a System Dynamics Model with Agent-Based Models: A Methodological Case Study in Simulation of Diabetes Progression\n\t\t\n\t\t\tJackSchryver\n\t\t\n\t\t\n\t\t\tJamesNutaro\n\t\t\n\t\t\n\t\t\tMallikarjunShankar\n\t\t\n\t\t10.4236/ojmsi.2015.34019\n\t\n\t\n\t\tOpen Journal of Modelling and Simulation\n\t\tOJMSi\n\t\t2327-4018\n\t\t2327-4026\n\t\t\n\t\t\t03\n\t\t\t04\n\t\t\t\n\t\t\t2015. Oct. 2015\n\t\t\tScientific Research Publishing, Inc.\n\t\t\tOak Ridge, TN\n\t\t\n\t\t\n\t\t\tOak Ridge National Laboratory (ORNL)"
+    },
+    {
+      "id": 139,
+      "text": "Review of the systems biology of the immune system using agent-based models\n\t\t\n\t\t\tBSnehal\n\t\t\n\t\t\n\t\t\tManishPShinde\n\t\t\n\t\t\n\t\t\tKurhekar\n\t\t\n\t\t10.1049/iet-syb.2017.0073\n\t\t\n\t\n\t\n\t\tIET Systems Biology\n\t\t\n\t\t\t12\n\t\t\t\n\t\t\t2018. 2018"
+    },
+    {
+      "id": 140,
+      "text": "The long-term effectiveness and cost-effectiveness of public health interventions; how can we model behavior? A review\n\t\t\n\t\t\tHazelSquires\n\t\t\n\t\t\n\t\t\tMichaelPKelly\n\t\t\n\t\t\n\t\t\tNigelGilbert\n\t\t\n\t\t\n\t\t\tFalkoSniehotta\n\t\t\n\t\t\n\t\t\tRobinCPurshouse\n\t\t\n\t\t10.1002/hec.4754\n\t\t\n\t\n\t\n\t\tHealth Economics\n\t\t\n\t\t\t32\n\t\t\t\n\t\t\t2023. 2023"
+    },
+    {
+      "id": 141,
+      "text": "Agent-based modeling and simulation in architecture\n\t\t\n\t\t\tDavidStieler\n\t\t\n\t\t\n\t\t\tTobiasSchwinn\n\t\t\n\t\t\n\t\t\tSamuelLeder\n\t\t\n\t\t\n\t\t\tMathiasMaierhofer\n\t\t\n\t\t\n\t\t\tFabianKannenberg\n\t\t\n\t\t\n\t\t\tAchimMenges\n\t\t\n\t\t10.1016/j.autcon.2022.104426\n\t\n\t\n\t\tAutomation in Construction\n\t\tAutomation in Construction\n\t\t0926-5805\n\t\t\n\t\t\t141\n\t\t\t104426\n\t\t\t2022. Sept. 2022\n\t\t\tElsevier BV"
+    },
+    {
+      "id": 142,
+      "text": "The design and evolution of C++\n\t\t\n\t\t\tBjarneStroustrup\n\t\t\n\t\t978-0-321-56384-2\n\t\t\n\t\t\t1994\n\t\t\tAddison-Wesley"
+    },
+    {
+      "id": 143,
+      "text": "Das Wiki- Konzept\n\t\t\n\t\t\tSurf\n\t\t\n\t\t10.1007/978-3-540-35111-5_4\n\t\t\n\t\n\t\n\t\tXpert.press\n\t\t\n\t\t\tSpringer Berlin Heidelberg\n\t\t\t2024. acccessed Aug 13, 2024"
+    },
+    {
+      "id": 144,
+      "text": "Evaluation of delta compression techniques for efficient live migration of large virtual machines\n\t\t\n\t\t\tPetterSvärd\n\t\t\n\t\t\n\t\t\tBenoitHudzia\n\t\t\n\t\t\n\t\t\tJohanTordsson\n\t\t\n\t\t\n\t\t\tErikElmroth\n\t\t\n\t\t10.1145/2007477.1952698\n\t\n\t\n\t\tACM SIGPLAN Notices\n\t\tSIGPLAN Not.\n\t\t0362-1340\n\t\t1558-1160\n\t\t\n\t\t\t46\n\t\t\t7\n\t\t\t\n\t\t\t2011. mar 2011\n\t\t\tAssociation for Computing Machinery (ACM)"
+    },
+    {
+      "id": 145,
+      "text": "Agent-Based Modeling Demonstrates How Local Chemotactic Behavior Can Shape Biofilm Architecture\n\t\t\n\t\t\tEmilyGSweeney\n\t\t\n\t\t\n\t\t\tAndrewNishida\n\t\t\n\t\t\n\t\t\tAlexandraWeston\n\t\t\n\t\t\n\t\t\tMariaSBañuelos\n\t\t\n\t\t\n\t\t\tKristinPotter\n\t\t\n\t\t\n\t\t\tJohnConery\n\t\t\n\t\t\n\t\t\tKarenGuillemin\n\t\t\n\t\t10.1128/msphere.00285-19\n\t\tdoi:10.1128/msphere. 00285-19 Publisher\n\t\n\t\n\t\tmSphere\n\t\tmSphere\n\t\t2379-5042\n\t\t\n\t\t\t4\n\t\t\t3\n\t\t\t2019. May 2019\n\t\t\tAmerican Society for Microbiology"
+    },
+    {
+      "id": 146,
+      "text": "Epidemic Forecasting Framework Combining Agent-Based Models and Smart Beam Particle Filtering\n\t\t\n\t\t\tSFarzaneh\n\t\t\n\t\t\n\t\t\tBryanTabataba\n\t\t\n\t\t\n\t\t\tMiladLewis\n\t\t\n\t\t\n\t\t\tForooghSHosseinipour\n\t\t\n\t\t\n\t\t\tSrinivasanTabataba\n\t\t\n\t\t\n\t\t\tJiangzhuoVenkatramanan\n\t\t\n\t\t\n\t\t\tDaveChen\n\t\t\n\t\t\n\t\t\tMadhavHigdon\n\t\t\n\t\t\n\t\t\tMarathe\n\t\t\n\t\t10.1109/ICDM.2017.145ISSN:2374-8486\n\t\n\t\n\t\t2017 IEEE International Conference on Data Mining ( ICDM)\n\t\t\n\t\t\t2017"
+    },
+    {
+      "id": 147,
+      "text": "Phenotypic transition maps of 3D breast acini obtained by imaging-guided agent-based modeling\n\t\t\n\t\t\tJonathanTang\n\t\t\n\t\t\n\t\t\tHeikoEnderling\n\t\t\n\t\t\n\t\t\tSabineBecker-Weimann\n\t\t\n\t\t\n\t\t\tChristopherPham\n\t\t\n\t\t\n\t\t\tArisPolyzos\n\t\t\n\t\t\n\t\t\tChen-YiChen\n\t\t\n\t\t\n\t\t\tSylvainVCostes\n\t\t\n\t\t10.1039/c0ib00092b\n\t\n\t\n\t\tIntegrative Biology\n\t\t\n\t\t\t3\n\t\t\t4\n\t\t\t\n\t\t\t2011. April 2011"
+    },
+    {
+      "id": 148,
+      "text": "A quantitative review of data formats for HEP analyses\n\t\t\n\t\t\tJBlomer\n\t\t\n\t\t10.1088/1742-6596/1085/3/032020\n\t\t\n\t\n\t\n\t\tJournal of Physics: Conference Series\n\t\tJ. Phys.: Conf. Ser.\n\t\t1742-6588\n\t\t1742-6596\n\t\t\n\t\t\t1085\n\t\t\t032020\n\t\t\t2017\n\t\t\tIOP Publishing"
+    },
+    {
+      "id": 149,
+      "text": "A quantitative review of data formats for HEP analyses\n\t\t\n\t\t\tJBlomer\n\t\t\n\t\t10.1088/1742-6596/1085/3/032020\n\t\t\n\t\n\t\n\t\tJournal of Physics: Conference Series\n\t\tJ. Phys.: Conf. Ser.\n\t\t1742-6588\n\t\t1742-6596\n\t\t\n\t\t\t1085\n\t\t\t032020\n\t\t\t\n\t\t\tIOP Publishing\n\t\t\n\t\n\tversion 1.2.0, as cited by"
+    },
+    {
+      "id": 150,
+      "text": "Efficient Data Representation Using FlatBuffers\n\t\t\n\t\t\tChaitanyaKoparkar\n\t\t\n\t\t10.1145/3571304\n\t\t\n\t\n\t\n\t\tXRDS: Crossroads, The ACM Magazine for Students\n\t\tXRDS\n\t\t1528-4972\n\t\t1528-4980\n\t\t\n\t\t\t29\n\t\t\t2\n\t\t\t\n\t\t\t2024. acccessed Aug 07, 2024\n\t\t\tAssociation for Computing Machinery (ACM)"
+    },
+    {
+      "id": 151,
+      "text": "Git and GitHub Workflow\n\t\t\n\t\t\tMariotTsitoara\n\t\t\n\t\t10.1007/979-8-8688-0215-7_19\n\t\t\n\t\n\t\n\t\tBeginning Git and GitHub\n\t\t\n\t\t\tApress\n\t\t\t2024. acccessed Aug 16, 2024"
+    },
+    {
+      "id": 152,
+      "text": "A quantitative review of data formats for HEP analyses\n\t\t\n\t\t\tJBlomer\n\t\t\n\t\t10.1088/1742-6596/1085/3/032020\n\t\t\n\t\n\t\n\t\tJournal of Physics: Conference Series\n\t\tJ. Phys.: Conf. Ser.\n\t\t1742-6588\n\t\t1742-6596\n\t\t\n\t\t\t1085\n\t\t\t032020\n\t\t\t\n\t\t\tIOP Publishing\n\t\t\n\t\n\tThe Protobuf Project Team. 2017. The Google Protobuf Project\n\tv3.3.2 [software] version 3.3.2, as cited by"
+    },
+    {
+      "id": 153,
+      "text": "The Effects of Ni-Ti Hand Files, Ni-Ti Engine Files, and K-Flex Files on Root Canal Morphology\n\t\t\n\t\t\tCharlesRGlosson\n\t\t\n\t\t10.21236/ada267888\n\t\t\n\t\n\t\n\t\tROOT files\n\t\t\n\t\t\tDefense Technical Information Center\n\t\t\t2024. acccessed Aug 07, 2024"
+    },
+    {
+      "id": 154,
+      "text": "Agent-based modelling: a case study in HIV epidemic\n\t\t\n\t\t\tETeweldemedhin\n\t\t\n\t\t\n\t\t\tTMarwala\n\t\t\n\t\t\n\t\t\tCMueller\n\t\t\n\t\t10.1109/ICHIS.2004.16\n\t\n\t\n\t\tFourth International Conference on Hybrid Intelligent Systems (HIS'04)\n\t\t\n\t\t\t2004"
+    },
+    {
+      "id": 155,
+      "text": "Online event on 19 November 2021: Eurosurveillance 25th anniversary seminar ‘Epidemiology and immunology – from observation to explanation and public health action’\n\t\t10.2807/1560-7917.es.2021.26.44.211104m\n\t\t\n\t\n\t\n\t\tEurosurveillance\n\t\t1560-7917\n\t\t\n\t\t\t26\n\t\t\t44\n\t\t\tNovember 19, 2021\n\t\t\tEuropean Centre for Disease Control and Prevention (ECDC)\n\t\t\n\t\n\tThe BioDynaMo Team"
+    },
+    {
+      "id": 156,
+      "text": "HIV/AIDS and Culture in Malawi\n\t\t10.2307/jj.13168046.15\n\t\t\n\t\n\t\n\t\tReligion and Culture in a Changing Malawi\n\t\t\n\t\t\tLuviri Press\n\t\t\t2024. acccessed Aug 26, 2024\n\t\t\t\n\t\t\n\t\n\tThe HIV in Malawi modelling Team"
+    },
+    {
+      "id": 157,
+      "text": "Agent-based modeling of multicell morphogenic processes during development\n\t\t\n\t\t\tCBryan\n\t\t\n\t\t\n\t\t\tAlexanderMThorne\n\t\t\n\t\t\n\t\t\tDouglasWBailey\n\t\t\n\t\t\n\t\t\tShaynMDesimone\n\t\t\n\t\t\n\t\t\tPeirce\n\t\t\n\t\t10.1002/bdrc.20106\n\t\t\n\t\n\t\n\t\tBirth Defects Research Part C: Embryo Today: Reviews\n\t\t\n\t\t\t81\n\t\t\t\n\t\t\t2007. 2007"
+    },
+    {
+      "id": 158,
+      "text": "An agent-based model of household energy consumption\n\t\t\n\t\t\tShanjunTian\n\t\t\n\t\t\n\t\t\tShiyanChang\n\t\t\n\t\t10.1016/j.jclepro.2019.118378\n\t\n\t\n\t\tJournal of Cleaner Production\n\t\tJournal of Cleaner Production\n\t\t0959-6526\n\t\t\n\t\t\t242\n\t\t\t118378\n\t\t\t2020. Jan. 2020\n\t\t\tElsevier BV"
+    },
+    {
+      "id": 159,
+      "text": "On the Impact of Quarantine Policies and Recurrence Rate in Epidemic Spreading Using a Spatial Agent-Based Model\n\t\t\n\t\t\tAlexandruTopîrceanu\n\t\t\n\t\t10.3390/math11061336Number:6Publisher\n\t\n\t\n\t\tMathematics\n\t\t\n\t\t\t11\n\t\t\t1336\n\t\t\t2023. Jan. 2023\n\t\t\tMultidisciplinary Digital Publishing Institute"
+    },
+    {
+      "id": 160,
+      "text": "Context-aware modeling of neuronal morphologies\n\t\t\n\t\t\tBenjaminTorben-Nielsen\n\t\t\n\t\t\n\t\t\tErikDeSchutter\n\t\t\n\t\t10.3389/fnana.2014.00092\n\t\n\t\n\t\tFrontiers in Neuroanatomy\n\t\t\n\t\t\t8\n\t\t\t2014. Sept. 2014"
+    },
+    {
+      "id": 161,
+      "text": "Agent-Based Modeling in Public Health: Current Applications and Future Directions\n\t\t\n\t\t\tMelissaTracy\n\t\t\n\t\t\n\t\t\tMagdalenaCerdá\n\t\t\n\t\t\n\t\t\tKatherineMKeyes\n\t\t\n\t\t10.1146/annurev-publhealth-040617-014317Publisher\n\t\n\t\n\t\tAnnual Review of Public Health\n\t\t\n\t\t\t39\n\t\t\t\n\t\t\t2018. 2018. April 2018\n\t\t\tAnnual Reviews"
+    },
+    {
+      "id": 162,
+      "text": "The Trilinos Project Website\n\t\t\n\t\t\tThe Trilinos Project Team\n\t\t\t2024. acccessed Aug 07, 2024"
+    },
+    {
+      "id": 163,
+      "text": "Predicting the Effects of Waning Vaccine Immunity Against COVID‐19 through High‐Resolution Agent‐Based Modeling\n\t\t\n\t\t\tAgnieszkaTruszkowska\n\t\t\n\t\t\n\t\t\tLorenzoZino\n\t\t\n\t\t\n\t\t\tSachitButail\n\t\t\n\t\t\n\t\t\tEmanueleCaroppo\n\t\t\n\t\t\n\t\t\tZhong‐pingJiang\n\t\t\n\t\t\n\t\t\tAlessandroRizzo\n\t\t\n\t\t\n\t\t\tMaurizioPorfiri\n\t\t\t0000-0002-1480-3539\n\t\t\n\t\t10.1002/adts.202100521\n\t\t\n\t\n\t\n\t\tAdvanced Theory and Simulations\n\t\tAdvcd Theory and Sims\n\t\t2513-0390\n\t\t\n\t\t\t5\n\t\t\t6\n\t\t\t2100521\n\t\t\t2022. 2022\n\t\t\tWiley"
+    },
+    {
+      "id": 164,
+      "text": "Exploring a COVID‐19 Endemic Scenario: High‐Resolution Agent‐Based Modeling of Multiple Variants\n\t\t\n\t\t\tAgnieszkaTruszkowska\n\t\t\n\t\t\n\t\t\tLorenzoZino\n\t\t\n\t\t\n\t\t\tSachitButail\n\t\t\n\t\t\n\t\t\tEmanueleCaroppo\n\t\t\n\t\t\n\t\t\tZhong‐pingJiang\n\t\t\n\t\t\n\t\t\tAlessandroRizzo\n\t\t\n\t\t\n\t\t\tMaurizioPorfiri\n\t\t\t0000-0002-1480-3539\n\t\t\n\t\t10.1002/adts.202200481\n\t\t\n\t\n\t\n\t\tAdvanced Theory and Simulations\n\t\tAdvcd Theory and Sims\n\t\t2513-0390\n\t\t\n\t\t\t6\n\t\t\t1\n\t\t\t2200481\n\t\t\t2023. 2023\n\t\t\tWiley"
+    },
+    {
+      "id": 165,
+      "text": "Agent-based modeling of the prostate tumor microenvironment uncovers spatial tumor growth constraints and immunomodulatory properties\n\t\t\n\t\t\tNGMaisa\n\t\t\n\t\t\n\t\t\tJeroenVan Genderen\n\t\t\n\t\t\n\t\t\tAnniekKneppers\n\t\t\n\t\t\n\t\t\tEliseMZaalberg\n\t\t\n\t\t\n\t\t\tBekers\n\t\t\n\t\t\n\t\t\tMAndries\n\t\t\n\t\t\n\t\t\tWilbertBergman\n\t\t\n\t\t\n\t\t\tFedericaZwart\n\t\t\n\t\t\n\t\t\tEduati\n\t\t\n\t\t10.1038/s41540-024-00344-6Publisher\n\t\n\t\n\t\tnpj Systems Biology and Applications\n\t\t\n\t\t\t10\n\t\t\t1\n\t\t\t\n\t\t\t2024. Feb. 2024\n\t\t\tNature Publishing Group"
+    },
+    {
+      "id": 166,
+      "text": "Cling – The New Interactive Interpreter for ROOT 6\n\t\t\n\t\t\tVVasilev\n\t\t\n\t\t\n\t\t\tPhCanal\n\t\t\n\t\t\n\t\t\tANaumann\n\t\t\n\t\t\n\t\t\tPRusso\n\t\t\n\t\t10.1088/1742-6596/396/5/052071\n\t\n\t\n\t\tJournal of Physics: Conference Series\n\t\tJ. Phys.: Conf. Ser.\n\t\t1742-6588\n\t\t1742-6596\n\t\t\n\t\t\t396\n\t\t\t5\n\t\t\t052071\n\t\t\t2012. 2012\n\t\t\tIOP Publishing"
+    },
+    {
+      "id": 167,
+      "text": "Using data-driven agent-based models for forecasting emerging infectious diseases\n\t\t\n\t\t\tSrinivasanVenkatramanan\n\t\t\n\t\t\n\t\t\tBryanLewis\n\t\t\n\t\t\n\t\t\tJiangzhuoChen\n\t\t\n\t\t\n\t\t\tDaveHigdon\n\t\t\n\t\t\n\t\t\tAnilVullikanti\n\t\t\n\t\t\n\t\t\tMadhavMarathe\n\t\t\n\t\t10.1016/j.epidem.2017.02.010\n\t\n\t\n\t\tEpidemics\n\t\tEpidemics\n\t\t1755-4365\n\t\t\n\t\t\t22\n\t\t\t\n\t\t\t2018. March 2018\n\t\t\tElsevier BV"
+    },
+    {
+      "id": 168,
+      "text": "A case for core-assisted bottleneck acceleration in GPUs\n\t\t\n\t\t\tNanditaVijaykumar\n\t\t\n\t\t\n\t\t\tGennadyPekhimenko\n\t\t\n\t\t\n\t\t\tAdwaitJog\n\t\t\n\t\t\n\t\t\tAbhishekBhowmick\n\t\t\n\t\t\n\t\t\tRachataAusavarungnirun\n\t\t\n\t\t\n\t\t\tChitaDas\n\t\t\n\t\t\n\t\t\tMahmutKandemir\n\t\t\n\t\t\n\t\t\tToddCMowry\n\t\t\n\t\t\n\t\t\tOnurMutlu\n\t\t\n\t\t10.1145/2749469.2750399\n\t\n\t\n\t\tProceedings of the 42nd Annual International Symposium on Computer Architecture\n\t\tthe 42nd Annual International Symposium on Computer ArchitectureNew York, NY, USA\n\t\t\n\t\t\tACM\n\t\t\t2015"
+    },
+    {
+      "id": 169,
+      "text": "Agent-based model of angiogenesis simulates capillary sprout initiation in multicellular networks\n\t\t\n\t\t\tJWalpole\n\t\t\n\t\t\n\t\t\tJCChappell\n\t\t\n\t\t\n\t\t\tJGCluceru\n\t\t\n\t\t\n\t\t\tFMac Gabhann\n\t\t\n\t\t\n\t\t\tVLBautch\n\t\t\n\t\t\n\t\t\tSMPeirce\n\t\t\n\t\t10.1039/c5ib00024f\n\t\n\t\n\t\tIntegrative Biology\n\t\t\n\t\t\t7\n\t\t\t9\n\t\t\t\n\t\t\t2015. Sept. 2015"
+    },
+    {
+      "id": 170,
+      "text": "Multi-scale agent-based modeling on melanoma and its related angiogenesis analysis\n\t\t\n\t\t\tJunWang\n\t\t\n\t\t\n\t\t\tLeZhang\n\t\t\n\t\t\n\t\t\tChenyangJing\n\t\t\n\t\t\n\t\t\tGangYe\n\t\t\n\t\t\n\t\t\tHulinWu\n\t\t\n\t\t\n\t\t\tHongyuMiao\n\t\t\n\t\t\n\t\t\tYukunWu\n\t\t\n\t\t\n\t\t\tXiaoboZhou\n\t\t\n\t\t10.1186/1742-4682-10-41\n\t\n\t\n\t\tTheoretical Biology and Medical Modelling\n\t\tTheor Biol Med Model\n\t\t1742-4682\n\t\t\n\t\t\t10\n\t\t\t1\n\t\t\t41\n\t\t\t2013. June 2013\n\t\t\tSpringer Science and Business Media LLC"
+    },
+    {
+      "id": 171,
+      "text": "Integrated PK-PD and agent-based modeling in oncology\n\t\t\n\t\t\tZhihuiWang\n\t\t\n\t\t\n\t\t\tJosephDButner\n\t\t\n\t\t\n\t\t\tVittorioCristini\n\t\t\n\t\t\n\t\t\tThomasSDeisboeck\n\t\t\n\t\t10.1007/s10928-015-9403-7\n\t\n\t\n\t\tJournal of Pharmacokinetics and Pharmacodynamics\n\t\t\n\t\t\t42\n\t\t\t2\n\t\t\t\n\t\t\t2015. April 2015"
+    },
+    {
+      "id": 172,
+      "text": "Simulating cancer growth with multiscale agent-based modeling\n\t\t\n\t\t\tZhihuiWang\n\t\t\n\t\t\n\t\t\tJosephDButner\n\t\t\n\t\t\n\t\t\tRomicaKerketta\n\t\t\n\t\t\n\t\t\tVittorioCristini\n\t\t\n\t\t\n\t\t\tThomasSDeisboeck\n\t\t\n\t\t10.1016/j.semcancer.2014.04.001\n\t\n\t\n\t\tSeminars in Cancer Biology\n\t\t\n\t\t\t30\n\t\t\t\n\t\t\t2015. Feb. 2015"
+    },
+    {
+      "id": 173,
+      "text": "Simulating cancer growth with multiscale agent-based modeling\n\t\t\n\t\t\tZhihuiWang\n\t\t\n\t\t\n\t\t\tJosephDButner\n\t\t\n\t\t\n\t\t\tRomicaKerketta\n\t\t\n\t\t\n\t\t\tVittorioCristini\n\t\t\n\t\t\n\t\t\tThomasSDeisboeck\n\t\t\n\t\t10.1016/j.semcancer.2014.04.001\n\t\n\t\n\t\tSeminars in Cancer Biology\n\t\tSeminars in Cancer Biology\n\t\t1044-579X\n\t\t\n\t\t\t30\n\t\t\t\n\t\t\t2015. Feb. 2015\n\t\t\tElsevier BV"
+    },
+    {
+      "id": 174,
+      "text": "A Microfluidics and Agent-Based Modeling Framework for Investigating Spatial Organization in Bacterial Colonies: The Case of Pseudomonas Aeruginosa and H1-Type VI Secretion Interactions\n\t\t\n\t\t\tJaredLWilmoth\n\t\t\n\t\t\n\t\t\tPeterWDoak\n\t\t\n\t\t\n\t\t\tAndreaTimm\n\t\t\n\t\t\n\t\t\tMichelleHalsted\n\t\t\n\t\t\n\t\t\tJohnDAnderson\n\t\t\n\t\t\n\t\t\tMartaGinovart\n\t\t\n\t\t\n\t\t\tClaraPrats\n\t\t\n\t\t\n\t\t\tXavierPortell\n\t\t\n\t\t\n\t\t\tScottTRetterer\n\t\t\n\t\t\n\t\t\tMiguelFuentes-Cabrera\n\t\t\n\t\t10.3389/fmicb.2018.00033Publisher:Frontiers\n\t\n\t\n\t\tFrontiers in Microbiology\n\t\t\n\t\t\t9\n\t\t\t2018. Feb. 2018"
+    },
+    {
+      "id": 175,
+      "text": "Agent-Based Modeling for Pandemic Preparedness and Response\n\t\t\n\t\t\tRachelLynn\n\t\t\n\t\t\n\t\t\tWoodul\n\t\t\n\t\t10.17615/d8vp-8m08\n\t\t\n\t\n\t\n\t\tThe University of North Carolina at Chapel Hill\n\t\t\n\t\t\t2023\n\t\t\n\t\n\tPhD Thesis"
+    },
+    {
+      "id": 176,
+      "text": "A data driven agent-based model that recommends non-pharmaceutical interventions to suppress Coronavirus disease 2019 resurgence in megacities\n\t\t\n\t\t\tLingYin\n\t\t\n\t\t\n\t\t\tHaoZhang\n\t\t\n\t\t\n\t\t\tYuanLi\n\t\t\n\t\t\n\t\t\tKangLiu\n\t\t\n\t\t\n\t\t\tTianmuChen\n\t\t\n\t\t\n\t\t\tWeiLuo\n\t\t\n\t\t\n\t\t\tShengjieLai\n\t\t\n\t\t\n\t\t\tYeLi\n\t\t\n\t\t\n\t\t\tXiujuanTang\n\t\t\n\t\t\n\t\t\tLiNing\n\t\t\n\t\t\n\t\t\tShengzhongFeng\n\t\t\n\t\t\n\t\t\tYanjieWei\n\t\t\n\t\t\n\t\t\tZhiyuanZhao\n\t\t\n\t\t\n\t\t\tYingWen\n\t\t\n\t\t\n\t\t\tLiangMao\n\t\t\n\t\t\n\t\t\tShujiangMei\n\t\t\n\t\t10.1098/rsif.2021.0112Publisher\n\t\n\t\n\t\tJournal of The Royal Society Interface\n\t\t\n\t\t\t18\n\t\t\t20210112\n\t\t\t2021. Aug. 2021\n\t\t\tRoyal Society"
+    },
+    {
+      "id": 177,
+      "text": "An agent-based model for simulating urban crime with improved daily routines\n\t\t\n\t\t\tHaojieZhu\n\t\t\n\t\t\n\t\t\tFahuiWang\n\t\t\n\t\t10.1016/j.compenvurbsys.2021.101680\n\t\n\t\n\t\tComputers, Environment and Urban Systems\n\t\t\n\t\t\t89\n\t\t\t101680\n\t\t\t2021. Sept. 2021"
+    },
+    {
+      "id": 178,
+      "text": "Publication Title: Zubler, Frédéric. Simulation of corticogenesis as a selforganizing system\n\t\t\n\t\t\tFrédéricZubler\n\t\t\n\t\t10.5167/uzh-164111ISSN:2012-1415\n\t\t\n\t\t\t2009. 2009\n\t\t\n\t\t\n\t\t\tUniversity of Zurich, Zürich ; University of Zurich, Faculty of Science.\n\t\t\n\t\n\tDissertation\n\tSimulation of corticogenesis as a self-organizing system"
+    },
+    {
+      "id": 179,
+      "text": "A framework for modeling the growth and development of neurons and networks\n\t\t\n\t\t\tFredericZubler\n\t\t\n\t\t\n\t\t\tRodneyDouglas\n\t\t\n\t\t10.3389/neuro.10.025.2009\n\t\t\n\t\n\t\n\t\tFrontiers in computational neuroscience\n\t\t\n\t\t\t3\n\t\t\t25\n\t\t\t2009. 2009"
+    }
+  ],
+  "formulas": []
+}

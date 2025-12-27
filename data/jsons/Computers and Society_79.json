@@ -1,0 +1,430 @@
+{
+  "title": "How Well Do LLMs Imitate Human Writing Style?",
+  "authors": [
+    {
+      "firstname": "Rebira",
+      "surname": "Jemama",
+      "email": "rebirajemama01@gmail.com"
+    },
+    {
+      "firstname": "Rajesh",
+      "surname": "Kumar",
+      "email": ""
+    }
+  ],
+  "abstract": "Large language models (LLMs) can generate fluent text, but their ability to replicate the distinctive style of a specific human author remains unclear. We present a fast, training-free framework for authorship verification and style imitation analysis. The method integrates TF-IDF character n-grams with transformer embeddings and classifies text pairs through empirical distance distributions, eliminating the need for supervised training or threshold tuning. It achieves 97.5% accuracy on academic essays and 94.5% in cross-domain evaluation, while reducing training time by 91.8% and memory usage by 59% relative to parameter-based baselines. Using this framework, we evaluate five LLMs from three separate families (Llama, Qwen, Mixtral) across four prompting strategies: zero-shot, one-shot, few-shot, and text completion. Results show that the prompting strategy has a more substantial influence on style fidelity than model size: few-shot prompting yields up to 23.5x higher style-matching accuracy than zero-shot, and completion prompting reaches 99.9% agreement with the original author's style. Crucially, high-fidelity imitation does not imply human-like unpredictability: human essays average a perplexity of 29.5, whereas matched LLM outputs average only 15.2. These findings demonstrate that stylistic fidelity and statistical detectability are separable, establishing a reproducible basis for future work in authorship modeling, detection, and identity-conditioned generation.",
+  "sections": [
+    {
+      "title": "I. Introduction",
+      "paragraphs": [
+        "Large language models (LLMs) now generate text that is fluent, coherent, and adaptable across a wide range of domains [1]. Their ability to mimic style and tone creates both opportunities and risks. Personalized generation can enhance education, accessibility, and creativity; however, the same ability also threatens authorship integrity in scholarly work, fuels misinformation, and complicates forensic investigations. These tensions The paper is accepted for publication at IEEE UEMCON 2025. More at https://github.com/rajeshjnu2006/writing-style-uemcon2025 motivate a central question: can an LLM reproduce the stylistic fingerprint of a human author while remaining statistically detectable as machine-generated?",
+        "Style imitation goes beyond topical accuracy. It involves recurring author-specific cues such as consistent sentence length, characteristic punctuation habits (for example, heavy use of semicolons), lexical preferences, or syntactic constructions. These signals form the basis of stylometry and authorship analysis, which have long been applied in forensics, plagiarism detection, and literary studies [2], [3]. Parallel to this, a separate line of work addresses machine-generated text detection using perplexity [4], [5], fine-tuned classifiers, and watermarking methods [6]. However, detectors often fail across domains, and humans themselves frequently misclassify LLM text as human-authored [1].",
+        "These two literatures-stylometry and text detection-have rarely been combined. Stylometry focuses on distinguishing among human authors, whereas detection targets the boundary between human and machinegenerated texts. Recent work suggests that these perspectives can converge: LLM detection may be framed as an authorship verification problem rather than a pure attribution problem [7]. Yet, what is missing is a reproducible, model-agnostic framework that directly quantifies how closely LLM-generated text matches a target author's style and relates this fidelity to detectability.",
+        "This study aims to fill that gap. We pursue four research questions: 𝑞 1 : How can we design a reproducible and scalable protocol that quantifies stylistic similarity between human-authored and LLM-generated texts without subjective judgments or task-specific training? 𝑞 2 : How do different LLMs and prompting strategies compare in style imitation fidelity under matched experimental conditions? 𝑞 3 : Does high-fidelity imitation also yield human-like unpredictability, or do generated texts remain statistically identifiable as synthetic [5], [6]? 𝑞 4 : What verifier design enables efficient, large-scale experimentation on commodity hardware while preserving accuracy across domains [8]? We answer these questions with four contributions:",
+        "• First, we present a reproducible framework for measuring LLM style imitation accuracy (𝑞 1 ). The framework is training-free and model-agnostic, combining TF-IDF character n-grams with transformer embeddings [9], [10]. It scales to thousands of text pairs, avoids threshold tuning, and situates comparisons within intra-and inter-author distributions.",
+        "• Second, we conduct a comparative evaluation of LLMs and prompting strategies (𝑞 2 ). Using the framework, we benchmark two Llama variants [11], [12], two Qwen variants [13], and one Mixtral model [14] across zero-shot, one-shot, few-shot, and text-completion prompts. The results show that the prompting strategy has a greater impact on stylistic fidelity than model size, with few-shot and completion settings achieving nearly perfect matches."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "II. Related Work",
+      "paragraphs": [
+        "Authorship analysis has a long history in computational linguistics, traditionally framed as attribution (assigning text to one of several candidate authors) or verification (deciding whether two texts come from the same author) [2], [15]. Early approaches relied on stylometric features such as character and word ngrams, function word frequencies, punctuation habits, and syntactic patterns [3], [16]- [18]. These cues capture unconscious linguistic choices and have proven effective in forensics and plagiarism detection. More recent work has explored neural approaches, ranging from syntactic recurrent networks [19] to convolutional classifiers for script style [20], BERT-based finetuning [21], attention-based similarity learning [22], and vector-difference methods designed for open-world verification [23]. Shared evaluation campaigns such as Plagiarism Analysis, Authorship Identification, and Near-Duplicate Detection (PAN) have further standardized authorship verification benchmarks and highlighted the continued utility of character n-grams in combination with deep contextual embeddings [8].",
+        "In parallel, a growing literature examines the detection of machine-generated text. Early efforts focused on statistical metrics, such as perplexity [4], [5], with later work introducing curvature-based detectors, including DetectGPT [6]. Empirical studies confirm that perplexity remains a strong signal, with human text averaging substantially higher unpredictability than model outputs [24]. A recent survey consolidates these developments, emphasizing both the necessity and limitations of current LLM detection methods [1]. Importantly, detection and authorship verification share methodological ground: both seek to quantify stylistic distinctiveness, but differ in whether the boundary of interest is between humans or between humans and machines.",
+        "With the advent of LLMs, a new body of work has begun to ask whether LLMs themselves can perform authorship tasks or reliably imitate writing styles. Studies have shown that prompting alone can guide models toward reproducing an individual's stylistic cues [25], [26], though performance varies sharply with prompt design. Hung et al. [27] demonstrated that prompting LLMs can yield competitive results for authorship verification, while Hu et al. [28] proposed instruction finetuning to improve robustness further. Huang et al. [29] investigated whether LLMs can act as verifiers of authorship, and Scius-Bertrand et al. [30] extended promptbased evaluations to document classification, highlighting the general methodological relevance of zero-and few-shot prompting strategies. Beyond individual case studies, Bevendorff et al. [7] argued that LLM detection itself may be best framed as an authorship verification problem rather than as pure attribution, unifying two previously separate lines of research.",
+        "Taken together, prior work has advanced authorship modeling, machine-generated text detection, and LLM prompting strategies, but each in isolation. What remains missing is a systematic and reproducible framework that directly measures how closely LLM outputs match a target author's style and how this fidelity interacts with detectability. Our work addresses this gap by combining stylometric verification techniques with LLM evaluation under controlled prompting conditions. Fig. 1: Framework for evaluating large language models' ability to mimic human writing style. Human essays from IvyPanda are paired with LLM-generated counterparts under different prompting strategies. The core authorship verification pipeline embeds both texts with all-MiniLM-L6-v2 and TF-IDF features over the top 10k character 3-5 grams (10,384 dimensions). Cosine similarity between embeddings is compared against empirical distributions, and a nonparametric classifier decides whether the texts share the same author."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "III. Materials and methods",
+      "paragraphs": [],
+      "subsections": []
+    },
+    {
+      "title": "A. Protocol overview",
+      "paragraphs": [
+        "As summarized in Fig. 1, our framework is a trainingfree authorship verification pipeline. The method integrates two complementary feature streams: shallow stylistic cues from TF-IDF character 𝑛-grams and dense contextual embeddings from a transformer encoder. Pairwise texts are projected into these representations and compared using cosine distance, a metric chosen for its robustness across text length regimes. The resulting distances are not passed into a parameterized classifier, but rather stored in empirical distributions of sameauthor and different-author pairs. Classification is then performed by non-parametric comparison against these distributions, thereby avoiding the need for hand-tuned thresholds or model training.",
+        "Beyond the core verifier, the pipeline is extended to evaluate the capacity of large language models (LLMs) to imitate authorial style. We test style fidelity under four prompting conditions: zero-shot, one-shot, fewshot, and text-completion. Finally, we assess whether such generated texts remain statistically distinguishable from human writing by applying a perplexity-based detector. Together, these components form a complete experimental protocol for style-based authorship verification and imitation analysis."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "B. Datasets and preprocessing",
+      "paragraphs": [
+        "In Fig. 1, the pipeline begins with textual input, which is drawn from two complementary corpora.",
+        "Corpora: For same-domain evaluation, we utilize the IvyPanda Essay corpus [31], which contains approximately 128,000 academic essays. For cross-domain evaluation, we utilize the EssayForum dataset [32], which comprises conversational-style essays. This combination enables us to test both domain-consistent verification (academic-academic) and cross-domain robustness (academic-conversational).",
+        "Cleaning pipeline: Before entering the feature extraction modules of Fig. 1, all texts are subjected to a deterministic filtering process designed to remove noise and artifacts. The criteria are: length greater than 500 words; fewer than 10% numeric characters; fewer than 5% misspelled tokens flagged by Pyspellchecker [33] after lowercasing and punctuation stripping; no single token type exceeding 10% frequency; fewer than 5% non-punctuation symbols (e.g., * , %, $); and removal of paratextual content such as headers, footers, page numbers, and bibliographies. After filtering, the IvyPanda set yielded 94, 942 essays (mean length 1, 561 words), split 60/40 into construction and evaluation partitions. The EssayForum set, after filtering, contributed 7, 711 items.",
+        "Pair construction and materialization: To generate pairs as depicted in Fig. 1 (\"Text 1\" and \"Text 2\" inputs), each essay was segmented into two non-adjacent 500word blocks (first and last). This segmentation reduces topical adjacency and encourages reliance on stylistic cues. All segments were encoded once into embeddings and stored, preventing repeated encoder calls during experiments. Balanced pair sets were then created: 100, 000 construction pairs (50𝑘 positive, 50𝑘 negative), 50, 000 same-domain evaluation pairs (25𝑘/25𝑘), and 10, 000 cross-domain pairs (5𝑘/5𝑘).",
+        "As shown later in Fig. 2, performance remains stable across text lengths from 200 to over 1000 words, confirming that the preprocessing pipeline preserves stylistic signals while discarding irrelevant noise."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "C. Feature representations and distance",
+      "paragraphs": [
+        "Once the corpora are preprocessed and segmented, Fig. 1 illustrates that each input passes through two complementary feature extraction branches: one based on surface-level 𝑛-grams and the other on contextual embeddings. Their outputs are then compared within the distance module.",
+        "Character 𝑛-grams (TF-IDF) The left-hand feature branch in Fig. 1 captures shallow stylistic cues using character 𝑛-grams, a feature set consistently successful in PAN authorship competitions [3], [8]. From the entire training corpus, we extract the top 10 4 character 3˘5 grams and represent each document as a sparse TF-IDF vector v 𝑑 ∈ R 10 4  :",
+        "where 𝑓 (𝑔, 𝑑) is the frequency of 𝑛-gram 𝑔 in document 𝑑, |𝑑| is the total character count, and 𝑁 is the corpus size. This representation encodes frequencybased regularities such as punctuation patterns, repeated substrings, and orthographic habits, providing a surfacelevel lens on style.",
+        "Transformer embeddings In parallel, the righthand branch in Fig. 1 derives dense contextual representations using the transformer encoder all-MiniLM-L6-v2 [9], [10]. Given a sequence of tokens (𝑤 1 , . . . , 𝑤 𝑇 ), the model produces hidden states h 𝑖 ∈ R 384 , which are aggregated by mean pooling:",
+        "These embeddings implicitly encode authorial markers such as syntax preferences, lexical rhythm, and functional word usage [21]. Together with TF-IDF vectors, they provide complementary views: one explicit and frequency-based, the other implicit and distributional. Cosine vs. Euclidean distance As illustrated in the central \"Distance Computation\" module of Fig. 1, the two feature representations are compared using a similarity function. We tested cosine distance.",
+        "Experiments across five length regimes (50-1000+ words) demonstrated that cosine similarity consistently yields sharper separation between same-and differentauthor pairs (Fig. 2). This robustness arises because the cosine function normalizes for vector magnitude, thereby mitigating biases from text length and frequency scaling. Accordingly, cosine distance was adopted as the standard metric throughout the framework."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "D. Training-free distribution verifier",
+      "paragraphs": [
+        "After pairwise distances are computed, Fig. 1 shows that they feed into the distribution-based verification module. Instead of training a classifier with learnable parameters, the verifier stores empirical distance distributions for same-author and different-author pairs, enabling classification without thresholds or gradient updates.",
+        "1) Construction : During construction, distances are computed for all labeled training pairs. Formally, for (𝑡 𝑖 , 𝑡 𝑗 ) ∈ P + (same-author) and (𝑡 𝑖 , 𝑡 𝑗 ) ∈ P -(differentauthor), we calculate:",
+        "These values populate two empirical distributions:",
+        "As indicated by the saved distances block in Fig. 1, this step produces reference baselines against which all test pairs are later compared. No weights, thresholds, or parameter updates are learned.",
+        "2) Decision rule and confidence: During inference, a test pair (𝑡 𝑎 , 𝑡 𝑏 ) yields distance 𝑑 * . As shown in the \"Nonparametric Similarity Classifier\" block of Fig. 1, the verifier evaluates:",
+        "The rule is simple: if 𝑆 > 𝐷, classify as sameauthor; otherwise, different-author. A confidence score quantifies the separation:",
+        "This measure reflects how decisively the test distance lies within one distribution rather than the other.",
+        "3) Relation to nonparametrics and ablation: This design generalizes nonparametric classifiers such as 𝑘-NN [34]. However, instead of local neighborhood voting, it leverages global distance distributions, eliminating hyperparameters such as 𝑘 or threshold tuning. Ablation experiments confirm the value of this approach: a handcrafted 16-feature Siamese network built on spaCy [35] achieved only 57% accuracy, whereas the distributional verifier-driven by TF-IDF 𝑛-grams and transformer embeddings (Fig. 1, dual feature inputs)-achieved substantially higher performance."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "E. LLM Style imitation setup",
+      "paragraphs": [
+        "Beyond human-authored corpora, Fig. 1 illustrates a second pathway where large language models (LLMs) generate candidate texts, which are then fed into the same feature-extraction and verification pipeline. This component evaluates whether modern LLMs can replicate an individual author's style closely enough to deceive the distribution-based verifier."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "1) Models and common prompt preamble:",
+      "paragraphs": [
+        "We selected five LLMs from three different families: Llama-3.3-70B-Instruct [11], Llama-4-Scout-17B-16E-Instruct [12], Mixtral 8x7B [14], Qwen 2.5 14B Instruct [36], and Qwen 2.5 32B Instruct [36]. These models differ in scale, architecture, and generation, allowing us to test a diverse set of LLMs and determine universal trends. To standardize outputs, every experiment included the same preamble in the system prompt:",
+        "\"Output only the requested content. No prefaces, disclaimers, or explanations.\"",
+        "This prevented models from adding meta-text and ensured compatibility with the pipeline in Fig. 1, where synthetic outputs enter the same feature branches (TF-IDF and transformer embeddings) as human texts.",
+        "2) Prompting conditions: We tested four prompting conditions, each designed to separate style imitation from topical overlap:",
+        "• Zero-shot: the model receives only a statistical profile of the target author (syntax counts, punctuation ratios, common bigrams). It generates a 300 -500 word essay on any topic, relying solely on stylelevel cues. • One-shot: the model is given a single longest paragraph from the target author as an anchor. It is explicitly instructed to write on a different topic, ensuring that imitation cannot be achieved through simple topical continuation. • Few-shot: the two longest paragraphs are supplied as anchors. This richer context allows models to form a clearer stylistic template. • Completion: Each human essay is split in half by length. The model is asked to continue the first half with a passage of similar length, without repetition or explicit reference to the original passage. This scenario reflects realistic use cases for co-writing or auto-completion.",
+        "For each condition, 1, 000 held-out authors were sampled per model. The generated texts were stored and subsequently fed through the same verification pipeline (Fig. 1, \"Text 1\" and \"Text 2\" inputs). This design ensured that comparisons between human and machineauthored essays were performed under the same feature and decision rules described in §III-C and §III-D."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "F. Evaluation metrics",
+      "paragraphs": [
+        "Let {(𝑥 𝑖 , 𝑦 𝑖 )} 𝑛 𝑖=1 denote the test set, where 𝑥 𝑖 is a pair of texts and 𝑦 𝑖 ∈ {0, 1} is the ground-truth label (1 = same-author, 0 = different-author). The verifier outputs a predicted label ŷ𝑖 and a confidence score 𝑠 𝑖 ∈ [0, 1].",
+        "Accuracy: Accuracy is the proportion of test pairs for which the predicted label matches the ground truth:",
+        "where ⊮[•] is the indicator function, equal to 1 if the condition holds and 0 otherwise. This corresponds to the fraction of correctly identified pairs, whether same-author (true positives) or different-author (true negatives). ROC AUC: Let S + = {𝑠 𝑖 : 𝑦 𝑖 = 1} be the confidence scores for same-author pairs and S -= {𝑠 𝑖 : 𝑦 𝑖 = 0} the scores for different-author pairs. For a decision threshold 𝜏 ∈ [0, 1], the true positive rate (TPR) and false positive rate (FPR) are",
+        "The ROC curve plots TPR against FPR as 𝜏 varies. The area under the curve (AUC) is AUC = Pr(𝑠 + > 𝑠 -), 𝑠 + ∼ S + , 𝑠 -∼ S -, which is the probability that a randomly chosen sameauthor pair receives a higher confidence score than a randomly chosen different-author pair. In this setting, AUC quantifies how well the verifier distinguishes genuine stylistic matches from non-matches, including LLM-generated imitations.",
+        "Confusion matrix: The verifier's predictions can be summarized as follows: .",
+        "This scalar quantifies how decisively the test distance aligns with one distribution. High values indicate a clear separation (the pair is well inside one distribution), while low values reflect overlap or ambiguity. In practice, this measures how strongly the verifier supports its decision about whether an LLM output matches or deviates from a human author's style."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "IV. Results",
+      "paragraphs": [],
+      "subsections": []
+    },
+    {
+      "title": "A. Authorship verification results",
+      "paragraphs": [
+        "The distribution-based verifier achieved consistently strong results across both same-domain (IvyPanda) and cross-domain (EssayForum) evaluations. As summarized in Table I, same-domain accuracy reached 97.49% with a ROC AUC of 0.997, indicating near-perfect separation of same-and different-author pairs. The corresponding F1 score of 0.975 reflects balanced precision and recall, while the mean confidence of 97.1% (±11) confirms that most distances fell deep inside the correct distribution.",
+        "Cross-domain testing naturally reduced performance due to a distributional shift, resulting in a decrease in accuracy to 94.48% and F1 to 0.870, while the mean confidence dropped to 88.4% (±4%). Nevertheless, ROC AUC remained high at 0.981, demonstrating that the verifier maintained strong discriminative power even when generalizing across domains. The distance distributions in Fig. 3 explain these results. In the same-domain setting, same-author pairs cluster tightly around low cosine distances (around 0.25), while different-author pairs concentrate near higher distances (around 0.65). The small overlap region accounts for the symmetric errors observed in the confusion matrix (Table II, FN = 627, FP = 628).",
+        "In contrast, the cross-domain evaluation reveals a marked asymmetry: 1, 349 false negatives versus only 113 false positives. This pattern suggests that stylistic drift in conversational essays draws genuine same-author pairs closer to the distribution of different authors, thereby reducing recall while preserving precision."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "B. LLM Style imitation: full-text generation",
+      "paragraphs": [
+        "Prompting strategy emerged as the dominant factor in style imitation. As shown in Table III, all models failed in the zero-shot condition (accuracy below 7%) with a few texts fooling the verification model. Additionally, the verifier reported high confidence (> 95%) for all its predictions, cementing that zero-shot prompts are indeed incapable of style mimicry. This suggests that the statistical style summaries provided in prompts were not effective anchors for imitation. One-shot results in Table III improve drastically, but intra-promptingstrategy accuracies varied wildly (67.6% to 94.7%). This sparsity in accuracy shows no clear correlation to model generation architecture or alignment strategy, indicating that prompting strategy, rather than underlying model design, dominates style fidelity outcomes. This is concurred by the few-shot results, which, while they vary slightly between models, show a strong upward trend from one-shot results."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "C. LLM style imitation: text completion",
+      "paragraphs": [
+        "The continuation scenario produced the strongest results. As shown in Table III, four out of five models achieved at least 99.9% accuracy with verifier confidence saturated at 100%. Because the first half of each essay establishes a strong stylistic manifold, both models remain within it during continuation, rendering their outputs virtually indistinguishable from the  original author. This finding has direct implications for forensic analysis: once a stylistic context is provided, continuation tasks may evade detection by stylometric means."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "D. AI detectability: Perplexity analysis",
+      "paragraphs": [
+        "Despite their stylistic fidelity, LLM outputs remain substantially more predictable than human writing. As shown in Figure 4, IvyPanda essays average a perplexity"
+      ],
+      "subsections": []
+    },
+    {
+      "title": "V. Discussion",
+      "paragraphs": [
+        "The experiments provide a comprehensive view of how authorship verification and style imitation interact under controlled conditions. Several findings stand out.",
+        "First, the distribution-based verifier demonstrated both effectiveness and efficiency. On IvyPanda, it reached 97.5% accuracy, ROC AUC of 0.997, and an F1 of 0.975, with confidence concentrated around 97.1% (±11). These values indicate that the empirical distance distributions accurately capture authorial consistency with minimal overlap. The confusion matrix confirmed this balance, with nearly identical false positives (628) and false negatives (627), suggesting that errors stemmed primarily from the natural overlap in writing styles rather than systematic bias. Cross-domain evaluation on EssayForum, although reduced to 94.5% accuracy and 0.870 F1, still achieved an AUC of 0.981, underscoring its robustness. Here, the asymmetry in errors-1349 false negatives but only 113 false positives-highlights a key challenge: conversational writing by the same author is often judged to be more distant from their academic writing than essays from other authors within the same domain. This pattern suggests that robustness to genre and register remains a limiting factor in real-world deployment.",
+        "Second, the imitation experiments clarify the role of prompting. In zero-shot settings, accuracy dropped below 7% for all five models, despite confidence exceeding 90%, implying that stylistic profiles alone were insufficient anchors. Accuracy improved in one-shot prompts   2), while human texts center around 30 (𝜇 = 29.5). (b) Empirical CDFs make the separation independent of binning: at perplexity ≤ 20, about 90% of AI texts and about 10 -15% of human texts fall below the threshold; at ≤ 30, about 99% of AI and about 55 -60% of human texts fall below. Lower perplexity indicates greater predictability; therefore, both views suggest that AI-generated outputs remain more predictable than human-written texts, even when the style is similar.",
+        "(67.6˘94.7%), but with significant variance, reflecting unstable style reproduction. Few-shot prompting showed further improvements from one-shot prompts from all models. Completion prompts proved strongest, with four-fifths of the models achieving 99.9% accuracy and verifier confidence saturated at 100%. This indicates that once a human-authored prefix establishes the stylistic manifold, models can maintain it with remarkable fidelity. Forensic implications are immediate: completion scenarios blur the line between co-writing and imitation, making detection far more difficult.",
+        "Third, perplexity analysis shows that fidelity and detectability are separable. Human essays averaged 29.5 perplexity, compared to 16.07 for LLM outputs. At thresholds ≤ 20, about 90% of generated texts fell below, versus only 15% of human essays. Prompting strategy and stylistic fidelity appear not to influence the algorithmic predictability. Ultimately, even as models achieve near-perfect imitation, their outputs remain algorithmically regular.",
+        "Taken together, these results highlight both the promise and risk of current LLMs. On the one hand, training-free verification is reliable, scalable, and interpretable, with performance rivaling supervised baselines at a fraction of the cost. On the other hand, LLMs equipped with exemplar-based prompts can achieve style imitation accuracy indistinguishable from human authorship, raising challenges for academic integrity and forensic attribution. Importantly, statistical predictability persists even in high-fidelity imitation, underscoring that authorship verification and AI detection should be treated as complementary rather than redundant tasks. Extending this analysis to broader genres, multilingual settings, and adversarial prompt designs represents the next frontier in understanding the stylistic capabilities and limitations of LLMs."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "VI. Limitations and Future Work",
+      "paragraphs": [
+        "This work was evaluated on English academic and conversational essays, leaving open questions about generality across creative, technical, and multilingual domains. Broader corpora are needed to test whether the observed results hold across diverse registers of authorial style.",
+        "Although the verifier is efficient and training-free, it remains retrospective and may be challenged by adversarial tactics such as paraphrasing or prompt manipulation. Likewise, perplexity-based detection, here anchored on GPT-2, offers only a partial view; newer detectors or multi-metric approaches that capture syntactic or discourse-level irregularities may reveal different boundaries between human and machine text.",
+        "Future work should extend evaluation to a wider range of LLM architectures and prompting methods, and explore proactive safeguards such as watermarking or identity-conditioned generation. Together, these di-rections will help establish more robust and preventive frameworks for authorship verification in the era of large-scale generative models."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "VII. Conclusion",
+      "paragraphs": [
+        "We introduced a training-free, distribution-based verifier that fuses TF-IDF character 𝑛-grams with transformer embeddings to quantify stylistic similarity without thresholds or supervised fitting, achieving reproducible, state-of-the-art performance-97.49% accuracy (AUC 0.997, F1 0.975) in-domain and 94.48% (AUC 0.981, F1 0.870) cross-domain-while reducing construction time by 91.8% and memory by 59% relative to parameterized baselines; error patterns were interpretable (symmetric FP/FN in-domain; FN-heavy under genre drift), aligning with observed distance distributions. Leveraging this verifier, we showed that prompting strategy, not model size, primarily governs style imitation: zero-shot failed, one-shot improved substantially, few-shot reached near-perfect alignment, and 80% of models in text completion attained 99.9% agreement once a human prefix established the stylistic manifold. Despite this fidelity, generated text remained more predictable than human writing (perplexity 16.07 vs. 29.5; at threshold 20, ∼ 90% of AI vs. ∼ 15% of human texts fell below), demonstrating that fidelity and detectability are separable. These results provide a scalable, interpretable basis for style-aware evaluation, clarify the centrality of exemplar-based prompting for reliable imitation, and motivate dual-track safeguards that pair authorship verification with predictability-based detection in identity-conditioned generation."
+      ],
+      "subsections": []
+    }
+  ],
+  "body_paragraphs": [
+    "Large language models (LLMs) now generate text that is fluent, coherent, and adaptable across a wide range of domains [1]. Their ability to mimic style and tone creates both opportunities and risks. Personalized generation can enhance education, accessibility, and creativity; however, the same ability also threatens authorship integrity in scholarly work, fuels misinformation, and complicates forensic investigations. These tensions The paper is accepted for publication at IEEE UEMCON 2025. More at https://github.com/rajeshjnu2006/writing-style-uemcon2025 motivate a central question: can an LLM reproduce the stylistic fingerprint of a human author while remaining statistically detectable as machine-generated?",
+    "Style imitation goes beyond topical accuracy. It involves recurring author-specific cues such as consistent sentence length, characteristic punctuation habits (for example, heavy use of semicolons), lexical preferences, or syntactic constructions. These signals form the basis of stylometry and authorship analysis, which have long been applied in forensics, plagiarism detection, and literary studies [2], [3]. Parallel to this, a separate line of work addresses machine-generated text detection using perplexity [4], [5], fine-tuned classifiers, and watermarking methods [6]. However, detectors often fail across domains, and humans themselves frequently misclassify LLM text as human-authored [1].",
+    "These two literatures-stylometry and text detection-have rarely been combined. Stylometry focuses on distinguishing among human authors, whereas detection targets the boundary between human and machinegenerated texts. Recent work suggests that these perspectives can converge: LLM detection may be framed as an authorship verification problem rather than a pure attribution problem [7]. Yet, what is missing is a reproducible, model-agnostic framework that directly quantifies how closely LLM-generated text matches a target author's style and relates this fidelity to detectability.",
+    "This study aims to fill that gap. We pursue four research questions: 𝑞 1 : How can we design a reproducible and scalable protocol that quantifies stylistic similarity between human-authored and LLM-generated texts without subjective judgments or task-specific training? 𝑞 2 : How do different LLMs and prompting strategies compare in style imitation fidelity under matched experimental conditions? 𝑞 3 : Does high-fidelity imitation also yield human-like unpredictability, or do generated texts remain statistically identifiable as synthetic [5], [6]? 𝑞 4 : What verifier design enables efficient, large-scale experimentation on commodity hardware while preserving accuracy across domains [8]? We answer these questions with four contributions:",
+    "• First, we present a reproducible framework for measuring LLM style imitation accuracy (𝑞 1 ). The framework is training-free and model-agnostic, combining TF-IDF character n-grams with transformer embeddings [9], [10]. It scales to thousands of text pairs, avoids threshold tuning, and situates comparisons within intra-and inter-author distributions.",
+    "• Second, we conduct a comparative evaluation of LLMs and prompting strategies (𝑞 2 ). Using the framework, we benchmark two Llama variants [11], [12], two Qwen variants [13], and one Mixtral model [14] across zero-shot, one-shot, few-shot, and text-completion prompts. The results show that the prompting strategy has a greater impact on stylistic fidelity than model size, with few-shot and completion settings achieving nearly perfect matches.",
+    "Authorship analysis has a long history in computational linguistics, traditionally framed as attribution (assigning text to one of several candidate authors) or verification (deciding whether two texts come from the same author) [2], [15]. Early approaches relied on stylometric features such as character and word ngrams, function word frequencies, punctuation habits, and syntactic patterns [3], [16]- [18]. These cues capture unconscious linguistic choices and have proven effective in forensics and plagiarism detection. More recent work has explored neural approaches, ranging from syntactic recurrent networks [19] to convolutional classifiers for script style [20], BERT-based finetuning [21], attention-based similarity learning [22], and vector-difference methods designed for open-world verification [23]. Shared evaluation campaigns such as Plagiarism Analysis, Authorship Identification, and Near-Duplicate Detection (PAN) have further standardized authorship verification benchmarks and highlighted the continued utility of character n-grams in combination with deep contextual embeddings [8].",
+    "In parallel, a growing literature examines the detection of machine-generated text. Early efforts focused on statistical metrics, such as perplexity [4], [5], with later work introducing curvature-based detectors, including DetectGPT [6]. Empirical studies confirm that perplexity remains a strong signal, with human text averaging substantially higher unpredictability than model outputs [24]. A recent survey consolidates these developments, emphasizing both the necessity and limitations of current LLM detection methods [1]. Importantly, detection and authorship verification share methodological ground: both seek to quantify stylistic distinctiveness, but differ in whether the boundary of interest is between humans or between humans and machines.",
+    "With the advent of LLMs, a new body of work has begun to ask whether LLMs themselves can perform authorship tasks or reliably imitate writing styles. Studies have shown that prompting alone can guide models toward reproducing an individual's stylistic cues [25], [26], though performance varies sharply with prompt design. Hung et al. [27] demonstrated that prompting LLMs can yield competitive results for authorship verification, while Hu et al. [28] proposed instruction finetuning to improve robustness further. Huang et al. [29] investigated whether LLMs can act as verifiers of authorship, and Scius-Bertrand et al. [30] extended promptbased evaluations to document classification, highlighting the general methodological relevance of zero-and few-shot prompting strategies. Beyond individual case studies, Bevendorff et al. [7] argued that LLM detection itself may be best framed as an authorship verification problem rather than as pure attribution, unifying two previously separate lines of research.",
+    "Taken together, prior work has advanced authorship modeling, machine-generated text detection, and LLM prompting strategies, but each in isolation. What remains missing is a systematic and reproducible framework that directly measures how closely LLM outputs match a target author's style and how this fidelity interacts with detectability. Our work addresses this gap by combining stylometric verification techniques with LLM evaluation under controlled prompting conditions. Fig. 1: Framework for evaluating large language models' ability to mimic human writing style. Human essays from IvyPanda are paired with LLM-generated counterparts under different prompting strategies. The core authorship verification pipeline embeds both texts with all-MiniLM-L6-v2 and TF-IDF features over the top 10k character 3-5 grams (10,384 dimensions). Cosine similarity between embeddings is compared against empirical distributions, and a nonparametric classifier decides whether the texts share the same author.",
+    "As summarized in Fig. 1, our framework is a trainingfree authorship verification pipeline. The method integrates two complementary feature streams: shallow stylistic cues from TF-IDF character 𝑛-grams and dense contextual embeddings from a transformer encoder. Pairwise texts are projected into these representations and compared using cosine distance, a metric chosen for its robustness across text length regimes. The resulting distances are not passed into a parameterized classifier, but rather stored in empirical distributions of sameauthor and different-author pairs. Classification is then performed by non-parametric comparison against these distributions, thereby avoiding the need for hand-tuned thresholds or model training.",
+    "Beyond the core verifier, the pipeline is extended to evaluate the capacity of large language models (LLMs) to imitate authorial style. We test style fidelity under four prompting conditions: zero-shot, one-shot, fewshot, and text-completion. Finally, we assess whether such generated texts remain statistically distinguishable from human writing by applying a perplexity-based detector. Together, these components form a complete experimental protocol for style-based authorship verification and imitation analysis.",
+    "In Fig. 1, the pipeline begins with textual input, which is drawn from two complementary corpora.",
+    "Corpora: For same-domain evaluation, we utilize the IvyPanda Essay corpus [31], which contains approximately 128,000 academic essays. For cross-domain evaluation, we utilize the EssayForum dataset [32], which comprises conversational-style essays. This combination enables us to test both domain-consistent verification (academic-academic) and cross-domain robustness (academic-conversational).",
+    "Cleaning pipeline: Before entering the feature extraction modules of Fig. 1, all texts are subjected to a deterministic filtering process designed to remove noise and artifacts. The criteria are: length greater than 500 words; fewer than 10% numeric characters; fewer than 5% misspelled tokens flagged by Pyspellchecker [33] after lowercasing and punctuation stripping; no single token type exceeding 10% frequency; fewer than 5% non-punctuation symbols (e.g., * , %, $); and removal of paratextual content such as headers, footers, page numbers, and bibliographies. After filtering, the IvyPanda set yielded 94, 942 essays (mean length 1, 561 words), split 60/40 into construction and evaluation partitions. The EssayForum set, after filtering, contributed 7, 711 items.",
+    "Pair construction and materialization: To generate pairs as depicted in Fig. 1 (\"Text 1\" and \"Text 2\" inputs), each essay was segmented into two non-adjacent 500word blocks (first and last). This segmentation reduces topical adjacency and encourages reliance on stylistic cues. All segments were encoded once into embeddings and stored, preventing repeated encoder calls during experiments. Balanced pair sets were then created: 100, 000 construction pairs (50𝑘 positive, 50𝑘 negative), 50, 000 same-domain evaluation pairs (25𝑘/25𝑘), and 10, 000 cross-domain pairs (5𝑘/5𝑘).",
+    "As shown later in Fig. 2, performance remains stable across text lengths from 200 to over 1000 words, confirming that the preprocessing pipeline preserves stylistic signals while discarding irrelevant noise.",
+    "Once the corpora are preprocessed and segmented, Fig. 1 illustrates that each input passes through two complementary feature extraction branches: one based on surface-level 𝑛-grams and the other on contextual embeddings. Their outputs are then compared within the distance module.",
+    "Character 𝑛-grams (TF-IDF) The left-hand feature branch in Fig. 1 captures shallow stylistic cues using character 𝑛-grams, a feature set consistently successful in PAN authorship competitions [3], [8]. From the entire training corpus, we extract the top 10 4 character 3˘5 grams and represent each document as a sparse TF-IDF vector v 𝑑 ∈ R 10 4  :",
+    "where 𝑓 (𝑔, 𝑑) is the frequency of 𝑛-gram 𝑔 in document 𝑑, |𝑑| is the total character count, and 𝑁 is the corpus size. This representation encodes frequencybased regularities such as punctuation patterns, repeated substrings, and orthographic habits, providing a surfacelevel lens on style.",
+    "Transformer embeddings In parallel, the righthand branch in Fig. 1 derives dense contextual representations using the transformer encoder all-MiniLM-L6-v2 [9], [10]. Given a sequence of tokens (𝑤 1 , . . . , 𝑤 𝑇 ), the model produces hidden states h 𝑖 ∈ R 384 , which are aggregated by mean pooling:",
+    "These embeddings implicitly encode authorial markers such as syntax preferences, lexical rhythm, and functional word usage [21]. Together with TF-IDF vectors, they provide complementary views: one explicit and frequency-based, the other implicit and distributional. Cosine vs. Euclidean distance As illustrated in the central \"Distance Computation\" module of Fig. 1, the two feature representations are compared using a similarity function. We tested cosine distance.",
+    "Experiments across five length regimes (50-1000+ words) demonstrated that cosine similarity consistently yields sharper separation between same-and differentauthor pairs (Fig. 2). This robustness arises because the cosine function normalizes for vector magnitude, thereby mitigating biases from text length and frequency scaling. Accordingly, cosine distance was adopted as the standard metric throughout the framework.",
+    "After pairwise distances are computed, Fig. 1 shows that they feed into the distribution-based verification module. Instead of training a classifier with learnable parameters, the verifier stores empirical distance distributions for same-author and different-author pairs, enabling classification without thresholds or gradient updates.",
+    "1) Construction : During construction, distances are computed for all labeled training pairs. Formally, for (𝑡 𝑖 , 𝑡 𝑗 ) ∈ P + (same-author) and (𝑡 𝑖 , 𝑡 𝑗 ) ∈ P -(differentauthor), we calculate:",
+    "These values populate two empirical distributions:",
+    "As indicated by the saved distances block in Fig. 1, this step produces reference baselines against which all test pairs are later compared. No weights, thresholds, or parameter updates are learned.",
+    "2) Decision rule and confidence: During inference, a test pair (𝑡 𝑎 , 𝑡 𝑏 ) yields distance 𝑑 * . As shown in the \"Nonparametric Similarity Classifier\" block of Fig. 1, the verifier evaluates:",
+    "The rule is simple: if 𝑆 > 𝐷, classify as sameauthor; otherwise, different-author. A confidence score quantifies the separation:",
+    "This measure reflects how decisively the test distance lies within one distribution rather than the other.",
+    "3) Relation to nonparametrics and ablation: This design generalizes nonparametric classifiers such as 𝑘-NN [34]. However, instead of local neighborhood voting, it leverages global distance distributions, eliminating hyperparameters such as 𝑘 or threshold tuning. Ablation experiments confirm the value of this approach: a handcrafted 16-feature Siamese network built on spaCy [35] achieved only 57% accuracy, whereas the distributional verifier-driven by TF-IDF 𝑛-grams and transformer embeddings (Fig. 1, dual feature inputs)-achieved substantially higher performance.",
+    "Beyond human-authored corpora, Fig. 1 illustrates a second pathway where large language models (LLMs) generate candidate texts, which are then fed into the same feature-extraction and verification pipeline. This component evaluates whether modern LLMs can replicate an individual author's style closely enough to deceive the distribution-based verifier.",
+    "We selected five LLMs from three different families: Llama-3.3-70B-Instruct [11], Llama-4-Scout-17B-16E-Instruct [12], Mixtral 8x7B [14], Qwen 2.5 14B Instruct [36], and Qwen 2.5 32B Instruct [36]. These models differ in scale, architecture, and generation, allowing us to test a diverse set of LLMs and determine universal trends. To standardize outputs, every experiment included the same preamble in the system prompt:",
+    "\"Output only the requested content. No prefaces, disclaimers, or explanations.\"",
+    "This prevented models from adding meta-text and ensured compatibility with the pipeline in Fig. 1, where synthetic outputs enter the same feature branches (TF-IDF and transformer embeddings) as human texts.",
+    "2) Prompting conditions: We tested four prompting conditions, each designed to separate style imitation from topical overlap:",
+    "• Zero-shot: the model receives only a statistical profile of the target author (syntax counts, punctuation ratios, common bigrams). It generates a 300 -500 word essay on any topic, relying solely on stylelevel cues. • One-shot: the model is given a single longest paragraph from the target author as an anchor. It is explicitly instructed to write on a different topic, ensuring that imitation cannot be achieved through simple topical continuation. • Few-shot: the two longest paragraphs are supplied as anchors. This richer context allows models to form a clearer stylistic template. • Completion: Each human essay is split in half by length. The model is asked to continue the first half with a passage of similar length, without repetition or explicit reference to the original passage. This scenario reflects realistic use cases for co-writing or auto-completion.",
+    "For each condition, 1, 000 held-out authors were sampled per model. The generated texts were stored and subsequently fed through the same verification pipeline (Fig. 1, \"Text 1\" and \"Text 2\" inputs). This design ensured that comparisons between human and machineauthored essays were performed under the same feature and decision rules described in §III-C and §III-D.",
+    "Let {(𝑥 𝑖 , 𝑦 𝑖 )} 𝑛 𝑖=1 denote the test set, where 𝑥 𝑖 is a pair of texts and 𝑦 𝑖 ∈ {0, 1} is the ground-truth label (1 = same-author, 0 = different-author). The verifier outputs a predicted label ŷ𝑖 and a confidence score 𝑠 𝑖 ∈ [0, 1].",
+    "Accuracy: Accuracy is the proportion of test pairs for which the predicted label matches the ground truth:",
+    "where ⊮[•] is the indicator function, equal to 1 if the condition holds and 0 otherwise. This corresponds to the fraction of correctly identified pairs, whether same-author (true positives) or different-author (true negatives). ROC AUC: Let S + = {𝑠 𝑖 : 𝑦 𝑖 = 1} be the confidence scores for same-author pairs and S -= {𝑠 𝑖 : 𝑦 𝑖 = 0} the scores for different-author pairs. For a decision threshold 𝜏 ∈ [0, 1], the true positive rate (TPR) and false positive rate (FPR) are",
+    "The ROC curve plots TPR against FPR as 𝜏 varies. The area under the curve (AUC) is AUC = Pr(𝑠 + > 𝑠 -), 𝑠 + ∼ S + , 𝑠 -∼ S -, which is the probability that a randomly chosen sameauthor pair receives a higher confidence score than a randomly chosen different-author pair. In this setting, AUC quantifies how well the verifier distinguishes genuine stylistic matches from non-matches, including LLM-generated imitations.",
+    "Confusion matrix: The verifier's predictions can be summarized as follows: .",
+    "This scalar quantifies how decisively the test distance aligns with one distribution. High values indicate a clear separation (the pair is well inside one distribution), while low values reflect overlap or ambiguity. In practice, this measures how strongly the verifier supports its decision about whether an LLM output matches or deviates from a human author's style.",
+    "The distribution-based verifier achieved consistently strong results across both same-domain (IvyPanda) and cross-domain (EssayForum) evaluations. As summarized in Table I, same-domain accuracy reached 97.49% with a ROC AUC of 0.997, indicating near-perfect separation of same-and different-author pairs. The corresponding F1 score of 0.975 reflects balanced precision and recall, while the mean confidence of 97.1% (±11) confirms that most distances fell deep inside the correct distribution.",
+    "Cross-domain testing naturally reduced performance due to a distributional shift, resulting in a decrease in accuracy to 94.48% and F1 to 0.870, while the mean confidence dropped to 88.4% (±4%). Nevertheless, ROC AUC remained high at 0.981, demonstrating that the verifier maintained strong discriminative power even when generalizing across domains. The distance distributions in Fig. 3 explain these results. In the same-domain setting, same-author pairs cluster tightly around low cosine distances (around 0.25), while different-author pairs concentrate near higher distances (around 0.65). The small overlap region accounts for the symmetric errors observed in the confusion matrix (Table II, FN = 627, FP = 628).",
+    "In contrast, the cross-domain evaluation reveals a marked asymmetry: 1, 349 false negatives versus only 113 false positives. This pattern suggests that stylistic drift in conversational essays draws genuine same-author pairs closer to the distribution of different authors, thereby reducing recall while preserving precision.",
+    "Prompting strategy emerged as the dominant factor in style imitation. As shown in Table III, all models failed in the zero-shot condition (accuracy below 7%) with a few texts fooling the verification model. Additionally, the verifier reported high confidence (> 95%) for all its predictions, cementing that zero-shot prompts are indeed incapable of style mimicry. This suggests that the statistical style summaries provided in prompts were not effective anchors for imitation. One-shot results in Table III improve drastically, but intra-promptingstrategy accuracies varied wildly (67.6% to 94.7%). This sparsity in accuracy shows no clear correlation to model generation architecture or alignment strategy, indicating that prompting strategy, rather than underlying model design, dominates style fidelity outcomes. This is concurred by the few-shot results, which, while they vary slightly between models, show a strong upward trend from one-shot results.",
+    "The continuation scenario produced the strongest results. As shown in Table III, four out of five models achieved at least 99.9% accuracy with verifier confidence saturated at 100%. Because the first half of each essay establishes a strong stylistic manifold, both models remain within it during continuation, rendering their outputs virtually indistinguishable from the  original author. This finding has direct implications for forensic analysis: once a stylistic context is provided, continuation tasks may evade detection by stylometric means.",
+    "Despite their stylistic fidelity, LLM outputs remain substantially more predictable than human writing. As shown in Figure 4, IvyPanda essays average a perplexity",
+    "The experiments provide a comprehensive view of how authorship verification and style imitation interact under controlled conditions. Several findings stand out.",
+    "First, the distribution-based verifier demonstrated both effectiveness and efficiency. On IvyPanda, it reached 97.5% accuracy, ROC AUC of 0.997, and an F1 of 0.975, with confidence concentrated around 97.1% (±11). These values indicate that the empirical distance distributions accurately capture authorial consistency with minimal overlap. The confusion matrix confirmed this balance, with nearly identical false positives (628) and false negatives (627), suggesting that errors stemmed primarily from the natural overlap in writing styles rather than systematic bias. Cross-domain evaluation on EssayForum, although reduced to 94.5% accuracy and 0.870 F1, still achieved an AUC of 0.981, underscoring its robustness. Here, the asymmetry in errors-1349 false negatives but only 113 false positives-highlights a key challenge: conversational writing by the same author is often judged to be more distant from their academic writing than essays from other authors within the same domain. This pattern suggests that robustness to genre and register remains a limiting factor in real-world deployment.",
+    "Second, the imitation experiments clarify the role of prompting. In zero-shot settings, accuracy dropped below 7% for all five models, despite confidence exceeding 90%, implying that stylistic profiles alone were insufficient anchors. Accuracy improved in one-shot prompts   2), while human texts center around 30 (𝜇 = 29.5). (b) Empirical CDFs make the separation independent of binning: at perplexity ≤ 20, about 90% of AI texts and about 10 -15% of human texts fall below the threshold; at ≤ 30, about 99% of AI and about 55 -60% of human texts fall below. Lower perplexity indicates greater predictability; therefore, both views suggest that AI-generated outputs remain more predictable than human-written texts, even when the style is similar.",
+    "(67.6˘94.7%), but with significant variance, reflecting unstable style reproduction. Few-shot prompting showed further improvements from one-shot prompts from all models. Completion prompts proved strongest, with four-fifths of the models achieving 99.9% accuracy and verifier confidence saturated at 100%. This indicates that once a human-authored prefix establishes the stylistic manifold, models can maintain it with remarkable fidelity. Forensic implications are immediate: completion scenarios blur the line between co-writing and imitation, making detection far more difficult.",
+    "Third, perplexity analysis shows that fidelity and detectability are separable. Human essays averaged 29.5 perplexity, compared to 16.07 for LLM outputs. At thresholds ≤ 20, about 90% of generated texts fell below, versus only 15% of human essays. Prompting strategy and stylistic fidelity appear not to influence the algorithmic predictability. Ultimately, even as models achieve near-perfect imitation, their outputs remain algorithmically regular.",
+    "Taken together, these results highlight both the promise and risk of current LLMs. On the one hand, training-free verification is reliable, scalable, and interpretable, with performance rivaling supervised baselines at a fraction of the cost. On the other hand, LLMs equipped with exemplar-based prompts can achieve style imitation accuracy indistinguishable from human authorship, raising challenges for academic integrity and forensic attribution. Importantly, statistical predictability persists even in high-fidelity imitation, underscoring that authorship verification and AI detection should be treated as complementary rather than redundant tasks. Extending this analysis to broader genres, multilingual settings, and adversarial prompt designs represents the next frontier in understanding the stylistic capabilities and limitations of LLMs.",
+    "This work was evaluated on English academic and conversational essays, leaving open questions about generality across creative, technical, and multilingual domains. Broader corpora are needed to test whether the observed results hold across diverse registers of authorial style.",
+    "Although the verifier is efficient and training-free, it remains retrospective and may be challenged by adversarial tactics such as paraphrasing or prompt manipulation. Likewise, perplexity-based detection, here anchored on GPT-2, offers only a partial view; newer detectors or multi-metric approaches that capture syntactic or discourse-level irregularities may reveal different boundaries between human and machine text.",
+    "Future work should extend evaluation to a wider range of LLM architectures and prompting methods, and explore proactive safeguards such as watermarking or identity-conditioned generation. Together, these di-rections will help establish more robust and preventive frameworks for authorship verification in the era of large-scale generative models.",
+    "We introduced a training-free, distribution-based verifier that fuses TF-IDF character 𝑛-grams with transformer embeddings to quantify stylistic similarity without thresholds or supervised fitting, achieving reproducible, state-of-the-art performance-97.49% accuracy (AUC 0.997, F1 0.975) in-domain and 94.48% (AUC 0.981, F1 0.870) cross-domain-while reducing construction time by 91.8% and memory by 59% relative to parameterized baselines; error patterns were interpretable (symmetric FP/FN in-domain; FN-heavy under genre drift), aligning with observed distance distributions. Leveraging this verifier, we showed that prompting strategy, not model size, primarily governs style imitation: zero-shot failed, one-shot improved substantially, few-shot reached near-perfect alignment, and 80% of models in text completion attained 99.9% agreement once a human prefix established the stylistic manifold. Despite this fidelity, generated text remained more predictable than human writing (perplexity 16.07 vs. 29.5; at threshold 20, ∼ 90% of AI vs. ∼ 15% of human texts fell below), demonstrating that fidelity and detectability are separable. These results provide a scalable, interpretable basis for style-aware evaluation, clarify the centrality of exemplar-based prompting for reliable imitation, and motivate dual-track safeguards that pair authorship verification with predictability-based detection in identity-conditioned generation."
+  ],
+  "references": [
+    {
+      "id": 1,
+      "text": "A Survey on LLM-Generated Text Detection: Necessity, Methods, and Future Directions\n\t\t\n\t\t\tJunchaoWu\n\t\t\n\t\t\n\t\t\tShuYang\n\t\t\n\t\t\n\t\t\tRunzheZhan\n\t\t\n\t\t\n\t\t\tYulinYuan\n\t\t\n\t\t\n\t\t\tLidiaSamChao\n\t\t\n\t\t\n\t\t\tDerekFaiWong\n\t\t\n\t\t10.1162/coli_a_00549\n\t\n\t\n\t\tComputational Linguistics\n\t\t0891-2017\n\t\t1530-9312\n\t\t\n\t\t\t51\n\t\t\t1\n\t\t\t\n\t\t\t2025\n\t\t\tMIT Press"
+    },
+    {
+      "id": 2,
+      "text": "A survey of modern authorship attribution methods\n\t\t\n\t\t\tEfstathiosStamatatos\n\t\t\n\t\n\t\n\t\tJournal of the American Society for Information Science and Technology\n\t\t\n\t\t\t2009"
+    },
+    {
+      "id": 3,
+      "text": "Not All Character N-grams Are Created Equal: A Study in Authorship Attribution\n\t\t\n\t\t\tUpendraSapkota\n\t\t\n\t\t\n\t\t\tStevenBethard\n\t\t\n\t\t\n\t\t\tManuelMontes\n\t\t\n\t\t\n\t\t\tThamarSolorio\n\t\t\n\t\t10.3115/v1/n15-1010\n\t\n\t\n\t\tProceedings of the 2015 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies\n\t\t\n\t\t\tRMihalcea\n\t\t\n\t\t\n\t\t\tJChai\n\t\t\n\t\t\n\t\t\tASarkar\n\t\t\n\t\tthe 2015 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies\n\t\t\n\t\t\tAssociation for Computational Linguistics\n\t\t\t2015"
+    },
+    {
+      "id": 4,
+      "text": "Perplexity—a measure of the difficulty of speech recognition tasks\n\t\t\n\t\t\tFJelinek\n\t\t\n\t\t\n\t\t\tRLMercer\n\t\t\n\t\t\n\t\t\tLRBahl\n\t\t\n\t\t\n\t\t\tJKBaker\n\t\t\n\t\t10.1121/1.2016299\n\t\n\t\n\t\tThe Journal of the Acoustical Society of America\n\t\t0001-4966\n\t\t1520-8524\n\t\t\n\t\t\t62\n\t\t\tS1\n\t\t\t\n\t\t\t2005\n\t\t\tAcoustical Society of America (ASA)"
+    },
+    {
+      "id": 5,
+      "text": "Language models are few-shot learners\n\t\t\n\t\t\tBTom\n\t\t\n\t\t\n\t\t\tBrown\n\t\t\n\t\t\n\t\t\n\t\t\t2020"
+    },
+    {
+      "id": 6,
+      "text": "Detectgpt: zero-shot machine-generated text detection using probability curvature\n\t\t\n\t\t\tEMitchell\n\t\t\n\t\t\n\t\t\tYLee\n\t\t\n\t\t\n\t\t\tAKhazatsky\n\t\t\n\t\t\n\t\t\tCDManning\n\t\t\n\t\t\n\t\t\tCFinn\n\t\t\n\t\n\t\n\t\tProceedings of the 40th International Conference on Machine Learning\n\t\tthe 40th International Conference on Machine Learning\n\t\t\n\t\t\t2023\n\t\t\n\t\n\tser. ICML'23. JMLR.org"
+    },
+    {
+      "id": 7,
+      "text": "The Two Paradigms of LLM Detection: Authorship Attribution vs. Authorship Verification\n\t\t\n\t\t\tJanekBevendorff\n\t\t\n\t\t\n\t\t\tMattiWiegmann\n\t\t\n\t\t\n\t\t\tEmmelieRichter\n\t\t\n\t\t\n\t\t\tMartinPotthast\n\t\t\n\t\t\n\t\t\tBennoStein\n\t\t\n\t\t10.18653/v1/2025.findings-acl.194\n\t\n\t\n\t\tFindings of the Association for Computational Linguistics: ACL 2025\n\t\t\n\t\t\tWChe\n\t\t\n\t\t\n\t\t\tJNabende\n\t\t\n\t\t\n\t\t\tEShutova\n\t\t\n\t\t\n\t\t\tMTPilehvar\n\t\t\n\t\t\n\t\t\tAssociation for Computational Linguistics\n\t\t\tJul. 2025"
+    },
+    {
+      "id": 8,
+      "text": "PAN20 Authorship Analysis: Authorship Verification\n\t\t\n\t\t\tJBevendorff\n\t\t\n\t\t\n\t\t\tMKestemont\n\t\t\n\t\t\n\t\t\tEStamatatos\n\t\t\n\t\t\n\t\t\tEManjavacas\n\t\t\n\t\t\n\t\t\tMPotthast\n\t\t\n\t\t\n\t\t\tBStein\n\t\t\n\t\t10.5281/zenodo.3716402\n\t\t\n\t\t\n\t\t\t2020. March 19. 2020. 2023\n\t\t\n\t\n\tLast modified November 13"
+    },
+    {
+      "id": 9,
+      "text": "Sentence-BERT: Sentence embeddings using Siamese BERT-networks\n\t\t\n\t\t\tNReimers\n\t\t\n\t\t\n\t\t\tIGurevych\n\t\t\n\t\n\t\n\t\tProceedings of the 2019 Conference on Empirical Methods in Natural Language Processing and the 9th International Joint Conference on Natural Language Processing\n\t\t\n\t\t\tKInui\n\t\t\n\t\t\n\t\t\tJJiang\n\t\t\n\t\t\n\t\t\tVNg\n\t\t\n\t\t\n\t\t\tXWan\n\t\t\n\t\tthe 2019 Conference on Empirical Methods in Natural Language Processing and the 9th International Joint Conference on Natural Language Processing\n\t\t\n\t\t\tAssociation for Computational Linguistics\n\t\t\tNov. 2019"
+    },
+    {
+      "id": 10,
+      "text": "MiniLMv2: Multi-Head Self-Attention Relation Distillation for Compressing Pretrained Transformers\n\t\t\n\t\t\tWenhuiWang\n\t\t\n\t\t\n\t\t\tHangboBao\n\t\t\n\t\t\n\t\t\tShaohanHuang\n\t\t\n\t\t\n\t\t\tLiDong\n\t\t\n\t\t\n\t\t\tFuruWei\n\t\t\n\t\t10.18653/v1/2021.findings-acl.188\n\t\n\t\n\t\tFindings of the Association for Computational Linguistics: ACL-IJCNLP 2021\n\t\t\n\t\t\tAssociation for Computational Linguistics\n\t\t\t2020"
+    },
+    {
+      "id": 11,
+      "text": "meta-llama/llama-3.3-70b-instruct\n\t\t\n\t\t\tMAi\n\t\t\n\t\t\n\t\t\t2024"
+    },
+    {
+      "id": 12,
+      "text": "meta-llama/llama-4-scout-17b-16e-instruct\n\t\t\n\t\t\tAIMeta\n\t\t\n\t\t\n\t\t\t2024"
+    },
+    {
+      "id": 13,
+      "text": "Qwen technical report\n\t\t\n\t\t\tBai\n\t\t\n\t\t\n\t\t\t2023"
+    },
+    {
+      "id": 14,
+      "text": "Experts in the age of systems\n\t\t\n\t\t\tAlbertQJiang\n\t\t\n\t\t10.5860/choice.29-2401\n\t\t\n\t\n\t\n\t\tChoice Reviews Online\n\t\tChoice Reviews Online\n\t\t0009-4978\n\t\t1523-8253\n\t\t\n\t\t\t29\n\t\t\t04\n\t\t\t29-2401-29-2401\n\t\t\t2024\n\t\t\tAmerican Library Association"
+    },
+    {
+      "id": 15,
+      "text": "Authorship Attribution\n\t\t\n\t\t\tPatrickJuola\n\t\t\n\t\t10.1561/1500000005\n\t\n\t\n\t\tFoundations and Trends® in Information Retrieval\n\t\tFNT in Information Retrieval\n\t\t1554-0669\n\t\t1554-0677\n\t\t\n\t\t\t1\n\t\t\t3\n\t\t\t\n\t\t\t2006\n\t\t\tEmerald"
+    },
+    {
+      "id": 16,
+      "text": "Authorship attribution using function words adjacency networks\n\t\t\n\t\t\tSantiagoSegarra\n\t\t\n\t\t\n\t\t\tMarkEisen\n\t\t\n\t\t\n\t\t\tAlejandroRibeiro\n\t\t\n\t\t10.1109/icassp.2013.6638728\n\t\n\t\n\t\t2013 IEEE International Conference on Acoustics, Speech and Signal Processing\n\t\t\n\t\t\tIEEE\n\t\t\t2013"
+    },
+    {
+      "id": 17,
+      "text": "Effects of age and gender on blogging\n\t\t\n\t\t\tJSchler\n\t\t\n\t\t\n\t\t\tMKoppel\n\t\t\n\t\t\n\t\t\tSArgamon\n\t\t\n\t\t\n\t\t\tJWPennebaker\n\t\t\n\t\n\t\n\t\tAAAI spring symposium: Computational approaches to analyzing weblogs\n\t\tStanford, CA, USA\n\t\t\n\t\t\t2006"
+    },
+    {
+      "id": 18,
+      "text": "Writer Identification Using Microblogging Texts for Social Media Forensics\n\t\t\n\t\t\tFernandoAlonso-Fernandez\n\t\t\t0000-0002-1400-346X\n\t\t\n\t\t\n\t\t\tNicoleMariah SharonBelvisi\n\t\t\n\t\t\n\t\t\tKevinHernandez-Diaz\n\t\t\n\t\t\n\t\t\tNaveedMuhammad\n\t\t\t0000-0001-5965-1965\n\t\t\n\t\t\n\t\t\tJosefBigun\n\t\t\t0000-0002-4929-1262\n\t\t\n\t\t10.1109/tbiom.2021.3078073\n\t\n\t\n\t\tIEEE Transactions on Biometrics, Behavior, and Identity Science\n\t\tIEEE Trans. Biom. Behav. Identity Sci.\n\t\t2637-6407\n\t\t\n\t\t\t3\n\t\t\t3\n\t\t\t\n\t\t\t2021\n\t\t\tInstitute of Electrical and Electronics Engineers (IEEE)"
+    },
+    {
+      "id": 19,
+      "text": "Syntactic neural model for authorship attribution\n\t\t\n\t\t\tFJafariakinabad\n\t\t\n\t\t\n\t\t\tSTarnpradab\n\t\t\n\t\t\n\t\t\tKAHua\n\t\t\n\t\t\n\t\n\t\n\t\tProceedings of the Thirty-Third International FLAIRS Conference (FLAIRS-33)\n\t\tthe Thirty-Third International FLAIRS Conference (FLAIRS-33)\n\t\t\n\t\t\tAAAI Press\n\t\t\t2020"
+    },
+    {
+      "id": 20,
+      "text": "Using Convolutional Neural Networks to Classify Hate-Speech\n\t\t\n\t\t\tBjörnGambäck\n\t\t\n\t\t\n\t\t\tUtpalKumarSikdar\n\t\t\n\t\t10.18653/v1/w17-3013\n\t\n\t\n\t\tProceedings of the First Workshop on Abusive Language Online\n\t\t\n\t\t\tZWaseem\n\t\t\n\t\t\n\t\t\tWH KChung\n\t\t\n\t\t\n\t\t\tDHovy\n\t\t\n\t\t\n\t\t\tJTetreault\n\t\t\n\t\tthe First Workshop on Abusive Language OnlineVancouver, BC, Canada\n\t\t\n\t\t\tAssociation for Computational Linguistics\n\t\t\t2017"
+    },
+    {
+      "id": 21,
+      "text": "Table 1: Hyperparameters for fine-tuning BERT.\n\t\t\n\t\t\tFabien\n\t\t\n\t\t10.7717/peerjcs.1248/table-1\n\t\n\t\n\t\tPICON\n\t\t\n\t\t\t2020\n\t\t\tPeerJ"
+    },
+    {
+      "id": 22,
+      "text": "Explainable Authorship Verification in Social Media via Attention-based Similarity Learning\n\t\t\n\t\t\tBenediktBoenninghoff\n\t\t\n\t\t\n\t\t\tSteffenHessler\n\t\t\n\t\t\n\t\t\tDorotheaKolossa\n\t\t\n\t\t\n\t\t\tRobertMNickel\n\t\t\n\t\t10.1109/bigdata47090.2019.9005650\n\t\t\n\t\n\t\n\t\t2019 IEEE International Conference on Big Data (Big Data)\n\t\t\n\t\t\tIEEE\n\t\t\t2019"
+    },
+    {
+      "id": 23,
+      "text": "Feature vector difference based authorship verification for open-world settings: Notebook for pan at clef 2021\n\t\t\n\t\t\tJWeerasinghe\n\t\t\n\t\t\n\t\t\tRSingh\n\t\t\n\t\t\n\t\t\tRGreenstadt\n\t\t\n\t\n\t\n\t\tWorking Notes of CLEF 2021 -Conference and Labs of the Evaluation Forum, ser. CEUR Workshop Proceedings\n\t\t\n\t\t\tCCappellato\n\t\t\n\t\t\n\t\t\tNEickhoff\n\t\t\n\t\t\n\t\t\tAFerro\n\t\t\n\t\t\n\t\t\tNévéol\n\t\t\n\t\t\n\t\t\t2021"
+    },
+    {
+      "id": 24,
+      "text": "The influence of the perplexity score in the detection of machine-generated texts\n\t\t\n\t\t\tAlberto\n\t\t\n\t\n\t\n\t\tNLPAICS\n\t\t\n\t\t\t2024"
+    },
+    {
+      "id": 25,
+      "text": "Using prompts to guide large language models in imitating a real person's language style\n\t\t\n\t\t\tZChen\n\t\t\n\t\t\n\t\t\tSMoscholios\n\t\t\n\t\tarXiv:2410.03848\n\t\t\n\t\t\t2024\n\t\t\n\t\n\tarXiv preprint"
+    },
+    {
+      "id": 26,
+      "text": "Prompt Programming for Large Language Models: Beyond the Few-Shot Paradigm\n\t\t\n\t\t\tLariaReynolds\n\t\t\n\t\t\n\t\t\tKyleMcdonell\n\t\t\n\t\t10.1145/3411763.3451760\n\t\n\t\n\t\tExtended Abstracts of the 2021 CHI Conference on Human Factors in Computing Systems\n\t\t\n\t\t\tACM\n\t\t\t2021"
+    },
+    {
+      "id": 27,
+      "text": "Who Wrote it and Why? Prompting Large-Language Models for Authorship Verification\n\t\t\n\t\t\tChia-YuHung\n\t\t\n\t\t\n\t\t\tZhiqiangHu\n\t\t\n\t\t\n\t\t\tYujiaHu\n\t\t\n\t\t\n\t\t\tRoyLee\n\t\t\n\t\t10.18653/v1/2023.findings-emnlp.937\n\t\n\t\n\t\tFindings of the Association for Computational Linguistics: EMNLP 2023\n\t\t\n\t\t\tJBouamor\n\t\t\n\t\t\n\t\t\tKPino\n\t\t\n\t\t\n\t\t\tBali\n\t\t\n\t\t\n\t\t\tAssociation for Computational Linguistics\n\t\t\t2023"
+    },
+    {
+      "id": 28,
+      "text": "Menos: Split Fine-Tuning Large Language Models with Efficient GPU Memory Sharing\n\t\t\n\t\t\tChenghaoHu\n\t\t\t0009-0003-0653-2817\n\t\t\n\t\t\n\t\t\tBaochunLi\n\t\t\t0000-0003-2404-0974\n\t\t\n\t\t10.1145/3652892.3700758\n\t\t\n\t\n\t\n\t\tProceedings of the 25th International Middleware Conference\n\t\tthe 25th International Middleware Conference\n\t\t\n\t\t\tACM\n\t\t\t2024"
+    },
+    {
+      "id": 29,
+      "text": "Can Large Language Models Identify Authorship?\n\t\t\n\t\t\tBaixiangHuang\n\t\t\n\t\t\n\t\t\tCanyuChen\n\t\t\n\t\t\n\t\t\tKaiShu\n\t\t\n\t\t10.18653/v1/2024.findings-emnlp.26\n\t\n\t\n\t\tFindings of the Association for Computational Linguistics: EMNLP 2024\n\t\t\n\t\t\tYAl-Onaizan\n\t\t\n\t\t\n\t\t\tMBansal\n\t\t\n\t\t\n\t\t\tY.-NChen\n\t\t\n\t\t\n\t\t\tAssociation for Computational Linguistics\n\t\t\t2024\n\t\t\t\n\t\t\n\t\n\tAssociation for Computational Linguistics"
+    },
+    {
+      "id": 30,
+      "text": "Zero-Shot Prompting and Few-Shot Fine-Tuning: Revisiting Document Image Classification Using Large Language Models\n\t\t\n\t\t\tAnnaScius-Bertrand\n\t\t\n\t\t\n\t\t\tMichaelJungo\n\t\t\n\t\t\n\t\t\tLarsVögtlin\n\t\t\n\t\t\n\t\t\tJean-MarcSpat\n\t\t\n\t\t\n\t\t\tAndreasFischer\n\t\t\n\t\t10.1007/978-3-031-78495-8_10\n\t\n\t\n\t\tLecture Notes in Computer Science\n\t\t\n\t\t\tAPattern Recognition\n\t\t\n\t\t\n\t\t\tSAntonacopoulos\n\t\t\n\t\t\n\t\t\tRChaudhuri\n\t\t\n\t\t\n\t\t\tC.-LChellappa\n\t\t\n\t\t\n\t\t\tSLiu\n\t\t\n\t\t\n\t\t\tUBhattacharya\n\t\t\n\t\t\n\t\t\tPal\n\t\t\n\t\t\n\t\t\tSpringer Nature Switzerland\n\t\t\t2025"
+    },
+    {
+      "id": 31,
+      "text": "Ivypanda essays dataset\n\t\t\n\t\t\tIvypanda\n\t\t\n\t\t10.24030/24092517-2025-0-2\n\t\t\n\t\t\n\t\t\t2025\n\t\t\tEssays on Conservatism\n\t\t\t2"
+    },
+    {
+      "id": 32,
+      "text": "Essayfroum-dataset\n\t\t\n\t\t\tNBhavsar\n\t\t\n\t\t\n\t\t\n\t\t\t2022"
+    },
+    {
+      "id": 33,
+      "text": "TBarrus\n\t\t\n\t\t\n\t\t\n\t\t\t2025\n\t\t\n\t\n\tversion 0.8.3, MIT License"
+    },
+    {
+      "id": 34,
+      "text": "Nearest neighbor pattern classification\n\t\t\n\t\t\tTCover\n\t\t\n\t\t\n\t\t\tPHart\n\t\t\n\t\t10.1109/tit.1967.1053964\n\t\n\t\n\t\tIEEE Transactions on Information Theory\n\t\tIEEE Trans. Inform. Theory\n\t\t0018-9448\n\t\t1557-9654\n\t\t\n\t\t\t13\n\t\t\t1\n\t\t\t\n\t\t\t1967\n\t\t\tInstitute of Electrical and Electronics Engineers (IEEE)"
+    },
+    {
+      "id": 35,
+      "text": "spacy, adj.\n\t\t10.1093/oed/1166931495\n\t\n\t\n\t\tOxford English Dictionary\n\t\t\n\t\t\tOxford University Press\n\t\t\t2015"
+    },
+    {
+      "id": 36,
+      "text": "Qwen2.5 technical report\n\t\t\n\t\t\tQwen\n\t\t\n\t\t\n\t\t\t2025"
+    }
+  ],
+  "formulas": [
+    {
+      "id": "FORMULA_1",
+      "raw": "tfidf(𝑔, 𝑑) = 𝑓 (𝑔, 𝑑) |𝑑| • log 𝑁 |{𝑑 ′ ∈ D : 𝑔 ∈ 𝑑 ′ }| ,"
+    },
+    {
+      "id": "FORMULA_2",
+      "raw": "e 𝑡 = 1 𝑇 𝑇 ∑︁ 𝑖=1 h 𝑖 ."
+    },
+    {
+      "id": "FORMULA_3",
+      "raw": "𝑑 cos (x, y) = 1 - x • y ∥x∥ ∥y∥ , against Euclidean distance 𝑑 eucl (x, y) = ∥x -y∥ 2 ."
+    },
+    {
+      "id": "FORMULA_4",
+      "raw": "𝑑 𝑖 𝑗 = 𝑑 cos (e 𝑡 𝑖 , e 𝑡 𝑗 )."
+    },
+    {
+      "id": "FORMULA_5",
+      "raw": "D + = {𝑑 𝑖 𝑗 : (𝑡 𝑖 , 𝑡 𝑗 ) ∈ P + }, D -= {𝑑 𝑖 𝑗 : (𝑡 𝑖 , 𝑡 𝑗 ) ∈ P -}."
+    },
+    {
+      "id": "FORMULA_6",
+      "raw": "𝑆 = Pr 𝛿∼D + [𝛿 > 𝑑 * ], 𝐷 = Pr 𝛿∼D -[𝛿 < 𝑑 * ]."
+    },
+    {
+      "id": "FORMULA_7",
+      "raw": "Confidence = |𝑆 -𝐷 | max(𝑆, 𝐷) ."
+    },
+    {
+      "id": "FORMULA_8",
+      "raw": "Acc = 1 𝑛 𝑛 ∑︁ 𝑖=1 ⊮[ ŷ𝑖 = 𝑦 𝑖 ],"
+    },
+    {
+      "id": "FORMULA_9",
+      "raw": "TPR(𝜏) = |{𝑠 ∈ S + : 𝑠 ≥ 𝜏}| |S + | , FPR(𝜏) = |{𝑠 ∈ S -: 𝑠 ≥ 𝜏}| |S -| ."
+    }
+  ]
+}

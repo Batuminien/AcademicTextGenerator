@@ -1,0 +1,916 @@
+{
+  "title": "Orochi: Versatile Biomedical Image Processor",
+  "authors": [
+    {
+      "firstname": "Gaole",
+      "surname": "Dai",
+      "email": ""
+    },
+    {
+      "firstname": "Chenghao",
+      "surname": "Zhou",
+      "email": ""
+    },
+    {
+      "firstname": "Yu",
+      "surname": "Zhou",
+      "email": ""
+    },
+    {
+      "firstname": "Rongyu",
+      "surname": "Zhang",
+      "email": ""
+    },
+    {
+      "firstname": "Yuan",
+      "surname": "Zhang",
+      "email": ""
+    },
+    {
+      "firstname": "Chengkai",
+      "surname": "Hou",
+      "email": ""
+    },
+    {
+      "firstname": "Tiejun",
+      "surname": "Huang",
+      "email": ""
+    },
+    {
+      "firstname": "Jianxu",
+      "surname": "Chen",
+      "email": "jianxu.chen@isas.de"
+    },
+    {
+      "firstname": "Shanghang",
+      "surname": "Zhang",
+      "email": "shanghang@pku.edu.cn"
+    }
+  ],
+  "abstract": "Deep learning has emerged as a pivotal tool for accelerating research in the life sciences, with the low-level processing of biomedical images (e.g., registration, fusion, restoration, super-resolution) being one of its most critical applications. Platforms such as ImageJ (Fiji) and napari have enabled the development of customized plugins for various models. However, these plugins are typically based on models that are limited to specific tasks and datasets, making them less practical for biologists. To address this challenge, we introduce Orochi, the first application-oriented, efficient, and versatile image processor designed to overcome these limitations. Orochi is pre-trained on patches/volumes extracted from the raw data of over 100 publicly available studies using our Random Multi-scale Sampling strategy. We further propose Task-related Joint-embedding Pre-Training (TJP), which employs biomedical task-related degradation for self-supervision rather than relying on Masked Image Modelling (MIM), which performs poorly in downstream tasks such as registration. To ensure computational efficiency, we leverage Mamba's linear computational complexity and construct Multi-head Hierarchy Mamba. Additionally, we provide a three-tier fine-tuning framework (Full, Normal, and Light) and demonstrate that Orochi achieves comparable or superior performance to current state-of-the-art specialist models, even with lightweight parameter-efficient options. We hope that our study contributes to the development of an all-in-one workflow, thereby relieving biologists from the overwhelming task of selecting among numerous models. Our pre-trained weights and code will be released.",
+  "sections": [
+    {
+      "title": "Introduction",
+      "paragraphs": [
+        "With the rapid advancement of deep learning, modern neural networks have demonstrated remarkable scalability and spawned a wide array of downstream applications in AI for Life Science [1,2,3]. Among these, biomedical image processing is a pivotal topic. Its significance arises from the inherent Figure 1: Trend of Versatile Biomedical Image Precessor. We listed the recent advancements in biomedical image processing, where matched row-to-column colour coding highlights the main task of each model. Stickers display the reported scores from the respective papers. Orochi extends the versatile bandwidth and exhibits exceptional performance across tasks and tuning modes. constraints in acquiring biomedical images compared to natural images, which often compromise source image quality. Specifically, the most common limitations stem from imaging device operational trade-offs. For instance, in optical microscopy, excessive laser intensity can damage target tissues, while insufficient laser power introduces low signal-to-noise ratios [4]. Similarly, in computed tomography (CT), thinner slice scans subject patients to prolonged high radiation exposure, posing health risks, whereas sparse slicing results in low-resolution data [5]. These challenges drive the demand for biomedical image restoration [6,4,7,8,9] and super-resolution [10,11,12,13,5] tasks. Another class of limitations originates from the intrinsic shortcomings of imaging modalities. For example, CT imaging is efficient and provides clear hierarchical information but suffers from poor soft-tissue contrast, in contrast, magnetic resonance imaging (MRI) excels in soft-tissue resolution but requires longer acquisition times and is susceptible to motion artifacts. Such modality-specific weaknesses necessitate biomedical image fusion tasks [14,15,16,17,18,19,20,21,22,23,24,25]. Furthermore, acquiring synchronous multi-modal data imposes demands on equipment and environments, making asynchronous data more prevalent. However, misalignment exists between tissues or cells due to temporal/specimen variability, motivating image registration [26,27,28,29,30,31,32,33] tasks to align asynchronous or even heterogeneous datasets of the same specimen.",
+        "With the emergence of long-range dependency models [34,35,36] and self-supervised pre-training methods [37,38,39,40], models designed for the aforementioned issues have advanced rapidly, giving rise to powerful specialist models (see Figure 1). However, we argue that in practical applications, these specialist models neglect three critical factors: (1) Task Perspective: Real-world biomedical imaging tasks often require multiple sequential steps (e.g., registration followed by fusion, as discussed earlier). (2) Degradation Perspective: Since the underlying causes of degradation share similarities, these degradations are interrelated-for example, both low signal-to-noise ratio and low resolution result in information loss. (3) Data Perspective: Due to their characteristics of being multi-channel, large-scale, and high-throughput, biomedical images are considerably larger than natural images, making the training and inference of multiple specialist models highly inefficient. From both efficiency and effectiveness standpoints, these issues collectively motivate the development of a universal foundational model. We aim for such a generalist model to optimize the aforementioned challenges by: (1) handling diverse low-level tasks within a unified framework, thereby avoiding the difficulties of selecting and integrating several specialist models; (2) capturing more generalized and robust features via cross-task learning during the pre-training phase; and (3) addresses real-world biomedical data processing costs to reduce redundant training and inference. Therefore, we introduce Orochi (named after the legendary multi-headed serpent). To fulfill the envisioned goals, our design emphasizes four aspects (see Figure 2): (1) Dataset Level: We extensively employ unlabeled raw data from over 100 publicly available studies (see Appendix A.2) and perform our Random Multi-scale Sampling, which considers the different scales of Regionof-Interest (ROI). (2) Pre-training Level: Inspired by Joint-embedding Prediction Architecture (JEPA) [40], where different degradations serve as context for each others. Our Task-related Joint- embedding Pre-training (TJP) applies various forms of task-specific degradation, and the model learns from reconstructing them jointly. (3) Model Level: On one hand, we employ Mamba [41] as the building blocks to leverages its linear complexity [42,41,43,44]. On the other hand, the overall structure draws inspiration from the hierarchical design of the Swin-Transformer [36] by incorporating patch merging to enhance model efficiency further. (4) Post-training Level: We propose a three-tier fine-tuning framework to reduce the tuning cost. Ranging from full fine-tuning (Full), to fine-tuning only the replaced dense convolution head (Normal), and finally to the most lightweight variant using depth-wise separable convolution [45] (Light), thereby achieving Parameter-Efficient Fine-Tuning (PEFT) [46]. To this end, we hope that Orochi will distinguish itself as an exceptional tool among the extensive array of plugins available on platforms such as ImageJ (Fiji) [47] and napari [48], further advancing towards a user-friendly workflow with unified functionalities.",
+        "In summary, our main contributions are as follows:",
+        "1. We systematically review the significance of low-level biomedical image processing and highlight that even in this era of powerful foundational models, the paradigm centred on specialist models still exhibits inherent deficiencies. Limiting both effectiveness and efficiency from the perspectives of task, degradation, and data. To the best of our knowledge, Orochi is the first versatile foundational model addressing these issues."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "2.",
+      "paragraphs": [
+        "We curated raw-level datasets from over 100 studies [49,50,51], covering a wide range of imaging modalities from 2-5D -with a total data size over 100 terabytes. During training, we introduce Random Multi-scale Sampling to achieve a unitedly raw data conversion into training patches/volumes. These converted data are used for both local and stream training, alleviating the challenges with the transmission and storage of extremely large datasets.",
+        "3. We propose Task-related Joint-embedding Pre-training (TJP), which directly learns the interrelations among various task-specific degradations rather than relying on common Masked Image Modelling (MIM). For the model architecture, we leverage the linear complexity of Mamba and design a multi-head hierarchical structure to minimize the costs of training and inference. Finally, for post-training, we introduce a three-tier fine-tuning framework and demonstrate that even the most lightweight depth-separable convolution tuning can achieve performance comparable to existing state-of-the-art specialist models."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Related Works",
+      "paragraphs": [
+        "Self-supervised Learning Self-supervised Learning (SSL) extracts inherent data properties. Masked Image Modelling (MIM) predicts masked image regions from original pixel values using an encoder-decoder architecture, with loss in image space [37,38]. Contrastive Learning (CL) aligns representations of augmented views of the same image in an embedding space via specialized objectives [52,39]. Combining these, the Joint-Embedding Predictive Architecture (JEPA) [40] predicts full latent representations from context to learn robust image representations.",
+        "Restoration To address low image quality in fluorescence microscopy, Content-aware image restoration (CARE) [4] uses CNNs. Li et al. [8] improved axial resolution using a CARE-based model with physically acquired ground truth. Subsequent works integrated Swin-Transformers [36] for efficiency (SwinIR [9]) or Mamba blocks [42] for long-range dependency modeling (MambaIR [7]). UniFMIR [6] demonstrated that pre-trained foundation models generalize well for this task.",
+        "Super-resolution Super-resolution aims to overcome optical limits. DeepLP [53] employs pointscanning for reconstruction. Diffusion-based models, including volumetric conditioning modules [5] and latent diffusion in InverseSR [11], show promise for 3D brain MRI. Other approaches include local implicit image functions for flexible resolution enhancement [13], joint super-resolution and synthesis frameworks for isotropic volumes [12], and methods for multimodal image super-resolution [10].",
+        "Registration Image registration aligns images by optimizing a deformation field. VoxelMorph [54] provides a learning-based 3D framework. Dual-encoder U-Nets [26], Swin-Transformers for longdistance correspondences (TransMorph [32]), and Mamba blocks [42] for efficient long-range modeling (MambaMorph [33]). Fast 3D registration methods have been proposed by Siebert et al. [27,29], while Mok et al. [30,28] address large deformations with Laplacian Pyramid Networks.",
+        "Fusion Multi-modality image fusion integrates complementary information. Techniques include bidirectional stepwise feature alignment for unaligned images (BSAFusion [25]), mutual enhancement for PAT/MRI fusion [24], and diffusion-based methods incorporating fusion priors (Diff-IF [55]) or denoising diffusion models [16]. Semantic-aware strategies with registration are found in SuperFusion [21] and MURF [22]. Other notable methods encompass one-stage progressive dense registration [23], U2Fusion [14], and Equivariant fusion [15]. Diverse strategies also include lightweight and semantic-guided approaches (ALMFNET [17], MSGFUSION [18]), dictionary-based and GAN-driven frameworks [19,56], and unsupervised methods [20]."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Methods",
+      "paragraphs": [
+        "Due to page limitations, this section primarily emphasizes our comprehensive degradation designs used for self-supervision. The Appendix provided detailed architecture of the Multi-head Hierarchy Mamba model along with the three-tier fine-tuning framework B."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Preliminary: Self-supervised Degradation",
+      "paragraphs": [
+        "Self-supervised image learning can be generally formulated as learning a reconstruction function f θ that recovers the original image x from its degraded D(x). Formally, this objective is defined as:",
+        "where x is the sampled data, p data , D(•) denotes a degradation function applied to x, f θ is the parameterized model, and ℓ is a loss function (e.g., the L2 loss or perceptual loss).",
+        "Masked Image For masked image degradation, the degradation function is defined as: D mask (x) = x ⊙ M, where M ∈ {0, 1} H×W is a binary mask with height H and width W that selectively occludes regions of x. This degradation helps the model learn to infer missing information.",
+        "Deformed Image For deformed image degradation, the degradation function takes the form: D def (x) = T(x), where T(•) represents a spatial transformation (such as rotation, scaling, or warping). This degradation introduces geometric distortions that mimic real-world variations.",
+        "Nosiy Image For noisy image degradation, the degradation function is defined as: D noise (x) =",
+        "x + η where η denotes additive noise (typically Gaussian noise), simulating sensor imperfections or environmental interference.",
+        "Low-resolution Image For low-resolution image degradation, the degradation function is given by: D LR (x) =↓ s (x), where ↓ s is a down-sampling operator with scale factor s, reducing the resolution of x to simulate the effects of low-resolution imaging."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Orochi: Random Multi-scale Sampling",
+      "paragraphs": [
+        "Random Multi-scale Sampling aims to extract patches/volumes with diverse scales from raw images. Given a raw image I, the procedure consists of two main steps: (1) Multi-scale Resizing: We first generate scaled versions of the raw image I to capture features at different resolutions. In particular, we resize I to scales 1/2 and 1/4 of its original size. Formally, let:",
+        "where ↓ s (•) denotes down-sampling with factor s. (2) Random Window Sampling: For each scaled image I s , we define a fixed-size window K (compatible with the pre-training requirements in either 2D or 3D) and perform random sampling to extract sub-patches. Let the window K have dimensions W × H (or W × H × D for 3D data). A randomly sampled 2D patch x s at scale s is given by:",
+        "where (i, j) is a randomly chosen starting coordinate in I s .",
+        "Collectively, the set of patches extracted across scales is represented as:",
+        "where N s denotes the number of patches sampled from the image at scale s. These multi-scale patches are then passed to subsequent degradation processes (e.g., masking, deformation, noise addition, and low-resolution conversion). By performing random sampling across multiple scales, our method extended the data diversity and enabled more robust feature learning across various datasets."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Orochi: Task-related Joint-embedding Pre-training",
+      "paragraphs": [
+        "Dual-Masking Reconstructive Fusion To better address the biomedical image fusion task, where the combination of existing contexts is crucial, we modified the conventional Masked Image Modelling approaches [37,38], which typically employ a single masking strategy. Specifically, we applied two distinct masking operations to the training data x, thereby generating two independent masks:",
+        "where M A , M B ∈ {0, 1} H×W are binary masks with only partial overlap and ensure invisible information retention even after fusion. The masking probabilities are generated by:",
+        "where ξ k i,j ∼ U(0, 1) represents a random value extracted from a uniform distribution for grid coordinates i, j, and τ is the masking threshold. The key innovation is that our model is exposed to process both masked inputs (x A , x B ) simultaneously to recover the original image:",
+        "This guides the model to develop robust feature extraction capabilities that can identify complementary information across different masked views, and then fuse these partial observations coherently to reconstruct missing regions in both inputs.",
+        "Spatially-varying Gaussian down-sample For down-sampling, we adapt similar principles from DeepLP [53], which tested noisy down-sampling beyond uniform down-sampling in self-supervised microscopy restoration. We enhance this noisy down-sampling with spatially varying characteristics:",
+        "where ↓ s represents down-sampling with a random scale factor s, ↑ 1 s denotes upsampling back to the original resolution, η ∼ N(0, σ 2 down ) is normal distributed noise added during the downsampling process with σ down ∼ U(0.01, 0.1), U represent uniform distribution, and Gσvar denotes spatially-varying Gaussian filtering. It can be defined as:",
+        "where g σ represents a Gaussian kernel (2/3D) with standard deviation σ(i, j) ∼ U(σ min , σ max ) that varies across grid coordinates i, j. This mimics the heterogeneous blurring found in optical systems.",
+        "Multi-scale Smoothed Perlin Noise Deformation For the self-supervised registration task, constructing a realistic deformation field is important. We conducted multi-scale Perlin noise fields that simulate the hierarchy variations in natural anatomical structures. Given an image x, we generate a deformation field Φ and its corresponding deformed image D def (x) as follows:",
+        "T(•, •) is a spatial transformation operator, G σ (•) denotes spatially-varying Gaussian smoothing with parameter σ, and Per(f , p) represents multi-octave Perlin noise with frequency f and persistence p.",
+        "The multi-octave Perlin noise is specifically defined as:",
+        "where S(•) is the simplex noise function, N is the number of octaves and coords represents the grid coordinates. This multi-scale approach generates deformation fields with varying levels of detail.",
+        "To enhance the anatomical plausibility of the deformations, we apply normalization and bound it using a tanh function:",
+        ", where α controls the maximum displacement magnitude."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Multi-stage Noise Simulation",
+      "paragraphs": [
+        "To simulate realistic noise, we adopted a multi-stage process:",
+        "where η ∼ N(0, σ 2 noise ) with σ noise ∼ U(0.075, 0.15) represents Gaussian noise, Poi(λ) denotes Poisson noise with intensity parameter λ (modeling photon-counting statistics), and Bi p represents binary (salt-and-pepper) noise that affects a proportion of pixels with probability p.",
+        "These sophisticated degradation designs enable our framework to simulate a wide spectrum of realworld imaging artifacts, encouraging the model to handle diverse image quality issues encountered."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Experiments",
+      "paragraphs": [
+        "We conducted comprehensive comparisons strictly following the setups in published specialist models (UniFMIR [6], VCM [5], Transmorph [32], and BSAFusion [25], see Appendix A.4 for details). Resulting in more than 30 state-of-the-art baselines across multiple benchmarks for various biomedical image-processing tasks to demonstrate the effectiveness and versatility of Orochi. We color-coded the performance in Table 1,  Generalization Capability on In-Domain Data Given that our model, Orochi, is extensively pretrained, we expect it to exhibit strong generalization capabilities on in-domain data. Accordingly, in Figure 3 we demonstrate Orochi's zero-shot performance on various stained microscopy images [51] (results on clinical images [50] are detailed in the Appendix C.1). Panels (A)-(D) illustrate Orochi's robust processing capabilities. In Panel (E), we further examine whether these outcomes align with our algorithmic expectations. For example, our Dual-Masking Reconstructive Fusion anticipates that the model learns an effective fusion strategy and leverages the existing information from both illustrate Orochi's robust performance across various low-level processing tasks when applied to unseen testing images after pre-training. Supplementary images include the dual-masking images and naive merge results for the fusion task. Error maps for the registration task. (E) provides in-depth case studies: for the fusion task, the centromere count is emphasized in both the reconstructed image and the original image (highlighted with circles); for the registration task, subtle deformations of the cell membrane are accentuated; and for the restoration and super-resolution tasks, the fine details of bright-field images and the internal structures of DNA-stained cell nuclei are emphasized Table 1: Isotropic 3D volume Restoration Task. Low-high laser data pairs along the XY axis are collected and serve as the training set. However, the evaluation is on both XY slices and XZ slices.  This precise control over fine structural details is also evident in other cases."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Image Restoration Task",
+      "paragraphs": [
+        "In Table 1, we present the performance of Orochi on the isotropic 3D volume restoration task. In microscopy imaging, the image quality along the XY plane is typically much higher than that along the XZ plane due to the inherent limitations of sequential (layer-by-layer) imaging, such as in light-sheet microscopy, which leads to the formation of isotropic data. To address this, CARE [4] leverages the high-resolution XY data for training and subsequently restores the lower-resolution XZ data. On this task, Orochi not only significantly outperforms train-from-scratch models like SwinIR [36]   Image Super-resolution Task We next evaluated the image super-resolution capabilities of Orochi (see Table 2). Early super-resolution models typically rely on CNN-based architectures such as UniRes [10] and SynthSR [12], which are efficient yet often lack sufficient expressiveness and generalization ability. LIIF [13] leverages the power of Implicit Neural Representations (INR) to perform implicit interpolation; however, the high training cost associated with INR limits its adaptability to real-world scenarios. More recent approaches, including InverseSR [11] and VCM [5], based on powerful pre-trained Brain-Latent Diffusion Models (LDM) [59] to overcome these shortcomings.",
+        "In this setting, Orochi significantly outperforms all the aforementioned architectures. At an 8mm slice thickness, Orochi achieves a PSNR that is 4.01 points higher than InverseSR and 2.76 points higher than VCM. These gains demonstrate that among pre-trained models, Orochi's pre-training is markedly superior to that of Brain-LDM, both in terms of the pre-training data and purpose.",
+        "Image Registration Task We further evaluated the registration task using the dataset from Learn2Reg [60] (see Table 3). In this task, brain MRI images from different patients (i.e., interpatients) are registered (see Appendix C.2 for patient-to-atlas brain registration test), and the model's ability to handle subtle deformations is assessed by measuring the similarity of the segmented brain regions after registration (e.g. Dice). Biomedical image registration has evolved from CNNbased [29,30,27] to Transformer-based architectures [32,54], with even linear-complexity models such as Mamba [33] emerging in recent work. In comparison to these methods, our approach achieves Dice scores that are 2.42 points higher than ConvexAdam, 2.0 points higher than Transmorph, and 1.81 points higher than Mambamorph.",
+        "Image Fusion Task Finally, as illustrated in Table 4, we evaluated Orochi's performance on the image fusion task. Recent trends in this domain have integrated image registration as an auxiliary task to facilitate fusion, as demonstrated by methods such as BSAFusion [25], UMF-CMGR [20], MURF [22], and SuperFusion [21]. Although these models typically exhibit limited registration capabilities (see Appendix C.2), this aligns with our pursuit of developing a versatile, comprehensive model. Compared with the recent advanced model BSAFusion, Orochi outperforms on all evaluated metrics, achieving improvements of +0.02 in Q abf , -1803.53 in Q cv , and +0.07 in SSIM. Combined with our state-of-the-art performance on the registration task, these results establish Orochi as the first model in this domain to achieve such performance.   Ablation Study -Comparison to Other Pre-train Strategies In Table 5, we demonstrate the limitations of relying solely on Masked-image-Modelling (MIM), particularly in registration tasks. Additionally, we observe that the dual-masking approach employed in I-JEPA [40] underperforms compared to Orochi. We hypothesize that this is because chunk masking is more advantageous for high-level tasks rather than the low-level focus of our study.",
+        "Ablation Study -Larger ̸ = Better, Fine-Tuning Efficiency V.S Performance As shown in Figure 5, the number of trainable parameters is not the decisive factor for downstream tasks-particularly in data-limited scenarios such as biomedical imaging. In many cases, opting for Parameter-Efficient Fine-Tuning (using only 1-2% of the total parameter count) prevents overfitting and achieves both efficient and effective results."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Conclusion",
+      "paragraphs": [
+        "We introduce Orochi, the first versatile biomedical image processor designed for low-level tasks.",
+        "To enhance effectiveness, we propose Random Multi-scale Sampling, which is a scalable way to leverage raw data from a wide range of studies. The extracted data is then processed through our Task-related Joint-embedding Pre-training (TJP), where a unified and robust embedding is learned from various task-related degradations. For efficiency, we developed Multi-head Hierarchy Mamba and provide a three-tier fine-tuning framework (Full, Normal, and Light). These design choices ensure high efficiency during pre-training, post-tuning, and test inference. Our experiments demonstrate that Orochi exhibits in-domain generalization capability across multiple tasks and achieves stateof-the-art performance compared to specialist models with efficient fine-tuning (less than 5% of total parameters). This suggests that constructing a generalist image processor may lie more in the diversity of the dataset and the pre-training strategy than in increasing the model size naively. • Cubic: Bicubic interpolation as a traditional baseline.",
+        "• UniRes [10]: Designed for super-resolving multimodal clinical MRI.",
+        "• SynthSR [12]: Performs joint super-resolution and synthesis.",
+        "• LIIF [13]: Learns continuous image representations for implicit interpolation.",
+        "• InverseSR [11]: Uses a latent diffusion model for 3D brain MRI super-resolution.",
+        "• VCM [5]: Applies a volumetric conditioning module."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Restoration",
+      "paragraphs": [
+        "• Li et al. [8]: Improves axial resolution.",
+        "• CARE [4]: Uses a content-aware network for fluorescence microscopy image restoration.",
+        "• SwinIR [9]: Employs a Swin-Transformer for efficient image restoration.",
+        "• MambaIR [7]: Utilizes mamba blocks for modeling long-range dependencies.",
+        "• UniFMIR [6]: Fine-tunes a pre-trained foundation model for generalizable fluorescence microscopy-based restoration (with pruned FP16/FP32 variants)."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "A.2 Datasets",
+      "paragraphs": [],
+      "subsections": []
+    },
+    {
+      "title": "Pre-train",
+      "paragraphs": [
+        "• A combined multi-modal biomedical image dataset aggregated from over 100 public studies, encompassing various imaging modalities and degradation types [51,50,49]. In Figure 6, we provide a preview of the metadata of the studies we covered (Excel Form would be included in the Zip file). Since our RMS method is highly scalable, we plan to further update this list in the future and explore the borderline."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Registration",
+      "paragraphs": [
+        "• The OASIS brain MRI dataset from the Learn2Reg 2021 challenge, used to evaluate the overlap of segmented regions and the smoothness of the deformation fields [60,58]."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Fuison",
+      "paragraphs": [
+        "• A CT-MRI paired fusion dataset (VIFB), which assesses the integration of complementary information across modalities [57]."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Super-Resolution",
+      "paragraphs": [
+        "• The Harvard Whole Brain Atlas (HBA), providing high-quality MRI images for evaluating low-resolution image reconstruction [57]."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Restoration",
+      "paragraphs": [
+        "• The CARE microscopy image dataset, used to evaluate the enhancement of low signal-tonoise ratio fluorescence microscopy images [4]."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "A.3 Metrics",
+      "paragraphs": [],
+      "subsections": []
+    },
+    {
+      "title": "Registration",
+      "paragraphs": [
+        "• Dice similarity coefficient: Computed as",
+        "which measures the overlap between the segmented regions.",
+        "• 95 th percentile Hausdorff Distance (HD95): Defined as the 95 th percentile of the distances between boundary points of the segmented regions.",
+        "• Standard deviation of the log-Jacobian determinant (SDlogJ): Calculated as the standard deviation of log(det(J)), where J is the Jacobian matrix of the deformation field. This metric reflects the smoothness of the deformation field [60]."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Fuison",
+      "paragraphs": [
+        "• Q AB/F (Q abf ): Measures the quality of the fusion by evaluating the consistency between the fused image and the input modalities.",
+        "• Q CV (Q cv ): Assesses the contrast consistency across the fused image.",
+        "• Structural Similarity Index (SSIM): Computed based on comparisons of luminance, contrast, and structure between 2 source images [25]."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Super-Resolution",
+      "paragraphs": [
+        "• Peak Signal-to-Noise Ratio (PSNR): Calculated as",
+        "where MAX I is the maximum possible pixel value and MSE is the mean squared error between the reconstructed and reference images.",
+        "• SSIM: Evaluates perceptual similarity between the super-resolved and reference images [9]."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Restoration",
+      "paragraphs": [
+        "• PSNR: As above, it measures the pixel-level fidelity between the restored image and the high-quality reference.",
+        "• SSIM: Measures the structural similarity between the restored and reference images [4]."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "A.4 Code-base",
+      "paragraphs": [
+        "• Adapted from public GitHub implementations of the Swin-Transformer and Transmorph. Swin-Transformer: https://github.com/microsoft/Swin-Transformer [36]; Transmorph: https://github.com/junyuchen245/TransMorph_Transformer_ for_Medical_Image_Registration [32]."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Registration",
+      "paragraphs": [
+        "• Implemented based on the Transmorph GitHub code. Link: https://github.com/ junyuchen245/TransMorph_Transformer_for_Medical_Image_Registration [32]."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Fuison",
+      "paragraphs": [
+        "• Built with reference to the BSAFusion GitHub code. Link: https://github.com/ slrl123/BSAFusion [25]."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Super-Resolution",
+      "paragraphs": [
+        "• Implemented based on GitHub codes of InverseSR and VCM. InverseSR: https: //github.com/BioMedAI-UCSC/InverseSR [11]; VCM: https://github.com/ Ahn-Ssu/VCM [5]."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Restoration",
+      "paragraphs": [
+        "• Based on the UniFMIR GitHub implementation. Link: https://github.com/cxm12/ UNiFMIR [6]."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "B Experiment Configurations",
+      "paragraphs": [
+        "Multi-head Hierarchy Mamba & Three-Tier Fine-Tuning Framework Figure 7, presents a comprehensive diagram of Orochi's backbone architecture. Post-tuning, the interchangeable decoder can be replaced as required. We evaluated Orochi's performance using our Three-Tier Fine-Tuning Framework, which includes full fine-tuning (Full, 100% parameters), regular convolution head with the encoder frozen (Normal, 10-30% parameters), and depth-wise separable convolution head [45] with the encoder frozen (Light, less than 5% parameters). The optimal results were achieved across all three tiers, underscoring the significance of selecting an appropriate tuning method based on specific requirements."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Pre-train",
+      "paragraphs": [
+        "We pre-trained Orochi-B (3D version) with the configuration listed in Table 6. The 2D version has a similar configuration, with slight differences on some setups (e.g. batch size). We have 2 two sets of pre-training devices. The A800 80Gx8 device is used for local pre-train and the H100 40Gx8 device is for streaming pre-train."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Fine-tuning",
+      "paragraphs": [
+        "We followed the same setups as our code base for each task (see Section ??), including the tuning resolution, epoch number, optimizer configurations and loss designs. The device we use for fine-tuning is NVIDIA 4090 24Gx4   Patient to Atlas Brain Image Registration The regional deformation is learned unsupervised in Table 7. Only the raw image of the atlas and the patient's brain would be used for loss calculation while training. Then we evaluate dice score between the segmentation maps of these two brains. Since Orochi is pre-trained in this unsupervised fashion, it shows excellent adaptation to this task, similar to the case with supervision."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "SPECT-MRI & PET-MRI Image Fusion",
+      "paragraphs": [
+        "In Figure 10, we performed comparative evaluations using state-of-the-art fusion techniques on two additional Harvard Whole Brain datasets obtained from https://www.med.harvard.edu/aanlib/. These datasets specifically focus on the fusion of SPECT and PET imaging with MRI. The results demonstrate that Orochi outperforms recent advancements such as BSAFusion and maintains superior efficiency.",
+        "Table 7: Patient to Atlas Brain Registration Task. During the training phase, the model aims to input paired MRI data from both the standard brain atlas and patient scans, to output a predicted registration flow. This flow is subsequently applied to the atlas data to compute the similarity between the registered atlas and the patient's scan. During the testing phase, the predicted flow is applied to the atlas brain segmentation map, and the Dice coefficient is evaluated against the patient's brain segmentation map.",
+        "Affine 0.386 ± 0.195 -SyN [61] 0.645 ± 0.152 ≤ 0.0001 NiftyReg [62] 0.645 ± 0.167 0.020 ± 0.046 LDDMM [63] 0.680 ± 0.135 ≤ 0.0001 deedsBCV [64] 0.733 ± 0.126 0.147 ± 0.050 VoxelMorph-1 [54] 0.729 ± 0.129 1.590 ± 0.339 VoxelMorph-2 [54] 0.732 ± 0.123 1.522 ± 0.336 VoxelMorph-diff [54] 0.580 ± 0.165 ≤ 0.0001 CycleMorph [65] 0.737 ± 0.123 1.719 ± 0.382 MIDIR [66] 0.742 ± 0.128 ≤ 0.0001 ViT-V-Net [67] 0.734 ± 0.124 1.609 ± 0.319 PVT [68] 0.727 ± 0.128 1.858 ± 0.314 CoTr [69] 0.735 ± 0.135 1.292 ± 0.342 nnFormer [70] 0.747 ± 0.135 1.595 ± 0.358 TransMorph-Bayes [32] 0.753 ± 0.123 1.560 ± 0.333 TransMorph-diff [32] 0.594 ± 0.163 ≤ 0.0001 TransMorph-bspl [32] 0.761 ± 0.122 ≤ 0.0001 TransMorph [32] 0.754 ± 0.124 1.579 ± 0.328 Orochi (Full) 0.770 ± 0.120 1.592 ± 0.334 Orochi (Normal) 0.765 ± 0.121 1.571 ± 0.323 Orochi (Light) 0.752 ± 0.126 1.499 ± 0.301"
+      ],
+      "subsections": []
+    },
+    {
+      "title": "C.3 Super-Resolution & Restoration",
+      "paragraphs": [
+        "Stress test on joint multi-modal data image repairing In this additional validation, we aim to evaluate Orochi's performance under stress using an extended benchmark. The BioSR [71] benchmark comprises four distinct categories of microscopy image pairs (x2 low/high imaging quality), captured by a multimodal structured illumination microscopy (SIM) system, encompassing Clathrin-Coated Pits (CCPs), Endoplasmic Reticula (ERs), Microtubules (MTs), and F-actin Filaments. Specifically, Orochi was trained on all four datasets concurrently, whereas the baseline [72,73,74,6] models were trained separately on each dataset. This deliberate approach highlights Orochi's capability in resource-constrained environments, where conducting hyperparameter searches for each subset is not feasible. As illustrated in Figure 11, despite the training constraints imposed on Orochi, an absolute improvement is still observed, further demonstrating its capability and efficiency."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "D Limitations",
+      "paragraphs": [
+        "Two limitations in our paper remain unaddressed at present. First, due to constraints on computational resources and group size, we were unable to further investigate the scaling law of our method during pre-training. This limitation also indicates that our focus was restricted to low-level tasks as presented in the paper. However, we firmly believe that a unified model for life sciences, capable of excelling in both high-level understanding tasks and low-level generation tasks, will emerge in the future. This is also an emerging trend that has already demonstrated progress in general applications.",
+        "NeurIPS Paper Checklist Guidelines:",
+        "• The answer NA means that the paper has no limitation while the answer No means that the paper has limitations, but those are not discussed in the paper. • The authors are encouraged to create a separate \"Limitations\" section in their paper.",
+        "• The paper should point out any strong assumptions and how robust the results are to violations of these assumptions (e.g., independence assumptions, noiseless settings, model well-specification, asymptotic approximations only holding locally). The authors should reflect on how these assumptions might be violated in practice and what the implications would be. • The authors should reflect on the scope of the claims made, e.g., if the approach was only tested on a few datasets or with a few runs. In general, empirical results often depend on implicit assumptions, which should be articulated. • The authors should reflect on the factors that influence the performance of the approach.",
+        "For example, a facial recognition algorithm may perform poorly when image resolution is low or images are taken in low lighting. Or a speech-to-text system might not be used reliably to provide closed captions for online lectures because it fails to handle technical jargon. • The authors should discuss the computational efficiency of the proposed algorithms and how they scale with dataset size. • If applicable, the authors should discuss possible limitations of their approach to address problems of privacy and fairness. • While the authors might fear that complete honesty about limitations might be used by reviewers as grounds for rejection, a worse outcome might be that reviewers discover limitations that aren't acknowledged in the paper. The authors should use their best judgment and recognize that individual actions in favor of transparency play an important role in developing norms that preserve the integrity of the community. Reviewers will be specifically instructed to not penalize honesty concerning limitations."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Theory assumptions and proofs",
+      "paragraphs": [
+        "Question: For each theoretical result, does the paper provide the full set of assumptions and a complete (and correct) proof? Answer: [Yes]",
+        "• It should be clear whether the error bar is the standard deviation or the standard error of the mean. • It is OK to report 1-sigma error bars, but one should state it. The authors should preferably report a 2-sigma error bar than state that they have a 96% CI, if the hypothesis of Normality of errors is not verified. • For asymmetric distributions, the authors should be careful not to show in tables or figures symmetric error bars that would yield results that are out of range (e.g. negative error rates). • If error bars are reported in tables or plots, The authors should explain in the text how they were calculated and reference the corresponding figures or tables in the text."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Experiments compute resources",
+      "paragraphs": [
+        "Question: For each experiment, does the paper provide sufficient information on the computer resources (type of compute workers, memory, time of execution) needed to reproduce the experiments?",
+        "Justification: We provide sufficient information on the computer resources.",
+        "• The answer NA means that the paper does not include experiments.",
+        "• The paper should indicate the type of compute workers CPU or GPU, internal cluster, or cloud provider, including relevant memory and storage. • The paper should provide the amount of compute required for each of the individual experimental runs as well as estimate the total compute. • The paper should disclose whether the full research project required more compute than the experiments reported in the paper (e.g., preliminary or failed experiments that didn't make it into the paper)."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Code of ethics",
+      "paragraphs": [
+        "Question: Does the research conducted in the paper conform, in every respect, with the NeurIPS Code of Ethics https://neurips.cc/public/EthicsGuidelines?"
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Answer: [Yes]",
+      "paragraphs": [
+        "Justification: We make sure to preserve anonymity.",
+        "• The answer NA means that the authors have not reviewed the NeurIPS Code of Ethics.",
+        "• If the authors answer No, they should explain the special circumstances that require a deviation from the Code of Ethics. • The authors should make sure to preserve anonymity (e.g., if there is a special consideration due to laws or regulations in their jurisdiction)."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Broader impacts",
+      "paragraphs": [
+        "Question: Does the paper discuss both potential positive societal impacts and negative societal impacts of the work performed?"
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Answer: [NA]",
+      "paragraphs": [
+        "Justification: There is no societal impact of the work performed.",
+        "• The answer NA means that there is no societal impact of the work performed.",
+        "• If the authors answer NA or No, they should explain why their work has no societal impact or why the paper does not address societal impact. • Examples of negative societal impacts include potential malicious or unintended uses (e.g., disinformation, generating fake profiles, surveillance), fairness considerations (e.g., deployment of technologies that could make decisions that unfairly impact specific groups), privacy considerations, and security considerations.",
+        "• The conference expects that many papers will be foundational research and not tied to particular applications, let alone deployments. However, if there is a direct path to any negative applications, the authors should point it out. For example, it is legitimate to point out that an improvement in the quality of generative models could be used to generate deepfakes for disinformation. On the other hand, it is not needed to point out that a generic algorithm for optimizing neural networks could enable people to train models that generate Deepfakes faster. • The authors should consider possible harms that could arise when the technology is being used as intended and functioning correctly, harms that could arise when the technology is being used as intended but gives incorrect results, and harms following from (intentional or unintentional) misuse of the technology. • If there are negative societal impacts, the authors could also discuss possible mitigation strategies (e.g., gated release of models, providing defenses in addition to attacks, mechanisms for monitoring misuse, mechanisms to monitor how a system learns from feedback over time, improving the efficiency and accessibility of ML)."
+      ],
+      "subsections": []
+    },
+    {
+      "title": "Safeguards",
+      "paragraphs": [
+        "Question: Does the paper describe safeguards that have been put in place for responsible release of data or models that have a high risk for misuse (e.g., pretrained language models, image generators, or scraped datasets)?",
+        "Answer: [NA] Justification: The paper poses no such risks.",
+        "• The answer NA means that the paper poses no such risks.",
+        "• Released models that have a high risk for misuse or dual-use should be released with necessary safeguards to allow for controlled use of the model, for example by requiring that users adhere to usage guidelines or restrictions to access the model or implementing safety filters. • Datasets that have been scraped from the Internet could pose safety risks. The authors should describe how they avoided releasing unsafe images. • We recognize that providing effective safeguards is challenging, and many papers do not require this, but we encourage authors to take this into account and make a best faith effort.",
+        "12. Licenses for existing assets Question: Are the creators or original owners of assets (e.g., code, data, models), used in the paper, properly credited and are the license and terms of use explicitly mentioned and properly respected?",
+        "Answer: [Yes] Justification: All the assets are properly cited.",
+        "• The answer NA means that the paper does not use existing assets.",
+        "• The authors should cite the original paper that produced the code package or dataset.",
+        "• The authors should state which version of the asset is used and, if possible, include a URL. • The name of the license (e.g., CC-BY 4.0) should be included for each asset.",
+        "• For scraped data from a particular source (e.g., website), the copyright and terms of service of that source should be provided. • If assets are released, the license, copyright information, and terms of use in the package should be provided. For popular datasets, paperswithcode.com/datasets has curated licenses for some datasets. Their licensing guide can help determine the license of a dataset. • For existing datasets that are re-packaged, both the original license and the license of the derived asset (if it has changed) should be provided.",
+        "• If this information is not available online, the authors are encouraged to reach out to the asset's creators. 13. New assets Question: Are new assets introduced in the paper well documented and is the documentation provided alongside the assets? Answer: [NA] Justification: The paper currently does not release new assets. Guidelines:",
+        "• The answer NA means that the paper does not release new assets.",
+        "• Researchers should communicate the details of the dataset/code/model as part of their submissions via structured templates. This includes details about training, license, limitations, etc. • The paper should discuss whether and how consent was obtained from people whose asset is used."
+      ],
+      "subsections": []
+    }
+  ],
+  "body_paragraphs": [
+    "With the rapid advancement of deep learning, modern neural networks have demonstrated remarkable scalability and spawned a wide array of downstream applications in AI for Life Science [1,2,3]. Among these, biomedical image processing is a pivotal topic. Its significance arises from the inherent Figure 1: Trend of Versatile Biomedical Image Precessor. We listed the recent advancements in biomedical image processing, where matched row-to-column colour coding highlights the main task of each model. Stickers display the reported scores from the respective papers. Orochi extends the versatile bandwidth and exhibits exceptional performance across tasks and tuning modes. constraints in acquiring biomedical images compared to natural images, which often compromise source image quality. Specifically, the most common limitations stem from imaging device operational trade-offs. For instance, in optical microscopy, excessive laser intensity can damage target tissues, while insufficient laser power introduces low signal-to-noise ratios [4]. Similarly, in computed tomography (CT), thinner slice scans subject patients to prolonged high radiation exposure, posing health risks, whereas sparse slicing results in low-resolution data [5]. These challenges drive the demand for biomedical image restoration [6,4,7,8,9] and super-resolution [10,11,12,13,5] tasks. Another class of limitations originates from the intrinsic shortcomings of imaging modalities. For example, CT imaging is efficient and provides clear hierarchical information but suffers from poor soft-tissue contrast, in contrast, magnetic resonance imaging (MRI) excels in soft-tissue resolution but requires longer acquisition times and is susceptible to motion artifacts. Such modality-specific weaknesses necessitate biomedical image fusion tasks [14,15,16,17,18,19,20,21,22,23,24,25]. Furthermore, acquiring synchronous multi-modal data imposes demands on equipment and environments, making asynchronous data more prevalent. However, misalignment exists between tissues or cells due to temporal/specimen variability, motivating image registration [26,27,28,29,30,31,32,33] tasks to align asynchronous or even heterogeneous datasets of the same specimen.",
+    "With the emergence of long-range dependency models [34,35,36] and self-supervised pre-training methods [37,38,39,40], models designed for the aforementioned issues have advanced rapidly, giving rise to powerful specialist models (see Figure 1). However, we argue that in practical applications, these specialist models neglect three critical factors: (1) Task Perspective: Real-world biomedical imaging tasks often require multiple sequential steps (e.g., registration followed by fusion, as discussed earlier). (2) Degradation Perspective: Since the underlying causes of degradation share similarities, these degradations are interrelated-for example, both low signal-to-noise ratio and low resolution result in information loss. (3) Data Perspective: Due to their characteristics of being multi-channel, large-scale, and high-throughput, biomedical images are considerably larger than natural images, making the training and inference of multiple specialist models highly inefficient. From both efficiency and effectiveness standpoints, these issues collectively motivate the development of a universal foundational model. We aim for such a generalist model to optimize the aforementioned challenges by: (1) handling diverse low-level tasks within a unified framework, thereby avoiding the difficulties of selecting and integrating several specialist models; (2) capturing more generalized and robust features via cross-task learning during the pre-training phase; and (3) addresses real-world biomedical data processing costs to reduce redundant training and inference. Therefore, we introduce Orochi (named after the legendary multi-headed serpent). To fulfill the envisioned goals, our design emphasizes four aspects (see Figure 2): (1) Dataset Level: We extensively employ unlabeled raw data from over 100 publicly available studies (see Appendix A.2) and perform our Random Multi-scale Sampling, which considers the different scales of Regionof-Interest (ROI). (2) Pre-training Level: Inspired by Joint-embedding Prediction Architecture (JEPA) [40], where different degradations serve as context for each others. Our Task-related Joint- embedding Pre-training (TJP) applies various forms of task-specific degradation, and the model learns from reconstructing them jointly. (3) Model Level: On one hand, we employ Mamba [41] as the building blocks to leverages its linear complexity [42,41,43,44]. On the other hand, the overall structure draws inspiration from the hierarchical design of the Swin-Transformer [36] by incorporating patch merging to enhance model efficiency further. (4) Post-training Level: We propose a three-tier fine-tuning framework to reduce the tuning cost. Ranging from full fine-tuning (Full), to fine-tuning only the replaced dense convolution head (Normal), and finally to the most lightweight variant using depth-wise separable convolution [45] (Light), thereby achieving Parameter-Efficient Fine-Tuning (PEFT) [46]. To this end, we hope that Orochi will distinguish itself as an exceptional tool among the extensive array of plugins available on platforms such as ImageJ (Fiji) [47] and napari [48], further advancing towards a user-friendly workflow with unified functionalities.",
+    "In summary, our main contributions are as follows:",
+    "1. We systematically review the significance of low-level biomedical image processing and highlight that even in this era of powerful foundational models, the paradigm centred on specialist models still exhibits inherent deficiencies. Limiting both effectiveness and efficiency from the perspectives of task, degradation, and data. To the best of our knowledge, Orochi is the first versatile foundational model addressing these issues.",
+    "We curated raw-level datasets from over 100 studies [49,50,51], covering a wide range of imaging modalities from 2-5D -with a total data size over 100 terabytes. During training, we introduce Random Multi-scale Sampling to achieve a unitedly raw data conversion into training patches/volumes. These converted data are used for both local and stream training, alleviating the challenges with the transmission and storage of extremely large datasets.",
+    "3. We propose Task-related Joint-embedding Pre-training (TJP), which directly learns the interrelations among various task-specific degradations rather than relying on common Masked Image Modelling (MIM). For the model architecture, we leverage the linear complexity of Mamba and design a multi-head hierarchical structure to minimize the costs of training and inference. Finally, for post-training, we introduce a three-tier fine-tuning framework and demonstrate that even the most lightweight depth-separable convolution tuning can achieve performance comparable to existing state-of-the-art specialist models.",
+    "Self-supervised Learning Self-supervised Learning (SSL) extracts inherent data properties. Masked Image Modelling (MIM) predicts masked image regions from original pixel values using an encoder-decoder architecture, with loss in image space [37,38]. Contrastive Learning (CL) aligns representations of augmented views of the same image in an embedding space via specialized objectives [52,39]. Combining these, the Joint-Embedding Predictive Architecture (JEPA) [40] predicts full latent representations from context to learn robust image representations.",
+    "Restoration To address low image quality in fluorescence microscopy, Content-aware image restoration (CARE) [4] uses CNNs. Li et al. [8] improved axial resolution using a CARE-based model with physically acquired ground truth. Subsequent works integrated Swin-Transformers [36] for efficiency (SwinIR [9]) or Mamba blocks [42] for long-range dependency modeling (MambaIR [7]). UniFMIR [6] demonstrated that pre-trained foundation models generalize well for this task.",
+    "Super-resolution Super-resolution aims to overcome optical limits. DeepLP [53] employs pointscanning for reconstruction. Diffusion-based models, including volumetric conditioning modules [5] and latent diffusion in InverseSR [11], show promise for 3D brain MRI. Other approaches include local implicit image functions for flexible resolution enhancement [13], joint super-resolution and synthesis frameworks for isotropic volumes [12], and methods for multimodal image super-resolution [10].",
+    "Registration Image registration aligns images by optimizing a deformation field. VoxelMorph [54] provides a learning-based 3D framework. Dual-encoder U-Nets [26], Swin-Transformers for longdistance correspondences (TransMorph [32]), and Mamba blocks [42] for efficient long-range modeling (MambaMorph [33]). Fast 3D registration methods have been proposed by Siebert et al. [27,29], while Mok et al. [30,28] address large deformations with Laplacian Pyramid Networks.",
+    "Fusion Multi-modality image fusion integrates complementary information. Techniques include bidirectional stepwise feature alignment for unaligned images (BSAFusion [25]), mutual enhancement for PAT/MRI fusion [24], and diffusion-based methods incorporating fusion priors (Diff-IF [55]) or denoising diffusion models [16]. Semantic-aware strategies with registration are found in SuperFusion [21] and MURF [22]. Other notable methods encompass one-stage progressive dense registration [23], U2Fusion [14], and Equivariant fusion [15]. Diverse strategies also include lightweight and semantic-guided approaches (ALMFNET [17], MSGFUSION [18]), dictionary-based and GAN-driven frameworks [19,56], and unsupervised methods [20].",
+    "Due to page limitations, this section primarily emphasizes our comprehensive degradation designs used for self-supervision. The Appendix provided detailed architecture of the Multi-head Hierarchy Mamba model along with the three-tier fine-tuning framework B.",
+    "Self-supervised image learning can be generally formulated as learning a reconstruction function f θ that recovers the original image x from its degraded D(x). Formally, this objective is defined as:",
+    "where x is the sampled data, p data , D(•) denotes a degradation function applied to x, f θ is the parameterized model, and ℓ is a loss function (e.g., the L2 loss or perceptual loss).",
+    "Masked Image For masked image degradation, the degradation function is defined as: D mask (x) = x ⊙ M, where M ∈ {0, 1} H×W is a binary mask with height H and width W that selectively occludes regions of x. This degradation helps the model learn to infer missing information.",
+    "Deformed Image For deformed image degradation, the degradation function takes the form: D def (x) = T(x), where T(•) represents a spatial transformation (such as rotation, scaling, or warping). This degradation introduces geometric distortions that mimic real-world variations.",
+    "Nosiy Image For noisy image degradation, the degradation function is defined as: D noise (x) =",
+    "x + η where η denotes additive noise (typically Gaussian noise), simulating sensor imperfections or environmental interference.",
+    "Low-resolution Image For low-resolution image degradation, the degradation function is given by: D LR (x) =↓ s (x), where ↓ s is a down-sampling operator with scale factor s, reducing the resolution of x to simulate the effects of low-resolution imaging.",
+    "Random Multi-scale Sampling aims to extract patches/volumes with diverse scales from raw images. Given a raw image I, the procedure consists of two main steps: (1) Multi-scale Resizing: We first generate scaled versions of the raw image I to capture features at different resolutions. In particular, we resize I to scales 1/2 and 1/4 of its original size. Formally, let:",
+    "where ↓ s (•) denotes down-sampling with factor s. (2) Random Window Sampling: For each scaled image I s , we define a fixed-size window K (compatible with the pre-training requirements in either 2D or 3D) and perform random sampling to extract sub-patches. Let the window K have dimensions W × H (or W × H × D for 3D data). A randomly sampled 2D patch x s at scale s is given by:",
+    "where (i, j) is a randomly chosen starting coordinate in I s .",
+    "Collectively, the set of patches extracted across scales is represented as:",
+    "where N s denotes the number of patches sampled from the image at scale s. These multi-scale patches are then passed to subsequent degradation processes (e.g., masking, deformation, noise addition, and low-resolution conversion). By performing random sampling across multiple scales, our method extended the data diversity and enabled more robust feature learning across various datasets.",
+    "Dual-Masking Reconstructive Fusion To better address the biomedical image fusion task, where the combination of existing contexts is crucial, we modified the conventional Masked Image Modelling approaches [37,38], which typically employ a single masking strategy. Specifically, we applied two distinct masking operations to the training data x, thereby generating two independent masks:",
+    "where M A , M B ∈ {0, 1} H×W are binary masks with only partial overlap and ensure invisible information retention even after fusion. The masking probabilities are generated by:",
+    "where ξ k i,j ∼ U(0, 1) represents a random value extracted from a uniform distribution for grid coordinates i, j, and τ is the masking threshold. The key innovation is that our model is exposed to process both masked inputs (x A , x B ) simultaneously to recover the original image:",
+    "This guides the model to develop robust feature extraction capabilities that can identify complementary information across different masked views, and then fuse these partial observations coherently to reconstruct missing regions in both inputs.",
+    "Spatially-varying Gaussian down-sample For down-sampling, we adapt similar principles from DeepLP [53], which tested noisy down-sampling beyond uniform down-sampling in self-supervised microscopy restoration. We enhance this noisy down-sampling with spatially varying characteristics:",
+    "where ↓ s represents down-sampling with a random scale factor s, ↑ 1 s denotes upsampling back to the original resolution, η ∼ N(0, σ 2 down ) is normal distributed noise added during the downsampling process with σ down ∼ U(0.01, 0.1), U represent uniform distribution, and Gσvar denotes spatially-varying Gaussian filtering. It can be defined as:",
+    "where g σ represents a Gaussian kernel (2/3D) with standard deviation σ(i, j) ∼ U(σ min , σ max ) that varies across grid coordinates i, j. This mimics the heterogeneous blurring found in optical systems.",
+    "Multi-scale Smoothed Perlin Noise Deformation For the self-supervised registration task, constructing a realistic deformation field is important. We conducted multi-scale Perlin noise fields that simulate the hierarchy variations in natural anatomical structures. Given an image x, we generate a deformation field Φ and its corresponding deformed image D def (x) as follows:",
+    "T(•, •) is a spatial transformation operator, G σ (•) denotes spatially-varying Gaussian smoothing with parameter σ, and Per(f , p) represents multi-octave Perlin noise with frequency f and persistence p.",
+    "The multi-octave Perlin noise is specifically defined as:",
+    "where S(•) is the simplex noise function, N is the number of octaves and coords represents the grid coordinates. This multi-scale approach generates deformation fields with varying levels of detail.",
+    "To enhance the anatomical plausibility of the deformations, we apply normalization and bound it using a tanh function:",
+    ", where α controls the maximum displacement magnitude.",
+    "To simulate realistic noise, we adopted a multi-stage process:",
+    "where η ∼ N(0, σ 2 noise ) with σ noise ∼ U(0.075, 0.15) represents Gaussian noise, Poi(λ) denotes Poisson noise with intensity parameter λ (modeling photon-counting statistics), and Bi p represents binary (salt-and-pepper) noise that affects a proportion of pixels with probability p.",
+    "These sophisticated degradation designs enable our framework to simulate a wide spectrum of realworld imaging artifacts, encouraging the model to handle diverse image quality issues encountered.",
+    "We conducted comprehensive comparisons strictly following the setups in published specialist models (UniFMIR [6], VCM [5], Transmorph [32], and BSAFusion [25], see Appendix A.4 for details). Resulting in more than 30 state-of-the-art baselines across multiple benchmarks for various biomedical image-processing tasks to demonstrate the effectiveness and versatility of Orochi. We color-coded the performance in Table 1,  Generalization Capability on In-Domain Data Given that our model, Orochi, is extensively pretrained, we expect it to exhibit strong generalization capabilities on in-domain data. Accordingly, in Figure 3 we demonstrate Orochi's zero-shot performance on various stained microscopy images [51] (results on clinical images [50] are detailed in the Appendix C.1). Panels (A)-(D) illustrate Orochi's robust processing capabilities. In Panel (E), we further examine whether these outcomes align with our algorithmic expectations. For example, our Dual-Masking Reconstructive Fusion anticipates that the model learns an effective fusion strategy and leverages the existing information from both illustrate Orochi's robust performance across various low-level processing tasks when applied to unseen testing images after pre-training. Supplementary images include the dual-masking images and naive merge results for the fusion task. Error maps for the registration task. (E) provides in-depth case studies: for the fusion task, the centromere count is emphasized in both the reconstructed image and the original image (highlighted with circles); for the registration task, subtle deformations of the cell membrane are accentuated; and for the restoration and super-resolution tasks, the fine details of bright-field images and the internal structures of DNA-stained cell nuclei are emphasized Table 1: Isotropic 3D volume Restoration Task. Low-high laser data pairs along the XY axis are collected and serve as the training set. However, the evaluation is on both XY slices and XZ slices.  This precise control over fine structural details is also evident in other cases.",
+    "In Table 1, we present the performance of Orochi on the isotropic 3D volume restoration task. In microscopy imaging, the image quality along the XY plane is typically much higher than that along the XZ plane due to the inherent limitations of sequential (layer-by-layer) imaging, such as in light-sheet microscopy, which leads to the formation of isotropic data. To address this, CARE [4] leverages the high-resolution XY data for training and subsequently restores the lower-resolution XZ data. On this task, Orochi not only significantly outperforms train-from-scratch models like SwinIR [36]   Image Super-resolution Task We next evaluated the image super-resolution capabilities of Orochi (see Table 2). Early super-resolution models typically rely on CNN-based architectures such as UniRes [10] and SynthSR [12], which are efficient yet often lack sufficient expressiveness and generalization ability. LIIF [13] leverages the power of Implicit Neural Representations (INR) to perform implicit interpolation; however, the high training cost associated with INR limits its adaptability to real-world scenarios. More recent approaches, including InverseSR [11] and VCM [5], based on powerful pre-trained Brain-Latent Diffusion Models (LDM) [59] to overcome these shortcomings.",
+    "In this setting, Orochi significantly outperforms all the aforementioned architectures. At an 8mm slice thickness, Orochi achieves a PSNR that is 4.01 points higher than InverseSR and 2.76 points higher than VCM. These gains demonstrate that among pre-trained models, Orochi's pre-training is markedly superior to that of Brain-LDM, both in terms of the pre-training data and purpose.",
+    "Image Registration Task We further evaluated the registration task using the dataset from Learn2Reg [60] (see Table 3). In this task, brain MRI images from different patients (i.e., interpatients) are registered (see Appendix C.2 for patient-to-atlas brain registration test), and the model's ability to handle subtle deformations is assessed by measuring the similarity of the segmented brain regions after registration (e.g. Dice). Biomedical image registration has evolved from CNNbased [29,30,27] to Transformer-based architectures [32,54], with even linear-complexity models such as Mamba [33] emerging in recent work. In comparison to these methods, our approach achieves Dice scores that are 2.42 points higher than ConvexAdam, 2.0 points higher than Transmorph, and 1.81 points higher than Mambamorph.",
+    "Image Fusion Task Finally, as illustrated in Table 4, we evaluated Orochi's performance on the image fusion task. Recent trends in this domain have integrated image registration as an auxiliary task to facilitate fusion, as demonstrated by methods such as BSAFusion [25], UMF-CMGR [20], MURF [22], and SuperFusion [21]. Although these models typically exhibit limited registration capabilities (see Appendix C.2), this aligns with our pursuit of developing a versatile, comprehensive model. Compared with the recent advanced model BSAFusion, Orochi outperforms on all evaluated metrics, achieving improvements of +0.02 in Q abf , -1803.53 in Q cv , and +0.07 in SSIM. Combined with our state-of-the-art performance on the registration task, these results establish Orochi as the first model in this domain to achieve such performance.   Ablation Study -Comparison to Other Pre-train Strategies In Table 5, we demonstrate the limitations of relying solely on Masked-image-Modelling (MIM), particularly in registration tasks. Additionally, we observe that the dual-masking approach employed in I-JEPA [40] underperforms compared to Orochi. We hypothesize that this is because chunk masking is more advantageous for high-level tasks rather than the low-level focus of our study.",
+    "Ablation Study -Larger ̸ = Better, Fine-Tuning Efficiency V.S Performance As shown in Figure 5, the number of trainable parameters is not the decisive factor for downstream tasks-particularly in data-limited scenarios such as biomedical imaging. In many cases, opting for Parameter-Efficient Fine-Tuning (using only 1-2% of the total parameter count) prevents overfitting and achieves both efficient and effective results.",
+    "We introduce Orochi, the first versatile biomedical image processor designed for low-level tasks.",
+    "To enhance effectiveness, we propose Random Multi-scale Sampling, which is a scalable way to leverage raw data from a wide range of studies. The extracted data is then processed through our Task-related Joint-embedding Pre-training (TJP), where a unified and robust embedding is learned from various task-related degradations. For efficiency, we developed Multi-head Hierarchy Mamba and provide a three-tier fine-tuning framework (Full, Normal, and Light). These design choices ensure high efficiency during pre-training, post-tuning, and test inference. Our experiments demonstrate that Orochi exhibits in-domain generalization capability across multiple tasks and achieves stateof-the-art performance compared to specialist models with efficient fine-tuning (less than 5% of total parameters). This suggests that constructing a generalist image processor may lie more in the diversity of the dataset and the pre-training strategy than in increasing the model size naively. • Cubic: Bicubic interpolation as a traditional baseline.",
+    "• UniRes [10]: Designed for super-resolving multimodal clinical MRI.",
+    "• SynthSR [12]: Performs joint super-resolution and synthesis.",
+    "• LIIF [13]: Learns continuous image representations for implicit interpolation.",
+    "• InverseSR [11]: Uses a latent diffusion model for 3D brain MRI super-resolution.",
+    "• VCM [5]: Applies a volumetric conditioning module.",
+    "• Li et al. [8]: Improves axial resolution.",
+    "• CARE [4]: Uses a content-aware network for fluorescence microscopy image restoration.",
+    "• SwinIR [9]: Employs a Swin-Transformer for efficient image restoration.",
+    "• MambaIR [7]: Utilizes mamba blocks for modeling long-range dependencies.",
+    "• UniFMIR [6]: Fine-tunes a pre-trained foundation model for generalizable fluorescence microscopy-based restoration (with pruned FP16/FP32 variants).",
+    "• A combined multi-modal biomedical image dataset aggregated from over 100 public studies, encompassing various imaging modalities and degradation types [51,50,49]. In Figure 6, we provide a preview of the metadata of the studies we covered (Excel Form would be included in the Zip file). Since our RMS method is highly scalable, we plan to further update this list in the future and explore the borderline.",
+    "• The OASIS brain MRI dataset from the Learn2Reg 2021 challenge, used to evaluate the overlap of segmented regions and the smoothness of the deformation fields [60,58].",
+    "• A CT-MRI paired fusion dataset (VIFB), which assesses the integration of complementary information across modalities [57].",
+    "• The Harvard Whole Brain Atlas (HBA), providing high-quality MRI images for evaluating low-resolution image reconstruction [57].",
+    "• The CARE microscopy image dataset, used to evaluate the enhancement of low signal-tonoise ratio fluorescence microscopy images [4].",
+    "• Dice similarity coefficient: Computed as",
+    "which measures the overlap between the segmented regions.",
+    "• 95 th percentile Hausdorff Distance (HD95): Defined as the 95 th percentile of the distances between boundary points of the segmented regions.",
+    "• Standard deviation of the log-Jacobian determinant (SDlogJ): Calculated as the standard deviation of log(det(J)), where J is the Jacobian matrix of the deformation field. This metric reflects the smoothness of the deformation field [60].",
+    "• Q AB/F (Q abf ): Measures the quality of the fusion by evaluating the consistency between the fused image and the input modalities.",
+    "• Q CV (Q cv ): Assesses the contrast consistency across the fused image.",
+    "• Structural Similarity Index (SSIM): Computed based on comparisons of luminance, contrast, and structure between 2 source images [25].",
+    "• Peak Signal-to-Noise Ratio (PSNR): Calculated as",
+    "where MAX I is the maximum possible pixel value and MSE is the mean squared error between the reconstructed and reference images.",
+    "• SSIM: Evaluates perceptual similarity between the super-resolved and reference images [9].",
+    "• PSNR: As above, it measures the pixel-level fidelity between the restored image and the high-quality reference.",
+    "• SSIM: Measures the structural similarity between the restored and reference images [4].",
+    "• Adapted from public GitHub implementations of the Swin-Transformer and Transmorph. Swin-Transformer: https://github.com/microsoft/Swin-Transformer [36]; Transmorph: https://github.com/junyuchen245/TransMorph_Transformer_ for_Medical_Image_Registration [32].",
+    "• Implemented based on the Transmorph GitHub code. Link: https://github.com/ junyuchen245/TransMorph_Transformer_for_Medical_Image_Registration [32].",
+    "• Built with reference to the BSAFusion GitHub code. Link: https://github.com/ slrl123/BSAFusion [25].",
+    "• Implemented based on GitHub codes of InverseSR and VCM. InverseSR: https: //github.com/BioMedAI-UCSC/InverseSR [11]; VCM: https://github.com/ Ahn-Ssu/VCM [5].",
+    "• Based on the UniFMIR GitHub implementation. Link: https://github.com/cxm12/ UNiFMIR [6].",
+    "Multi-head Hierarchy Mamba & Three-Tier Fine-Tuning Framework Figure 7, presents a comprehensive diagram of Orochi's backbone architecture. Post-tuning, the interchangeable decoder can be replaced as required. We evaluated Orochi's performance using our Three-Tier Fine-Tuning Framework, which includes full fine-tuning (Full, 100% parameters), regular convolution head with the encoder frozen (Normal, 10-30% parameters), and depth-wise separable convolution head [45] with the encoder frozen (Light, less than 5% parameters). The optimal results were achieved across all three tiers, underscoring the significance of selecting an appropriate tuning method based on specific requirements.",
+    "We pre-trained Orochi-B (3D version) with the configuration listed in Table 6. The 2D version has a similar configuration, with slight differences on some setups (e.g. batch size). We have 2 two sets of pre-training devices. The A800 80Gx8 device is used for local pre-train and the H100 40Gx8 device is for streaming pre-train.",
+    "We followed the same setups as our code base for each task (see Section ??), including the tuning resolution, epoch number, optimizer configurations and loss designs. The device we use for fine-tuning is NVIDIA 4090 24Gx4   Patient to Atlas Brain Image Registration The regional deformation is learned unsupervised in Table 7. Only the raw image of the atlas and the patient's brain would be used for loss calculation while training. Then we evaluate dice score between the segmentation maps of these two brains. Since Orochi is pre-trained in this unsupervised fashion, it shows excellent adaptation to this task, similar to the case with supervision.",
+    "In Figure 10, we performed comparative evaluations using state-of-the-art fusion techniques on two additional Harvard Whole Brain datasets obtained from https://www.med.harvard.edu/aanlib/. These datasets specifically focus on the fusion of SPECT and PET imaging with MRI. The results demonstrate that Orochi outperforms recent advancements such as BSAFusion and maintains superior efficiency.",
+    "Table 7: Patient to Atlas Brain Registration Task. During the training phase, the model aims to input paired MRI data from both the standard brain atlas and patient scans, to output a predicted registration flow. This flow is subsequently applied to the atlas data to compute the similarity between the registered atlas and the patient's scan. During the testing phase, the predicted flow is applied to the atlas brain segmentation map, and the Dice coefficient is evaluated against the patient's brain segmentation map.",
+    "Affine 0.386 ± 0.195 -SyN [61] 0.645 ± 0.152 ≤ 0.0001 NiftyReg [62] 0.645 ± 0.167 0.020 ± 0.046 LDDMM [63] 0.680 ± 0.135 ≤ 0.0001 deedsBCV [64] 0.733 ± 0.126 0.147 ± 0.050 VoxelMorph-1 [54] 0.729 ± 0.129 1.590 ± 0.339 VoxelMorph-2 [54] 0.732 ± 0.123 1.522 ± 0.336 VoxelMorph-diff [54] 0.580 ± 0.165 ≤ 0.0001 CycleMorph [65] 0.737 ± 0.123 1.719 ± 0.382 MIDIR [66] 0.742 ± 0.128 ≤ 0.0001 ViT-V-Net [67] 0.734 ± 0.124 1.609 ± 0.319 PVT [68] 0.727 ± 0.128 1.858 ± 0.314 CoTr [69] 0.735 ± 0.135 1.292 ± 0.342 nnFormer [70] 0.747 ± 0.135 1.595 ± 0.358 TransMorph-Bayes [32] 0.753 ± 0.123 1.560 ± 0.333 TransMorph-diff [32] 0.594 ± 0.163 ≤ 0.0001 TransMorph-bspl [32] 0.761 ± 0.122 ≤ 0.0001 TransMorph [32] 0.754 ± 0.124 1.579 ± 0.328 Orochi (Full) 0.770 ± 0.120 1.592 ± 0.334 Orochi (Normal) 0.765 ± 0.121 1.571 ± 0.323 Orochi (Light) 0.752 ± 0.126 1.499 ± 0.301",
+    "Stress test on joint multi-modal data image repairing In this additional validation, we aim to evaluate Orochi's performance under stress using an extended benchmark. The BioSR [71] benchmark comprises four distinct categories of microscopy image pairs (x2 low/high imaging quality), captured by a multimodal structured illumination microscopy (SIM) system, encompassing Clathrin-Coated Pits (CCPs), Endoplasmic Reticula (ERs), Microtubules (MTs), and F-actin Filaments. Specifically, Orochi was trained on all four datasets concurrently, whereas the baseline [72,73,74,6] models were trained separately on each dataset. This deliberate approach highlights Orochi's capability in resource-constrained environments, where conducting hyperparameter searches for each subset is not feasible. As illustrated in Figure 11, despite the training constraints imposed on Orochi, an absolute improvement is still observed, further demonstrating its capability and efficiency.",
+    "Two limitations in our paper remain unaddressed at present. First, due to constraints on computational resources and group size, we were unable to further investigate the scaling law of our method during pre-training. This limitation also indicates that our focus was restricted to low-level tasks as presented in the paper. However, we firmly believe that a unified model for life sciences, capable of excelling in both high-level understanding tasks and low-level generation tasks, will emerge in the future. This is also an emerging trend that has already demonstrated progress in general applications.",
+    "NeurIPS Paper Checklist Guidelines:",
+    "• The answer NA means that the paper has no limitation while the answer No means that the paper has limitations, but those are not discussed in the paper. • The authors are encouraged to create a separate \"Limitations\" section in their paper.",
+    "• The paper should point out any strong assumptions and how robust the results are to violations of these assumptions (e.g., independence assumptions, noiseless settings, model well-specification, asymptotic approximations only holding locally). The authors should reflect on how these assumptions might be violated in practice and what the implications would be. • The authors should reflect on the scope of the claims made, e.g., if the approach was only tested on a few datasets or with a few runs. In general, empirical results often depend on implicit assumptions, which should be articulated. • The authors should reflect on the factors that influence the performance of the approach.",
+    "For example, a facial recognition algorithm may perform poorly when image resolution is low or images are taken in low lighting. Or a speech-to-text system might not be used reliably to provide closed captions for online lectures because it fails to handle technical jargon. • The authors should discuss the computational efficiency of the proposed algorithms and how they scale with dataset size. • If applicable, the authors should discuss possible limitations of their approach to address problems of privacy and fairness. • While the authors might fear that complete honesty about limitations might be used by reviewers as grounds for rejection, a worse outcome might be that reviewers discover limitations that aren't acknowledged in the paper. The authors should use their best judgment and recognize that individual actions in favor of transparency play an important role in developing norms that preserve the integrity of the community. Reviewers will be specifically instructed to not penalize honesty concerning limitations.",
+    "Question: For each theoretical result, does the paper provide the full set of assumptions and a complete (and correct) proof? Answer: [Yes]",
+    "• It should be clear whether the error bar is the standard deviation or the standard error of the mean. • It is OK to report 1-sigma error bars, but one should state it. The authors should preferably report a 2-sigma error bar than state that they have a 96% CI, if the hypothesis of Normality of errors is not verified. • For asymmetric distributions, the authors should be careful not to show in tables or figures symmetric error bars that would yield results that are out of range (e.g. negative error rates). • If error bars are reported in tables or plots, The authors should explain in the text how they were calculated and reference the corresponding figures or tables in the text.",
+    "Question: For each experiment, does the paper provide sufficient information on the computer resources (type of compute workers, memory, time of execution) needed to reproduce the experiments?",
+    "Justification: We provide sufficient information on the computer resources.",
+    "• The answer NA means that the paper does not include experiments.",
+    "• The paper should indicate the type of compute workers CPU or GPU, internal cluster, or cloud provider, including relevant memory and storage. • The paper should provide the amount of compute required for each of the individual experimental runs as well as estimate the total compute. • The paper should disclose whether the full research project required more compute than the experiments reported in the paper (e.g., preliminary or failed experiments that didn't make it into the paper).",
+    "Question: Does the research conducted in the paper conform, in every respect, with the NeurIPS Code of Ethics https://neurips.cc/public/EthicsGuidelines?",
+    "Justification: We make sure to preserve anonymity.",
+    "• The answer NA means that the authors have not reviewed the NeurIPS Code of Ethics.",
+    "• If the authors answer No, they should explain the special circumstances that require a deviation from the Code of Ethics. • The authors should make sure to preserve anonymity (e.g., if there is a special consideration due to laws or regulations in their jurisdiction).",
+    "Question: Does the paper discuss both potential positive societal impacts and negative societal impacts of the work performed?",
+    "Justification: There is no societal impact of the work performed.",
+    "• The answer NA means that there is no societal impact of the work performed.",
+    "• If the authors answer NA or No, they should explain why their work has no societal impact or why the paper does not address societal impact. • Examples of negative societal impacts include potential malicious or unintended uses (e.g., disinformation, generating fake profiles, surveillance), fairness considerations (e.g., deployment of technologies that could make decisions that unfairly impact specific groups), privacy considerations, and security considerations.",
+    "• The conference expects that many papers will be foundational research and not tied to particular applications, let alone deployments. However, if there is a direct path to any negative applications, the authors should point it out. For example, it is legitimate to point out that an improvement in the quality of generative models could be used to generate deepfakes for disinformation. On the other hand, it is not needed to point out that a generic algorithm for optimizing neural networks could enable people to train models that generate Deepfakes faster. • The authors should consider possible harms that could arise when the technology is being used as intended and functioning correctly, harms that could arise when the technology is being used as intended but gives incorrect results, and harms following from (intentional or unintentional) misuse of the technology. • If there are negative societal impacts, the authors could also discuss possible mitigation strategies (e.g., gated release of models, providing defenses in addition to attacks, mechanisms for monitoring misuse, mechanisms to monitor how a system learns from feedback over time, improving the efficiency and accessibility of ML).",
+    "Question: Does the paper describe safeguards that have been put in place for responsible release of data or models that have a high risk for misuse (e.g., pretrained language models, image generators, or scraped datasets)?",
+    "Answer: [NA] Justification: The paper poses no such risks.",
+    "• The answer NA means that the paper poses no such risks.",
+    "• Released models that have a high risk for misuse or dual-use should be released with necessary safeguards to allow for controlled use of the model, for example by requiring that users adhere to usage guidelines or restrictions to access the model or implementing safety filters. • Datasets that have been scraped from the Internet could pose safety risks. The authors should describe how they avoided releasing unsafe images. • We recognize that providing effective safeguards is challenging, and many papers do not require this, but we encourage authors to take this into account and make a best faith effort.",
+    "12. Licenses for existing assets Question: Are the creators or original owners of assets (e.g., code, data, models), used in the paper, properly credited and are the license and terms of use explicitly mentioned and properly respected?",
+    "Answer: [Yes] Justification: All the assets are properly cited.",
+    "• The answer NA means that the paper does not use existing assets.",
+    "• The authors should cite the original paper that produced the code package or dataset.",
+    "• The authors should state which version of the asset is used and, if possible, include a URL. • The name of the license (e.g., CC-BY 4.0) should be included for each asset.",
+    "• For scraped data from a particular source (e.g., website), the copyright and terms of service of that source should be provided. • If assets are released, the license, copyright information, and terms of use in the package should be provided. For popular datasets, paperswithcode.com/datasets has curated licenses for some datasets. Their licensing guide can help determine the license of a dataset. • For existing datasets that are re-packaged, both the original license and the license of the derived asset (if it has changed) should be provided.",
+    "• If this information is not available online, the authors are encouraged to reach out to the asset's creators. 13. New assets Question: Are new assets introduced in the paper well documented and is the documentation provided alongside the assets? Answer: [NA] Justification: The paper currently does not release new assets. Guidelines:",
+    "• The answer NA means that the paper does not release new assets.",
+    "• Researchers should communicate the details of the dataset/code/model as part of their submissions via structured templates. This includes details about training, license, limitations, etc. • The paper should discuss whether and how consent was obtained from people whose asset is used.",
+    "Two intensities of low-resolution data are trained and tested in this task, with 4mm (i.e x4 downsampled) and 8mm (i.e x8 down-sampled)Method PSNR (4mm) ↑ SSIM (4mm) ↑ PSNR (8mm) ↑ SSIM (8mm) ↑ Dataset: HBA [57]sources before reconstruction, rather than reconstructing masked regions separately. This expectation is validated in the Centromere count case study, where masked A and B each exhibit a partial absence of centromeres, and the model successfully performs complementary fusion and the final reconstruction does not arbitrarily generate Centromeres across extensive background regions.",
+    "Two intensities of low-resolution data are trained and tested in this task, with 4mm (i.e x4 downsampled) and 8mm (i.e x8 down-sampled)Method PSNR (4mm) ↑ SSIM (4mm) ↑ PSNR (8mm) ↑ SSIM (8mm) ↑ Dataset: HBA [57]",
+    "Two intensities of low-resolution data are trained and tested in this task, with 4mm (i.e x4 downsampled) and 8mm (i.e x8 down-sampled)",
+    "(+2.11 PSNR) and MambaIR[7] (+1.35 PSNR), but it also comprehensively surpasses pre-trained foundation model UniFMIR[6] across both fully fine-tuned (+0.85 PSNR) and efficiently fine-tuned (+3.19 PSNR) configurations. An intriguing finding is that our results indicate Orochi with PEFT leads the list. This outcome is plausible given that the dataset, derived from",
+    "(+2.11 PSNR) and MambaIR[7] (+1.35 PSNR), but it also comprehensively surpasses pre-trained foundation model UniFMIR[6]",
+    "(+2.11 PSNR) and MambaIR[7] (+1.35 PSNR), but it also comprehensively surpasses pre-trained foundation model UniFMIR",
+    "(+2.11 PSNR) and MambaIR[7]",
+    "(+2.11 PSNR) and MambaIR",
+    "isotropic data pairs, comprises fewer than 100 total training patches. Consequently, Full Fine-Tuning or training from scratch is prone to over-fitting. (see Appendix C.3 for extra comparisons)"
+  ],
+  "references": [
+    {
+      "id": 1,
+      "text": "Multimodal large language models for bioimage analysis\n\t\t\n\t\t\tShanghangZhang\n\t\t\t0000-0003-4047-3526\n\t\t\n\t\t\n\t\t\tGaoleDai\n\t\t\n\t\t\n\t\t\tTiejunHuang\n\t\t\n\t\t\n\t\t\tJianxuChen\n\t\t\t0000-0002-8500-1357\n\t\t\n\t\t10.1038/s41592-024-02334-2\n\t\n\t\n\t\tNature Methods\n\t\tNat Methods\n\t\t1548-7091\n\t\t1548-7105\n\t\t\n\t\t\t21\n\t\t\t8\n\t\t\t\n\t\t\t2024\n\t\t\tSpringer Science and Business Media LLC"
+    },
+    {
+      "id": 2,
+      "text": "Foundation models for generalist medical artificial intelligence\n\t\t\n\t\t\tMichaelMoor\n\t\t\n\t\t\n\t\t\tOishiBanerjee\n\t\t\n\t\t\n\t\t\tZahraShakeri Hossein\n\t\t\n\t\t\n\t\t\tHarlanMAbad\n\t\t\n\t\t\n\t\t\tJureKrumholz\n\t\t\n\t\t\n\t\t\tEricJLeskovec\n\t\t\n\t\t\n\t\t\tPranavTopol\n\t\t\n\t\t\n\t\t\tRajpurkar\n\t\t\n\t\n\t\n\t\tNature\n\t\t\n\t\t\t616\n\t\t\t7956\n\t\t\t\n\t\t\t2023"
+    },
+    {
+      "id": 3,
+      "text": "Segment anything in medical images\n\t\t\n\t\t\tJunMa\n\t\t\n\t\t\n\t\t\tYutingHe\n\t\t\n\t\t\n\t\t\tFeifeiLi\n\t\t\n\t\t\n\t\t\tLinHan\n\t\t\n\t\t\n\t\t\tChenyuYou\n\t\t\n\t\t\n\t\t\tBoWang\n\t\t\n\t\n\t\n\t\tNature Communications\n\t\t\n\t\t\t15\n\t\t\t1\n\t\t\t654\n\t\t\t2024"
+    },
+    {
+      "id": 4,
+      "text": "Content-aware image restoration: pushing the limits of fluorescence microscopy\n\t\t\n\t\t\tMartinWeigert\n\t\t\t0000-0002-7780-9057\n\t\t\n\t\t\n\t\t\tUweSchmidt\n\t\t\n\t\t\n\t\t\tTobiasBoothe\n\t\t\t0000-0003-1925-0213\n\t\t\n\t\t\n\t\t\tAndreasMüller\n\t\t\t0000-0002-3560-5769\n\t\t\n\t\t\n\t\t\tAlexandrDibrov\n\t\t\n\t\t\n\t\t\tAkankshaJain\n\t\t\t0000-0003-4704-7992\n\t\t\n\t\t\n\t\t\tBenjaminWilhelm\n\t\t\t0000-0003-1608-5267\n\t\t\n\t\t\n\t\t\tDeborahSchmidt\n\t\t\t0000-0002-8621-9438\n\t\t\n\t\t\n\t\t\tColemanBroaddus\n\t\t\n\t\t\n\t\t\tSiânCulley\n\t\t\t0000-0003-2112-0143\n\t\t\n\t\t\n\t\t\tMauricioRocha-Martins\n\t\t\n\t\t\n\t\t\tFabiánSegovia-Miranda\n\t\t\n\t\t\n\t\t\tCarenNorden\n\t\t\t0000-0001-8835-1451\n\t\t\n\t\t\n\t\t\tRicardoHenriques\n\t\t\t0000-0002-2043-5234\n\t\t\n\t\t\n\t\t\tMarinoZerial\n\t\t\n\t\t\n\t\t\tMicheleSolimena\n\t\t\n\t\t\n\t\t\tJochenRink\n\t\t\n\t\t\n\t\t\tPavelTomancak\n\t\t\t0000-0002-2222-9370\n\t\t\n\t\t\n\t\t\tLoicRoyer\n\t\t\t0000-0002-9991-9724\n\t\t\n\t\t\n\t\t\tFlorianJug\n\t\t\t0000-0002-8499-5812\n\t\t\n\t\t\n\t\t\tEugeneWMyers\n\t\t\n\t\t10.1038/s41592-018-0216-7\n\t\n\t\n\t\tNature Methods\n\t\tNat Methods\n\t\t1548-7091\n\t\t1548-7105\n\t\t\n\t\t\t15\n\t\t\t12\n\t\t\t\n\t\t\t2018\n\t\t\tSpringer Science and Business Media LLC"
+    },
+    {
+      "id": 5,
+      "text": "Volumetric conditioning module to control pretrained diffusion models for 3d medical images\n\t\t\n\t\t\tWonjungSuhyun Ahn\n\t\t\n\t\t\n\t\t\tJihoonPark\n\t\t\n\t\t\n\t\t\tSeunghyuckCho\n\t\t\n\t\t\n\t\t\tJinahPark\n\t\t\n\t\t\n\t\t\tPark\n\t\t\n\t\tarXiv:2410.21826\n\t\t\n\t\t\t2024\n\t\t\n\t\n\tarXiv preprint"
+    },
+    {
+      "id": 6,
+      "text": "Pretraining a foundation model for generalizable fluorescence microscopy-based image restoration\n\t\t\n\t\t\tChenxiMa\n\t\t\n\t\t\n\t\t\tWeiminTan\n\t\t\t0000-0001-7677-4772\n\t\t\n\t\t\n\t\t\tRuianHe\n\t\t\n\t\t\n\t\t\tBoYan\n\t\t\t0000-0001-5692-3486\n\t\t\n\t\t10.1038/s41592-024-02244-3\n\t\n\t\n\t\tNature Methods\n\t\tNat Methods\n\t\t1548-7091\n\t\t1548-7105\n\t\t\n\t\t\t21\n\t\t\t8\n\t\t\t\n\t\t\t2024\n\t\t\tSpringer Science and Business Media LLC"
+    },
+    {
+      "id": 7,
+      "text": "Mambair: A simple baseline for image restoration with state-space model\n\t\t\n\t\t\tHangGuo\n\t\t\n\t\t\n\t\t\tJinminLi\n\t\t\n\t\t\n\t\t\tTaoDai\n\t\t\n\t\t\n\t\t\tZhihaoOuyang\n\t\t\n\t\t\n\t\t\tXudongRen\n\t\t\n\t\t\n\t\t\tShu-TaoXia\n\t\t\n\t\n\t\n\t\tEuropean conference on computer vision\n\t\t\n\t\t\tSpringer\n\t\t\t2024"
+    },
+    {
+      "id": 8,
+      "text": "Three-dimensional structured illumination microscopy with enhanced axial resolution\n\t\t\n\t\t\tXuesongLi\n\t\t\t0000-0002-1795-4885\n\t\t\n\t\t\n\t\t\tYicongWu\n\t\t\t0000-0002-8819-7527\n\t\t\n\t\t\n\t\t\tYijunSu\n\t\t\n\t\t\n\t\t\tIvanRey-Suarez\n\t\t\n\t\t\n\t\t\tClaudiaMatthaeus\n\t\t\n\t\t\n\t\t\tTaylorBUpdegrove\n\t\t\n\t\t\n\t\t\tZhuangWei\n\t\t\n\t\t\n\t\t\tLixiaZhang\n\t\t\n\t\t\n\t\t\tHidekiSasaki\n\t\t\t0000-0002-5926-3740\n\t\t\n\t\t\n\t\t\tYueLi\n\t\t\t0000-0002-9299-0974\n\t\t\n\t\t\n\t\t\tMinGuo\n\t\t\t0000-0002-2093-8771\n\t\t\n\t\t\n\t\t\tJohnPGiannini\n\t\t\n\t\t\n\t\t\tHarshadDVishwasrao\n\t\t\n\t\t\n\t\t\tJijiChen\n\t\t\t0000-0002-4426-3035\n\t\t\n\t\t\n\t\t\tShih-Jong J.Lee\n\t\t\n\t\t\n\t\t\tLinShao\n\t\t\n\t\t\n\t\t\tHuafengLiu\n\t\t\n\t\t\n\t\t\tKumaranSRamamurthi\n\t\t\n\t\t\n\t\t\tJustinWTaraska\n\t\t\t0000-0001-5355-9535\n\t\t\n\t\t\n\t\t\tArpitaUpadhyaya\n\t\t\n\t\t\n\t\t\tPatrickLa Riviere\n\t\t\t0000-0003-3415-9864\n\t\t\n\t\t\n\t\t\tHariShroff\n\t\t\n\t\t10.1038/s41587-022-01651-1\n\t\n\t\n\t\tNature Biotechnology\n\t\tNat Biotechnol\n\t\t1087-0156\n\t\t1546-1696\n\t\t\n\t\t\t41\n\t\t\t9\n\t\t\t\n\t\t\t2023\n\t\t\tSpringer Science and Business Media LLC"
+    },
+    {
+      "id": 9,
+      "text": "SwinIR: Image Restoration Using Swin Transformer\n\t\t\n\t\t\tJingyunLiang\n\t\t\n\t\t\n\t\t\tJiezhangCao\n\t\t\n\t\t\n\t\t\tGuoleiSun\n\t\t\n\t\t\n\t\t\tKaiZhang\n\t\t\n\t\t\n\t\t\tLucVan Gool\n\t\t\n\t\t\n\t\t\tRaduTimofte\n\t\t\n\t\t10.1109/iccvw54120.2021.00210\n\t\n\t\n\t\t2021 IEEE/CVF International Conference on Computer Vision Workshops (ICCVW)\n\t\t\n\t\t\tIEEE\n\t\t\t2021"
+    },
+    {
+      "id": 10,
+      "text": "MRI Super-Resolution Using Multi-channel Total Variation\n\t\t\n\t\t\tMikaelBrudfors\n\t\t\n\t\t\n\t\t\tYaëlBalbastre\n\t\t\n\t\t\n\t\t\tParashkevNachev\n\t\t\n\t\t\n\t\t\tJohnAshburner\n\t\t\n\t\t10.1007/978-3-319-95921-4_21\n\t\tarXiv:1909.01140\n\t\n\t\n\t\tCommunications in Computer and Information Science\n\t\t\n\t\t\tSpringer International Publishing\n\t\t\t2019\n\t\t\t\n\t\t\n\t\n\tarXiv preprint"
+    },
+    {
+      "id": 11,
+      "text": "Inversesr: 3d brain mri super-resolution using a latent diffusion model\n\t\t\n\t\t\tJueqiWang\n\t\t\n\t\t\n\t\t\tJacobLevman\n\t\t\n\t\t\n\t\t\tWalterHugo Lopez Pinaya\n\t\t\n\t\t\n\t\t\tPetru-DanielTudosiu\n\t\t\n\t\t\n\t\t\tJorgeCardoso\n\t\t\n\t\t\n\t\t\tRazvanMarinescu\n\t\t\n\t\n\t\n\t\tInternational Conference on Medical Image Computing and Computer-Assisted Intervention\n\t\t\n\t\t\tSpringer\n\t\t\t2023"
+    },
+    {
+      "id": 12,
+      "text": "Joint super-resolution and synthesis of 1 mm isotropic mp-rage volumes from clinical mri exams with scans of different orientation, resolution and contrast\n\t\t\n\t\t\tJuanEugenio\n\t\t\n\t\t\n\t\t\tIglesias\n\t\t\n\t\t\n\t\t\tBenjaminBillot\n\t\t\n\t\t\n\t\t\tYaëlBalbastre\n\t\t\n\t\t\n\t\t\tAzadehTabari\n\t\t\n\t\t\n\t\t\tJohnConklin\n\t\t\n\t\t\n\t\t\tGilbertoGonzález\n\t\t\n\t\t\n\t\t\tPolinaDaniel C Alexander\n\t\t\n\t\t\n\t\t\tBrianLGolland\n\t\t\n\t\t\n\t\t\tBruceEdlow\n\t\t\n\t\t\n\t\t\tFischl\n\t\t\n\t\n\t\n\t\tNeuroimage\n\t\t\n\t\t\t237\n\t\t\t118206\n\t\t\t2021"
+    },
+    {
+      "id": 13,
+      "text": "Learning Continuous Image Representation with Local Implicit Image Function\n\t\t\n\t\t\tYinboChen\n\t\t\n\t\t\n\t\t\tSifeiLiu\n\t\t\n\t\t\n\t\t\tXiaolongWang\n\t\t\n\t\t10.1109/cvpr46437.2021.00852\n\t\n\t\n\t\t2021 IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)\n\t\t\n\t\t\tIEEE\n\t\t\t2021"
+    },
+    {
+      "id": 14,
+      "text": "U2fusion: A unified unsupervised image fusion network\n\t\t\n\t\t\tHanXu\n\t\t\n\t\t\n\t\t\tJiayiMa\n\t\t\n\t\t\n\t\t\tJunjunJiang\n\t\t\n\t\t\n\t\t\tXiaojieGuo\n\t\t\n\t\t\n\t\t\tHaibinLing\n\t\t\n\t\n\t\n\t\tIEEE transactions on pattern analysis and machine intelligence\n\t\t\n\t\t\t44\n\t\t\t1\n\t\t\t\n\t\t\t2020"
+    },
+    {
+      "id": 15,
+      "text": "Equivariant Multi-Modality Image Fusion\n\t\t\n\t\t\tZixiangZhao\n\t\t\n\t\t\n\t\t\tHaowenBai\n\t\t\n\t\t\n\t\t\tJiangsheZhang\n\t\t\n\t\t\n\t\t\tYulunZhang\n\t\t\n\t\t\n\t\t\tKaiZhang\n\t\t\n\t\t\n\t\t\tShuangXu\n\t\t\n\t\t\n\t\t\tDongdongChen\n\t\t\n\t\t\n\t\t\tRaduTimofte\n\t\t\n\t\t\n\t\t\tLucVan Gool\n\t\t\n\t\t10.1109/cvpr52733.2024.02448\n\t\n\t\n\t\t2024 IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)\n\t\t\n\t\t\tIEEE\n\t\t\t2024"
+    },
+    {
+      "id": 16,
+      "text": "DDFM: Denoising Diffusion Model for Multi-Modality Image Fusion\n\t\t\n\t\t\tZixiangZhao\n\t\t\n\t\t\n\t\t\tHaowenBai\n\t\t\n\t\t\n\t\t\tYuanzhiZhu\n\t\t\n\t\t\n\t\t\tJiangsheZhang\n\t\t\n\t\t\n\t\t\tShuangXu\n\t\t\n\t\t\n\t\t\tYulunZhang\n\t\t\n\t\t\n\t\t\tKaiZhang\n\t\t\n\t\t\n\t\t\tDeyuMeng\n\t\t\n\t\t\n\t\t\tRaduTimofte\n\t\t\n\t\t\n\t\t\tLucVan Gool\n\t\t\n\t\t10.1109/iccv51070.2023.00742\n\t\n\t\n\t\t2023 IEEE/CVF International Conference on Computer Vision (ICCV)\n\t\t\n\t\t\tIEEE\n\t\t\t2023"
+    },
+    {
+      "id": 17,
+      "text": "Learning to search a lightweight generalized network for medical image fusion\n\t\t\n\t\t\tPanMu\n\t\t\n\t\t\n\t\t\tGuanyaoWu\n\t\t\n\t\t\n\t\t\tJinyuanLiu\n\t\t\n\t\t\n\t\t\tYuduoZhang\n\t\t\n\t\t\n\t\t\tXinFan\n\t\t\n\t\t\n\t\t\tRishengLiu\n\t\t\n\t\n\t\n\t\tIEEE Transactions on Circuits and Systems for Video Technology\n\t\t\n\t\t\t34\n\t\t\t7\n\t\t\t\n\t\t\t2023"
+    },
+    {
+      "id": 18,
+      "text": "MsgFusion: Medical Semantic Guided Two-Branch Network for Multimodal Brain Image Fusion\n\t\t\n\t\t\tJinyuWen\n\t\t\t0000-0001-9312-8289\n\t\t\n\t\t\n\t\t\tFeiweiQin\n\t\t\t0000-0001-5036-9365\n\t\t\n\t\t\n\t\t\tJiaoDu\n\t\t\t0000-0001-6402-1335\n\t\t\n\t\t\n\t\t\tMeieFang\n\t\t\t0000-0003-4292-8889\n\t\t\n\t\t\n\t\t\tXinhuaWei\n\t\t\n\t\t\n\t\t\tCL PhilipChen\n\t\t\t0000-0001-5451-7230\n\t\t\n\t\t\n\t\t\tPingLi\n\t\t\t0000-0002-1503-0240\n\t\t\n\t\t10.1109/tmm.2023.3273924\n\t\n\t\n\t\tIEEE Transactions on Multimedia\n\t\tIEEE Trans. Multimedia\n\t\t1520-9210\n\t\t1941-0077\n\t\t\n\t\t\t26\n\t\t\t\n\t\t\t2023\n\t\t\tInstitute of Electrical and Electronics Engineers (IEEE)"
+    },
+    {
+      "id": 19,
+      "text": "Multi-modal medical image fusion via multi-dictionary and truncated huber filtering\n\t\t\n\t\t\tYuchanJie\n\t\t\n\t\t\n\t\t\tXiaosongLi\n\t\t\n\t\t\n\t\t\tHaishuTan\n\t\t\n\t\t\n\t\t\tFuqiangZhou\n\t\t\n\t\t\n\t\t\tGaoWang\n\t\t\n\t\n\t\n\t\tBiomedical Signal Processing and Control\n\t\t\n\t\t\t88\n\t\t\t105671\n\t\t\t2024"
+    },
+    {
+      "id": 20,
+      "text": "Xin Fan, and Risheng Liu. Unsupervised misaligned infrared and visible image fusion via cross-modality image generation and registration\n\t\t\n\t\t\tDiWang\n\t\t\n\t\t\n\t\t\tJinyuanLiu\n\t\t\n\t\tarXiv:2205.11876\n\t\t\n\t\t\t2022\n\t\t\n\t\n\tarXiv preprint"
+    },
+    {
+      "id": 21,
+      "text": "Superfusion: A versatile image registration and fusion network with semantic awareness\n\t\t\n\t\t\tLinfengTang\n\t\t\n\t\t\n\t\t\tYuxinDeng\n\t\t\n\t\t\n\t\t\tYongMa\n\t\t\n\t\t\n\t\t\tJunHuang\n\t\t\n\t\t\n\t\t\tJiayiMa\n\t\t\n\t\n\t\n\t\tIEEE/CAA Journal of Automatica Sinica\n\t\t\n\t\t\t9\n\t\t\t12\n\t\t\t\n\t\t\t2022"
+    },
+    {
+      "id": 22,
+      "text": "MURF: Mutually Reinforcing Multi-Modal Image Registration and Fusion\n\t\t\n\t\t\tHanXu\n\t\t\t0000-0002-6291-2924\n\t\t\n\t\t\n\t\t\tJitengYuan\n\t\t\t0000-0002-8829-0238\n\t\t\n\t\t\n\t\t\tJiayiMa\n\t\t\t0000-0003-3264-3265\n\t\t\n\t\t10.1109/tpami.2023.3283682\n\t\n\t\n\t\tIEEE Transactions on Pattern Analysis and Machine Intelligence\n\t\tIEEE Trans. Pattern Anal. Mach. Intell.\n\t\t0162-8828\n\t\t1939-3539\n\t\t\n\t\t\t45\n\t\t\t10\n\t\t\t\n\t\t\t2023\n\t\t\tInstitute of Electrical and Electronics Engineers (IEEE)"
+    },
+    {
+      "id": 23,
+      "text": "Improving Misaligned Multi-Modality Image Fusion With One-Stage Progressive Dense Registration\n\t\t\n\t\t\tDiWang\n\t\t\t0000-0002-3911-8159\n\t\t\n\t\t\n\t\t\tJinyuanLiu\n\t\t\t0000-0003-2085-2676\n\t\t\n\t\t\n\t\t\tLongMa\n\t\t\t0000-0001-5125-0198\n\t\t\n\t\t\n\t\t\tRishengLiu\n\t\t\t0000-0002-9554-0565\n\t\t\n\t\t\n\t\t\tXinFan\n\t\t\t0000-0002-8991-4188\n\t\t\n\t\t10.1109/tcsvt.2024.3412743\n\t\n\t\n\t\tIEEE Transactions on Circuits and Systems for Video Technology\n\t\tIEEE Trans. Circuits Syst. Video Technol.\n\t\t1051-8215\n\t\t1558-2205\n\t\t\n\t\t\t34\n\t\t\t11\n\t\t\t\n\t\t\t2024\n\t\t\tInstitute of Electrical and Electronics Engineers (IEEE)"
+    },
+    {
+      "id": 24,
+      "text": "Performance of medical image fusion in high-level analysis tasks: A mutual enhancement framework for unaligned pat and mri image fusion\n\t\t\n\t\t\tYutianZhong\n\t\t\n\t\t\n\t\t\tJinchuanHe\n\t\t\n\t\t\n\t\t\tZhichaoLiang\n\t\t\n\t\t\n\t\t\tShuangyangZhang\n\t\t\n\t\t\n\t\t\tQianjinFeng\n\t\t\n\t\t\n\t\t\tWufanChen\n\t\t\n\t\t\n\t\t\tLiQi\n\t\t\n\t\tarXiv:2407.03992\n\t\t\n\t\t\t2024\n\t\t\n\t\n\tarXiv preprint"
+    },
+    {
+      "id": 25,
+      "text": "Bsafusion: A bidirectional stepwise feature alignment network for unaligned medical image fusion\n\t\t\n\t\t\tHuafengLi\n\t\t\n\t\t\n\t\t\tDayongSu\n\t\t\n\t\t\n\t\t\tQingCai\n\t\t\n\t\t\n\t\t\tYafeiZhang\n\t\t\n\t\tarXiv:2412.08050\n\t\t\n\t\t\t2024\n\t\t\n\t\n\tarXiv preprint"
+    },
+    {
+      "id": 26,
+      "text": "Joint progressive and coarse-to-fine registration of brain mri via deformation field integration and non-rigid feature fusion\n\t\t\n\t\t\tJinxinLv\n\t\t\n\t\t\n\t\t\tZhiweiWang\n\t\t\n\t\t\n\t\t\tHongkuanShi\n\t\t\n\t\t\n\t\t\tHaoboZhang\n\t\t\n\t\t\n\t\t\tShengWang\n\t\t\n\t\t\n\t\t\tYilangWang\n\t\t\n\t\t\n\t\t\tQiangLi\n\t\t\n\t\n\t\n\t\tIEEE Transactions on Medical Imaging\n\t\t\n\t\t\t41\n\t\t\t10\n\t\t\t\n\t\t\t2022"
+    },
+    {
+      "id": 27,
+      "text": "Fast 3D Registration with Accurate Optimisation and Little Learning for Learn2Reg 2021\n\t\t\n\t\t\tHannaSiebert\n\t\t\t0000-0003-1651-6960\n\t\t\n\t\t\n\t\t\tLasseHansen\n\t\t\t0000-0003-3963-7052\n\t\t\n\t\t\n\t\t\tMattiasPHeinrich\n\t\t\t0000-0002-7489-1972\n\t\t\n\t\t10.1007/978-3-030-97281-3_25\n\t\n\t\n\t\tLecture Notes in Computer Science\n\t\t\n\t\t\tSpringer International Publishing\n\t\t\t2reg 2021, 2021"
+    },
+    {
+      "id": 28,
+      "text": "Conditional deformable image registration with convolutional neural network\n\t\t\n\t\t\tCWTony\n\t\t\n\t\t\n\t\t\tAlbert CsMok\n\t\t\n\t\t\n\t\t\tChung\n\t\t\n\t\n\t\n\t\tMedical Image Computing and Computer Assisted Intervention-MICCAI 2021: 24th International Conference\n\t\tStrasbourg, France\n\t\t\n\t\t\tSpringer\n\t\t\tSeptember 27-October 1, 2021. 2021\n\t\t\t\n\t\t\n\t\n\tProceedings, Part IV 24"
+    },
+    {
+      "id": 29,
+      "text": "ConvexAdam: Self-Configuring Dual-Optimization-Based 3D Multitask Medical Image Registration\n\t\t\n\t\t\tHannaSiebert\n\t\t\n\t\t\n\t\t\tChristophGroßbröhmer\n\t\t\t0000-0002-8926-8729\n\t\t\n\t\t\n\t\t\tLasseHansen\n\t\t\n\t\t\n\t\t\tMattiasPHeinrich\n\t\t\t0000-0002-7489-1972\n\t\t\n\t\t10.1109/tmi.2024.3462248\n\t\n\t\n\t\tIEEE Transactions on Medical Imaging\n\t\tIEEE Trans. Med. Imaging\n\t\t0278-0062\n\t\t1558-254X\n\t\t\n\t\t\t44\n\t\t\t2\n\t\t\t\n\t\t\t2024\n\t\t\tInstitute of Electrical and Electronics Engineers (IEEE)"
+    },
+    {
+      "id": 30,
+      "text": "Large deformation diffeomorphic image registration with laplacian pyramid networks\n\t\t\n\t\t\tCWTony\n\t\t\n\t\t\n\t\t\tAlbert CsMok\n\t\t\n\t\t\n\t\t\tChung\n\t\t\n\t\n\t\n\t\tMedical Image Computing and Computer Assisted Intervention-MICCAI 2020: 23rd International Conference\n\t\tLima, Peru\n\t\t\n\t\t\tSpringer\n\t\t\tOctober 4-8, 2020. 2020\n\t\t\t\n\t\t\n\t\n\tProceedings, Part III 23"
+    },
+    {
+      "id": 31,
+      "text": "Biomedical Image Registration, Domain Generalisation and Out-of-Distribution Analysis: MICCAI 2021 Challenges: MIDOG 2021, MOOD 2021, and Learn2Reg 2021, Held in Conjunction with MICCAI 2021\n\t\t\n\t\t\tGolestani\n\t\t\n\t\n\t\n\t\tProceedings\n\t\t\n\t\t\t13166\n\t\t\t168\n\t\t\tSeptember 27-October 1, 2021. 2022\n\t\t\tStrasbourg, France\n\t\t\n\t\n\tThe learn2reg 2021 miccai grand challenge (pimed team)"
+    },
+    {
+      "id": 32,
+      "text": "TransMorph: Transformer for unsupervised medical image registration\n\t\t\n\t\t\tJunyuChen\n\t\t\t0000-0003-4672-6408\n\t\t\n\t\t\n\t\t\tEricCFrey\n\t\t\n\t\t\n\t\t\tYufanHe\n\t\t\n\t\t\n\t\t\tWilliamPSegars\n\t\t\t0000-0003-3687-5733\n\t\t\n\t\t\n\t\t\tYeLi\n\t\t\t0000-0001-5620-4246\n\t\t\n\t\t\n\t\t\tYongDu\n\t\t\t0000-0002-0237-6154\n\t\t\n\t\t10.1016/j.media.2022.102615\n\t\n\t\n\t\tMedical Image Analysis\n\t\tMedical Image Analysis\n\t\t1361-8415\n\t\t\n\t\t\t82\n\t\t\t102615\n\t\t\t2022\n\t\t\tElsevier BV"
+    },
+    {
+      "id": 33,
+      "text": "Mambamorph: a mamba-based backbone with contrastive feature learning for deformable mr-ct registration\n\t\t\n\t\t\tTaoGuo\n\t\t\n\t\t\n\t\t\tYinuoWang\n\t\t\n\t\t\n\t\t\tCaiMeng\n\t\t\n\t\t\n\t\t\t2024\n\t\t\t2401\n\t\t\n\t\n\tarXiv e-prints"
+    },
+    {
+      "id": 34,
+      "text": "Attention is all you need\n\t\t\n\t\t\tAshishVaswani\n\t\t\n\t\t\n\t\t\tNoamShazeer\n\t\t\n\t\t\n\t\t\tNikiParmar\n\t\t\n\t\t\n\t\t\tJakobUszkoreit\n\t\t\n\t\t\n\t\t\tLlionJones\n\t\t\n\t\t\n\t\t\tAidanNGomez\n\t\t\n\t\t\n\t\t\tŁukaszKaiser\n\t\t\n\t\t\n\t\t\tIlliaPolosukhin\n\t\t\n\t\n\t\n\t\tAdvances in neural information processing systems\n\t\t\n\t\t\t30\n\t\t\t2017"
+    },
+    {
+      "id": 35,
+      "text": "An image is worth 16x16 words: Transformers for image recognition at scale\n\t\t\n\t\t\tAlexeyDosovitskiy\n\t\t\n\t\t\n\t\t\tLucasBeyer\n\t\t\n\t\t\n\t\t\tAlexanderKolesnikov\n\t\t\n\t\t\n\t\t\tDirkWeissenborn\n\t\t\n\t\t\n\t\t\tXiaohuaZhai\n\t\t\n\t\t\n\t\t\tThomasUnterthiner\n\t\t\n\t\t\n\t\t\tMostafaDehghani\n\t\t\n\t\t\n\t\t\tMatthiasMinderer\n\t\t\n\t\t\n\t\t\tGeorgHeigold\n\t\t\n\t\t\n\t\t\tSylvainGelly\n\t\t\n\t\tarXiv:2010.11929\n\t\t\n\t\t\t2020\n\t\t\n\t\n\tarXiv preprint"
+    },
+    {
+      "id": 36,
+      "text": "Swin transformer: Hierarchical vision transformer using shifted windows\n\t\t\n\t\t\tZeLiu\n\t\t\n\t\t\n\t\t\tYutongLin\n\t\t\n\t\t\n\t\t\tYueCao\n\t\t\n\t\t\n\t\t\tHanHu\n\t\t\n\t\t\n\t\t\tYixuanWei\n\t\t\n\t\t\n\t\t\tZhengZhang\n\t\t\n\t\t\n\t\t\tStephenLin\n\t\t\n\t\t\n\t\t\tBainingGuo\n\t\t\n\t\n\t\n\t\tProceedings of the IEEE/CVF international conference on computer vision\n\t\tthe IEEE/CVF international conference on computer vision\n\t\t\n\t\t\t2021"
+    },
+    {
+      "id": 37,
+      "text": "Masked autoencoders are scalable vision learners\n\t\t\n\t\t\tKaimingHe\n\t\t\n\t\t\n\t\t\tXinleiChen\n\t\t\n\t\t\n\t\t\tSainingXie\n\t\t\n\t\t\n\t\t\tYanghaoLi\n\t\t\n\t\t\n\t\t\tPiotrDollár\n\t\t\n\t\t\n\t\t\tRossGirshick\n\t\t\n\t\n\t\n\t\tProceedings of the IEEE/CVF conference on computer vision and pattern recognition\n\t\tthe IEEE/CVF conference on computer vision and pattern recognition\n\t\t\n\t\t\t2022"
+    },
+    {
+      "id": 38,
+      "text": "Simmim: A simple framework for masked image modeling\n\t\t\n\t\t\tZhendaXie\n\t\t\n\t\t\n\t\t\tZhengZhang\n\t\t\n\t\t\n\t\t\tYueCao\n\t\t\n\t\t\n\t\t\tYutongLin\n\t\t\n\t\t\n\t\t\tJianminBao\n\t\t\n\t\t\n\t\t\tZhuliangYao\n\t\t\n\t\t\n\t\t\tQiDai\n\t\t\n\t\t\n\t\t\tHanHu\n\t\t\n\t\n\t\n\t\tProceedings of the IEEE/CVF conference on computer vision and pattern recognition\n\t\tthe IEEE/CVF conference on computer vision and pattern recognition\n\t\t\n\t\t\t2022"
+    },
+    {
+      "id": 39,
+      "text": "MaximeOquab\n\t\t\n\t\t\n\t\t\tTimothéeDarcet\n\t\t\n\t\t\n\t\t\tThéoMoutakanni\n\t\t\n\t\t\n\t\t\tHuyVo\n\t\t\n\t\t\n\t\t\tMarcSzafraniec\n\t\t\n\t\t\n\t\t\tVasilKhalidov\n\t\t\n\t\t\n\t\t\tPierreFernandez\n\t\t\n\t\t\n\t\t\tDanielHaziza\n\t\t\n\t\t\n\t\t\tFranciscoMassa\n\t\t\n\t\t\n\t\t\tAlaaeldinEl-Nouby\n\t\t\n\t\tarXiv:2304.07193\n\t\tLearning robust visual features without supervision\n\t\t\n\t\t\t2023\n\t\t\t2\n\t\t\n\t\n\tarXiv preprint"
+    },
+    {
+      "id": 40,
+      "text": "Self-Supervised Learning from Images with a Joint-Embedding Predictive Architecture\n\t\t\n\t\t\tMahmoudAssran\n\t\t\n\t\t\n\t\t\tQuentinDuval\n\t\t\n\t\t\n\t\t\tIshanMisra\n\t\t\n\t\t\n\t\t\tPiotrBojanowski\n\t\t\n\t\t\n\t\t\tPascalVincent\n\t\t\n\t\t\n\t\t\tMichaelRabbat\n\t\t\n\t\t\n\t\t\tYannLecun\n\t\t\n\t\t\n\t\t\tNicolasBallas\n\t\t\n\t\t10.1109/cvpr52729.2023.01499\n\t\n\t\n\t\t2023 IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)\n\t\t\n\t\t\tIEEE\n\t\t\t2023"
+    },
+    {
+      "id": 41,
+      "text": "Transformers are ssms: Generalized models and efficient algorithms through structured state space duality\n\t\t\n\t\t\tTriDao\n\t\t\n\t\t\n\t\t\tAlbertGu\n\t\t\n\t\tarXiv:2405.21060\n\t\t\n\t\t\t2024\n\t\t\n\t\n\tarXiv preprint"
+    },
+    {
+      "id": 42,
+      "text": "AlbertGu\n\t\t\n\t\t\n\t\t\tTriDao\n\t\t\n\t\t\n\t\t\tMamba\n\t\t\n\t\tarXiv:2312.00752\n\t\tLinear-time sequence modeling with selective state spaces\n\t\t\n\t\t\t2023\n\t\t\n\t\n\tarXiv preprint"
+    },
+    {
+      "id": 43,
+      "text": "RWKV: Reinventing RNNs for the Transformer Era\n\t\t\n\t\t\tBoPeng\n\t\t\n\t\t\n\t\t\tEricAlcaide\n\t\t\n\t\t\n\t\t\tQuentinAnthony\n\t\t\n\t\t\n\t\t\tAlonAlbalak\n\t\t\n\t\t\n\t\t\tSamuelArcadinho\n\t\t\n\t\t\n\t\t\tStellaBiderman\n\t\t\n\t\t\n\t\t\tHuanqiCao\n\t\t\n\t\t\n\t\t\tXinCheng\n\t\t\n\t\t\n\t\t\tMichaelChung\n\t\t\n\t\t\n\t\t\tLeonDerczynski\n\t\t\n\t\t\n\t\t\tXingjianDu\n\t\t\n\t\t\n\t\t\tMatteoGrella\n\t\t\n\t\t\n\t\t\tKranthiGv\n\t\t\n\t\t\n\t\t\tXuzhengHe\n\t\t\n\t\t\n\t\t\tHaowenHou\n\t\t\n\t\t\n\t\t\tPrzemyslawKazienko\n\t\t\n\t\t\n\t\t\tJanKocon\n\t\t\n\t\t\n\t\t\tJiamingKong\n\t\t\n\t\t\n\t\t\tBartłomiejKoptyra\n\t\t\n\t\t\n\t\t\tHaydenLau\n\t\t\n\t\t\n\t\t\tJiajuLin\n\t\t\n\t\t\n\t\t\tKrishnaSri IpsitMantri\n\t\t\n\t\t\n\t\t\tFerdinandMom\n\t\t\n\t\t\n\t\t\tAtsushiSaito\n\t\t\n\t\t\n\t\t\tGuangyuSong\n\t\t\n\t\t\n\t\t\tXiangruTang\n\t\t\n\t\t\n\t\t\tJohanWind\n\t\t\n\t\t\n\t\t\tStanisławWoźniak\n\t\t\n\t\t\n\t\t\tZhenyuanZhang\n\t\t\n\t\t\n\t\t\tQinghuaZhou\n\t\t\n\t\t\n\t\t\tJianZhu\n\t\t\n\t\t\n\t\t\tRui-JieZhu\n\t\t\n\t\t10.18653/v1/2023.findings-emnlp.936\n\t\tarXiv:2305.13048\n\t\n\t\n\t\tFindings of the Association for Computational Linguistics: EMNLP 2023\n\t\t\n\t\t\tAssociation for Computational Linguistics\n\t\t\t2023\n\t\t\n\t\n\tarXiv preprint"
+    },
+    {
+      "id": 44,
+      "text": "Efficient attention: Attention with linear complexities\n\t\t\n\t\t\tZhuoranShen\n\t\t\n\t\t\n\t\t\tMingyuanZhang\n\t\t\n\t\t\n\t\t\tHaiyuZhao\n\t\t\n\t\t\n\t\t\tShuaiYi\n\t\t\n\t\t\n\t\t\tHongshengLi\n\t\t\n\t\n\t\n\t\tProceedings of the IEEE/CVF winter conference on applications of computer vision\n\t\tthe IEEE/CVF winter conference on applications of computer vision\n\t\t\n\t\t\t2021"
+    },
+    {
+      "id": 45,
+      "text": "Xception: Deep Learning with Depthwise Separable Convolutions\n\t\t\n\t\t\tFrançoisChollet\n\t\t\n\t\t10.1109/cvpr.2017.195\n\t\n\t\n\t\t2017 IEEE Conference on Computer Vision and Pattern Recognition (CVPR)\n\t\t\n\t\t\tIEEE\n\t\t\t2017"
+    },
+    {
+      "id": 46,
+      "text": "Discovering long-term effects on parameter efficient fine-tuning\n\t\t\n\t\t\tGaoleDai\n\t\t\n\t\t\n\t\t\tYimingTang\n\t\t\n\t\t\n\t\t\tChunkaiFan\n\t\t\n\t\t\n\t\t\tQizheZhang\n\t\t\n\t\t\n\t\t\tZhiZhang\n\t\t\n\t\t\n\t\t\tYuluGan\n\t\t\n\t\t\n\t\t\tChengqingZeng\n\t\t\n\t\t\n\t\t\tShanghangZhang\n\t\t\n\t\t\n\t\t\tTiejunHuang\n\t\t\n\t\tarXiv:2409.06706\n\t\t\n\t\t\t2024\n\t\t\n\t\n\tarXiv preprint"
+    },
+    {
+      "id": 47,
+      "text": "NIH Image to ImageJ: 25 years of image analysis\n\t\t\n\t\t\tCarolineASchneider\n\t\t\n\t\t\n\t\t\tWayneSRasband\n\t\t\n\t\t\n\t\t\tKevinWEliceiri\n\t\t\n\t\t10.1038/nmeth.2089\n\t\n\t\n\t\tNature Methods\n\t\tNat Methods\n\t\t1548-7091\n\t\t1548-7105\n\t\t\n\t\t\t9\n\t\t\t7\n\t\t\t\n\t\t\t2012\n\t\t\tSpringer Science and Business Media LLC"
+    },
+    {
+      "id": 48,
+      "text": "napari: a multi-dimensional image viewer for python\n\t\t\n\t\t\tNapariContributors\n\t\t\n\t\t10.5281/zenodo\n\t\t\n\t\t\n\t\t\t2019\n\t\t\t3555620"
+    },
+    {
+      "id": 49,
+      "text": "Image data resource: a bioimage data integration and publication platform\n\t\t\n\t\t\tEleanorWilliams\n\t\t\n\t\t\n\t\t\tJoshMoore\n\t\t\n\t\t\n\t\t\tSimonWLi\n\t\t\n\t\t\n\t\t\tGabriellaRustici\n\t\t\n\t\t\n\t\t\tAleksandraTarkowska\n\t\t\n\t\t\n\t\t\tAnatoleChessel\n\t\t\n\t\t\n\t\t\tSimoneLeo\n\t\t\n\t\t\n\t\t\tBálintAntal\n\t\t\n\t\t\n\t\t\tUgisRichard K Ferguson\n\t\t\n\t\t\n\t\t\tSarkans\n\t\t\n\t\n\t\n\t\tNature methods\n\t\t\n\t\t\t14\n\t\t\t8\n\t\t\t\n\t\t\t2017"
+    },
+    {
+      "id": 50,
+      "text": "Imaging intact human organs with local resolution of cellular structures using hierarchical phase-contrast tomography\n\t\t\n\t\t\tClaire LLWalsh\n\t\t\t0000-0003-3769-3392\n\t\t\n\t\t\n\t\t\tPTafforeau\n\t\t\t0000-0002-5962-1683\n\t\t\n\t\t\n\t\t\tWLWagner\n\t\t\n\t\t\n\t\t\tDJJafree\n\t\t\n\t\t\n\t\t\tABellier\n\t\t\t0000-0003-0907-0315\n\t\t\n\t\t\n\t\t\tCWerlein\n\t\t\t0000-0002-7694-4257\n\t\t\n\t\t\n\t\t\tMPKühnel\n\t\t\n\t\t\n\t\t\tEBoller\n\t\t\n\t\t\n\t\t\tSWalker-Samuel\n\t\t\t0000-0003-3530-9166\n\t\t\n\t\t\n\t\t\tJLRobertus\n\t\t\n\t\t\n\t\t\tDALong\n\t\t\t0000-0001-6580-3435\n\t\t\n\t\t\n\t\t\tJJacob\n\t\t\n\t\t\n\t\t\tSMarussi\n\t\t\n\t\t\n\t\t\tEBrown\n\t\t\n\t\t\n\t\t\tNHolroyd\n\t\t\t0000-0001-9174-1346\n\t\t\n\t\t\n\t\t\tDDJonigk\n\t\t\n\t\t\n\t\t\tMAckermann\n\t\t\t0000-0001-9996-2477\n\t\t\n\t\t\n\t\t\tPDLee\n\t\t\t0000-0002-3898-8881\n\t\t\n\t\t10.1038/s41592-021-01317-x\n\t\n\t\n\t\tNature Methods\n\t\tNat Methods\n\t\t1548-7091\n\t\t1548-7105\n\t\t\n\t\t\t18\n\t\t\t12\n\t\t\t\n\t\t\t2021\n\t\t\tSpringer Science and Business Media LLC"
+    },
+    {
+      "id": 51,
+      "text": "Integrated intracellular organization and its variations in human ips cells\n\t\t\n\t\t\tPMatheus\n\t\t\n\t\t\n\t\t\tJianxuViana\n\t\t\n\t\t\n\t\t\tTheoAChen\n\t\t\n\t\t\n\t\t\tRitvikKnijnenburg\n\t\t\n\t\t\n\t\t\tCalystaVasan\n\t\t\n\t\t\n\t\t\tJoyEYan\n\t\t\n\t\t\n\t\t\tMatteArakaki\n\t\t\n\t\t\n\t\t\tBenBailey\n\t\t\n\t\t\n\t\t\tAntoineBerry\n\t\t\n\t\t\n\t\t\tEvaMBorensztejn\n\t\t\n\t\t\n\t\t\tBrown\n\t\t\n\t\n\t\n\t\tNature\n\t\t\n\t\t\t613\n\t\t\t7943\n\t\t\t\n\t\t\t2023"
+    },
+    {
+      "id": 52,
+      "text": "Emerging properties in self-supervised vision transformers\n\t\t\n\t\t\tMathildeCaron\n\t\t\n\t\t\n\t\t\tHugoTouvron\n\t\t\n\t\t\n\t\t\tIshanMisra\n\t\t\n\t\t\n\t\t\tHervéJégou\n\t\t\n\t\t\n\t\t\tJulienMairal\n\t\t\n\t\t\n\t\t\tPiotrBojanowski\n\t\t\n\t\t\n\t\t\tArmandJoulin\n\t\t\n\t\t\n\t\t\t2021"
+    },
+    {
+      "id": 53,
+      "text": "Deep learning-based point-scanning super-resolution imaging\n\t\t\n\t\t\tLinjingFang\n\t\t\n\t\t\n\t\t\tFredMonroe\n\t\t\n\t\t\n\t\t\tSammyWeiserNovak\n\t\t\n\t\t\n\t\t\tLyndseyKirk\n\t\t\n\t\t\n\t\t\tCaraRSchiavon\n\t\t\n\t\t\n\t\t\tSeungyoon BlendaYu\n\t\t\n\t\t\n\t\t\tTongZhang\n\t\t\n\t\t\n\t\t\tMelissaWu\n\t\t\n\t\t\n\t\t\tKyleKastner\n\t\t\n\t\t\n\t\t\tAlaaAbdelLatif\n\t\t\n\t\t\n\t\t\tZijunLin\n\t\t\n\t\t\n\t\t\tAShaw\n\t\t\n\t\t\n\t\t\tYoshiyukiKubota\n\t\t\n\t\t\n\t\t\tJohnMMendenhall\n\t\t\n\t\t\n\t\t\tZhaoZhang\n\t\t\n\t\t\n\t\t\tGulcinPekkurnaz\n\t\t\n\t\t\n\t\t\tKristenMHarris\n\t\t\n\t\t\n\t\t\tJeremyHoward\n\t\t\n\t\t\n\t\t\tUriManor\n\t\t\n\t\n\t\n\t\tNature methods\n\t\t\n\t\t\t18\n\t\t\t\n\t\t\t2019"
+    },
+    {
+      "id": 54,
+      "text": "VoxelMorph: A Learning Framework for Deformable Medical Image Registration\n\t\t\n\t\t\tGuhaBalakrishnan\n\t\t\t0000-0001-8703-1368\n\t\t\n\t\t\n\t\t\tAmyZhao\n\t\t\n\t\t\n\t\t\tMertRSabuncu\n\t\t\n\t\t\n\t\t\tJohnGuttag\n\t\t\n\t\t\n\t\t\tAdrianVDalca\n\t\t\t0000-0002-8422-0136\n\t\t\n\t\t10.1109/tmi.2019.2897538\n\t\n\t\n\t\tIEEE Transactions on Medical Imaging\n\t\tIEEE Trans. Med. Imaging\n\t\t0278-0062\n\t\t1558-254X\n\t\t\n\t\t\t38\n\t\t\t8\n\t\t\t\n\t\t\tAugust 2019\n\t\t\tInstitute of Electrical and Electronics Engineers (IEEE)"
+    },
+    {
+      "id": 55,
+      "text": "Diff-IF: Multi-modality image fusion via diffusion model with fusion knowledge prior\n\t\t\n\t\t\tXunpengYi\n\t\t\n\t\t\n\t\t\tLinfengTang\n\t\t\n\t\t\n\t\t\tHaoZhang\n\t\t\n\t\t\n\t\t\tHanXu\n\t\t\n\t\t\n\t\t\tJiayiMa\n\t\t\t0000-0003-3264-3265\n\t\t\n\t\t10.1016/j.inffus.2024.102450\n\t\n\t\n\t\tInformation Fusion\n\t\tInformation Fusion\n\t\t1566-2535\n\t\t\n\t\t\t110\n\t\t\t102450\n\t\t\t2024\n\t\t\tElsevier BV"
+    },
+    {
+      "id": 56,
+      "text": "Generative adversarial network for trimodal medical image fusion using primitive relationship reasoning\n\t\t\n\t\t\tJingxueHuang\n\t\t\n\t\t\n\t\t\tXiaosongLi\n\t\t\n\t\t\n\t\t\tHaishuTan\n\t\t\n\t\t\n\t\t\tXiaoqiCheng\n\t\t\n\t\n\t\n\t\tIEEE Journal of Biomedical and Health Informatics\n\t\t\n\t\t\t2024"
+    },
+    {
+      "id": 57,
+      "text": "Harvard whole brain atlas: www. med. harvard. edu/aanlib/home. html\n\t\t\n\t\t\tSummers\n\t\t\n\t\n\t\n\t\tNeurosurgery & Psychiatry\n\t\t\n\t\t\t74\n\t\t\t3\n\t\t\t\n\t\t\t2003\n\t\t\n\t\n\tJournal of Neurology"
+    },
+    {
+      "id": 58,
+      "text": "Oasis is automated statistical inference for segmentation, with applications to multiple sclerosis lesion segmentation in mri\n\t\t\n\t\t\tElizabethMSweeney\n\t\t\n\t\t\n\t\t\tRussellTShinohara\n\t\t\n\t\t\n\t\t\tNavidShiee\n\t\t\n\t\t\n\t\t\tFarrahJMateen\n\t\t\n\t\t\n\t\t\tAvniAChudgar\n\t\t\n\t\t\n\t\t\tJenniferLCuzzocreo\n\t\t\n\t\t\n\t\t\tPeterACalabresi\n\t\t\n\t\t\n\t\t\tLDzung\n\t\t\n\t\t\n\t\t\tDanielSPham\n\t\t\n\t\t\n\t\t\tCiprianMReich\n\t\t\n\t\t\n\t\t\tCrainiceanu\n\t\t\n\t\n\t\n\t\tNeuroImage: clinical\n\t\t\n\t\t\t2\n\t\t\t\n\t\t\t2013"
+    },
+    {
+      "id": 59,
+      "text": "Brain imaging generation with latent diffusion models\n\t\t\n\t\t\tPetru-DanielWalter Hl Pinaya\n\t\t\n\t\t\n\t\t\tJessicaTudosiu\n\t\t\n\t\t\n\t\t\tPedro F DaDafflon\n\t\t\n\t\t\n\t\t\tVirginiaCosta\n\t\t\n\t\t\n\t\t\tParashkevFernandez\n\t\t\n\t\t\n\t\t\tSebastienNachev\n\t\t\n\t\t\n\t\t\tJorgeOurselin\n\t\t\n\t\t\n\t\t\tCardoso\n\t\t\n\t\n\t\n\t\tMICCAI Workshop on Deep Generative Models\n\t\t\n\t\t\tSpringer\n\t\t\t2022"
+    },
+    {
+      "id": 60,
+      "text": "Learn2reg: comprehensive multi-task medical image registration challenge, dataset and evaluation in the era of deep learning\n\t\t\n\t\t\tAlessaHering\n\t\t\n\t\t\n\t\t\tLasseHansen\n\t\t\n\t\t\n\t\t\tTonyCwMok\n\t\t\n\t\t\n\t\t\tAlbert CsChung\n\t\t\n\t\t\n\t\t\tHannaSiebert\n\t\t\n\t\t\n\t\t\tStephanieHäger\n\t\t\n\t\t\n\t\t\tAnnkristinLange\n\t\t\n\t\t\n\t\t\tSvenKuckertz\n\t\t\n\t\t\n\t\t\tStefanHeldmann\n\t\t\n\t\t\n\t\t\tWeiShao\n\t\t\n\t\n\t\n\t\tIEEE Transactions on Medical Imaging\n\t\t\n\t\t\t42\n\t\t\t3\n\t\t\t\n\t\t\t2022"
+    },
+    {
+      "id": 61,
+      "text": "Symmetric diffeomorphic image registration with cross-correlation: evaluating automated labeling of elderly and neurodegenerative brain\n\t\t\n\t\t\tCharlesLBrian B Avants\n\t\t\n\t\t\n\t\t\tMurrayEpstein\n\t\t\n\t\t\n\t\t\tJamesCGrossman\n\t\t\n\t\t\n\t\t\tGee\n\t\t\n\t\n\t\n\t\tMedical image analysis\n\t\t\n\t\t\t12\n\t\t\t1\n\t\t\t\n\t\t\t2008"
+    },
+    {
+      "id": 62,
+      "text": "Fast free-form deformation using graphics processing units\n\t\t\n\t\t\tMarcModat\n\t\t\n\t\t\n\t\t\tZeikeAGerard R Ridgway\n\t\t\n\t\t\n\t\t\tManjaTaylor\n\t\t\n\t\t\n\t\t\tJosephineLehmann\n\t\t\n\t\t\n\t\t\tDavidJBarnes\n\t\t\n\t\t\n\t\t\tNickCHawkes\n\t\t\n\t\t\n\t\t\tSébastienFox\n\t\t\n\t\t\n\t\t\tOurselin\n\t\t\n\t\n\t\n\t\tComputer methods and programs in biomedicine\n\t\t\n\t\t\t98\n\t\t\t3\n\t\t\t\n\t\t\t2010"
+    },
+    {
+      "id": 63,
+      "text": "Computing large deformation metric mappings via geodesic flows of diffeomorphisms\n\t\t\n\t\t\tBeg\n\t\t\n\t\t\n\t\t\tIMichael\n\t\t\n\t\t\n\t\t\tAlainMiller\n\t\t\n\t\t\n\t\t\tLaurentTrouvé\n\t\t\n\t\t\n\t\t\tYounes\n\t\t\n\t\n\t\n\t\tInternational journal of computer vision\n\t\t\n\t\t\t61\n\t\t\t\n\t\t\t2005"
+    },
+    {
+      "id": 64,
+      "text": "Multi-modal multi-atlas segmentation using discrete optimisation and self-similarities\n\t\t\n\t\t\tMattias PHeinrich\n\t\t\n\t\t\n\t\t\tOskarMaier\n\t\t\n\t\t\n\t\t\tHeinzHandels\n\t\t\n\t\n\t\n\t\tVisceral Challenge@ ISBI\n\t\t\n\t\t\t27\n\t\t\t1390. 2015"
+    },
+    {
+      "id": 65,
+      "text": "Cyclemorph: cycle consistent unsupervised deformable image registration\n\t\t\n\t\t\tBoahKim\n\t\t\n\t\t\n\t\t\tDongHwanKim\n\t\t\n\t\t\n\t\t\tSeongHo Park\n\t\t\n\t\t\n\t\t\tJieunKim\n\t\t\n\t\t\n\t\t\tJune-GooLee\n\t\t\n\t\t\n\t\t\tJongChul\n\t\t\n\t\t\n\t\t\tYe\n\t\t\n\t\n\t\n\t\tMedical image analysis\n\t\t\n\t\t\t71\n\t\t\t102036\n\t\t\t2021"
+    },
+    {
+      "id": 66,
+      "text": "Learning diffeomorphic and modality-invariant registration using b-splines\n\t\t\n\t\t\tHuaqiQiu\n\t\t\n\t\t\n\t\t\tChenQin\n\t\t\n\t\t\n\t\t\tAndreasSchuh\n\t\t\n\t\t\n\t\t\tKerstinHammernik\n\t\t\n\t\t\n\t\t\tDanielRueckert\n\t\t\n\t\n\t\n\t\tMedical imaging with deep learning\n\t\t\n\t\t\t2021"
+    },
+    {
+      "id": 67,
+      "text": "Vit-v-net: Vision transformer for unsupervised volumetric medical image registration\n\t\t\n\t\t\tJunyuChen\n\t\t\n\t\t\n\t\t\tYufanHe\n\t\t\n\t\t\n\t\t\tEricCFrey\n\t\t\n\t\t\n\t\t\tYeLi\n\t\t\n\t\t\n\t\t\tYongDu\n\t\t\n\t\tarXiv:2104.06468\n\t\t\n\t\t\t2021\n\t\t\n\t\n\tarXiv preprint"
+    },
+    {
+      "id": 68,
+      "text": "Pyramid vision transformer: A versatile backbone for dense prediction without convolutions\n\t\t\n\t\t\tWenhaiWang\n\t\t\n\t\t\n\t\t\tEnzeXie\n\t\t\n\t\t\n\t\t\tXiangLi\n\t\t\n\t\t\n\t\t\tDeng-PingFan\n\t\t\n\t\t\n\t\t\tKaitaoSong\n\t\t\n\t\t\n\t\t\tDingLiang\n\t\t\n\t\t\n\t\t\tTongLu\n\t\t\n\t\t\n\t\t\tPingLuo\n\t\t\n\t\t\n\t\t\tLingShao\n\t\t\n\t\n\t\n\t\tProceedings of the IEEE/CVF international conference on computer vision\n\t\tthe IEEE/CVF international conference on computer vision\n\t\t\n\t\t\t2021"
+    },
+    {
+      "id": 69,
+      "text": "CoTr: Efficiently Bridging CNN and Transformer for 3D Medical Image Segmentation\n\t\t\n\t\t\tYutongXie\n\t\t\n\t\t\n\t\t\tJianpengZhang\n\t\t\n\t\t\n\t\t\tChunhuaShen\n\t\t\n\t\t\n\t\t\tYongXia\n\t\t\n\t\t10.1007/978-3-030-87199-4_16\n\t\n\t\n\t\tLecture Notes in Computer Science\n\t\tStrasbourg, France\n\t\t\n\t\t\tSpringer International Publishing\n\t\t\tSeptember 27-October 1, 2021. 2021\n\t\t\t\n\t\t\n\t\n\tProceedings, Part III 24"
+    },
+    {
+      "id": 70,
+      "text": "nnFormer: Volumetric Medical Image Segmentation via a 3D Transformer\n\t\t\n\t\t\tHong-YuZhou\n\t\t\t0000-0002-1256-7050\n\t\t\n\t\t\n\t\t\tJiansenGuo\n\t\t\n\t\t\n\t\t\tYinghaoZhang\n\t\t\n\t\t\n\t\t\tXiaoguangHan\n\t\t\t0000-0003-0162-3296\n\t\t\n\t\t\n\t\t\tLequanYu\n\t\t\t0000-0002-9315-6527\n\t\t\n\t\t\n\t\t\tLianshengWang\n\t\t\t0000-0002-2096-454X\n\t\t\n\t\t\n\t\t\tYizhouYu\n\t\t\t0000-0002-0470-5548\n\t\t\n\t\t10.1109/tip.2023.3293771\n\t\n\t\n\t\tIEEE Transactions on Image Processing\n\t\tIEEE Trans. on Image Process.\n\t\t1057-7149\n\t\t1941-0042\n\t\t\n\t\t\t32\n\t\t\t\n\t\t\t2023\n\t\t\tInstitute of Electrical and Electronics Engineers (IEEE)"
+    },
+    {
+      "id": 71,
+      "text": "Evaluation and development of deep neural networks for image super-resolution in optical microscopy\n\t\t\n\t\t\tChangQiao\n\t\t\n\t\t\n\t\t\tDiLi\n\t\t\n\t\t\n\t\t\tYutingGuo\n\t\t\n\t\t\n\t\t\tChongLiu\n\t\t\n\t\t\n\t\t\tTaoJiang\n\t\t\n\t\t\n\t\t\tQionghaiDai\n\t\t\n\t\t\n\t\t\tDongLi\n\t\t\n\t\n\t\n\t\tNature methods\n\t\t\n\t\t\t18\n\t\t\t2\n\t\t\t\n\t\t\t2021"
+    },
+    {
+      "id": 72,
+      "text": "Efficient Non-local Contrastive Attention for Image Super-resolution\n\t\t\n\t\t\tBinXia\n\t\t\n\t\t\n\t\t\tYuchengHang\n\t\t\n\t\t\n\t\t\tYapengTian\n\t\t\n\t\t\n\t\t\tWenmingYang\n\t\t\n\t\t\n\t\t\tQingminLiao\n\t\t\n\t\t\n\t\t\tJieZhou\n\t\t\n\t\t10.1609/aaai.v36i3.20179\n\t\n\t\n\t\tProceedings of the AAAI Conference on Artificial Intelligence\n\t\tAAAI\n\t\t2159-5399\n\t\t2374-3468\n\t\t\n\t\t\t36\n\t\t\t3\n\t\t\t\n\t\t\t2022\n\t\t\tAssociation for the Advancement of Artificial Intelligence (AAAI)"
+    },
+    {
+      "id": 73,
+      "text": "Cross-modality supervised image restoration enables nanoscale tracking of synaptic plasticity in living mice\n\t\t\n\t\t\tYuKang\n\t\t\n\t\t\n\t\t\tTXu\n\t\t\n\t\t\n\t\t\tAustinRGraves\n\t\t\n\t\t\n\t\t\tGabrielleICoste\n\t\t\n\t\t\n\t\t\tRichardLHuganir\n\t\t\n\t\t\n\t\t\tDwightEBergles\n\t\t\n\t\t\n\t\t\tAdamSCharles\n\t\t\n\t\t\n\t\t\tJeremiasSulam\n\t\t\n\t\n\t\n\t\tNature Methods\n\t\t\n\t\t\t20\n\t\t\t6\n\t\t\t\n\t\t\t2023"
+    },
+    {
+      "id": 74,
+      "text": "Evaluation and development of deep neural networks for image super-resolution in optical microscopy\n\t\t\n\t\t\tChangQiao\n\t\t\t0000-0002-6037-0842\n\t\t\n\t\t\n\t\t\tDiLi\n\t\t\t0000-0001-9331-265X\n\t\t\n\t\t\n\t\t\tYutingGuo\n\t\t\n\t\t\n\t\t\tChongLiu\n\t\t\n\t\t\n\t\t\tTaoJiang\n\t\t\n\t\t\n\t\t\tQionghaiDai\n\t\t\t0000-0001-7043-3061\n\t\t\n\t\t\n\t\t\tDongLi\n\t\t\t0000-0001-6787-5125\n\t\t\n\t\t10.1038/s41592-020-01048-5\n\t\n\t\n\t\tNature Methods\n\t\tNat Methods\n\t\t1548-7091\n\t\t1548-7105\n\t\t\n\t\t\t18\n\t\t\t2\n\t\t\t\n\t\t\t2021\n\t\t\tSpringer Science and Business Media LLC"
+    }
+  ],
+  "formulas": [
+    {
+      "id": "FORMULA_1",
+      "raw": "min θ E x ℓ x, f θ D(x) ,(1)"
+    },
+    {
+      "id": "FORMULA_2",
+      "raw": "I s =↓ s (I), s ∈ {1, 1 2 , 1 4 },(2)"
+    },
+    {
+      "id": "FORMULA_3",
+      "raw": "x s = I s i : i + W -1, j : j + H -1 ,(3)"
+    },
+    {
+      "id": "FORMULA_4",
+      "raw": "x = {x s,n | s ∈ {1, 1 2 , 1 4 }, n = 1, . . . , N s },(4)"
+    },
+    {
+      "id": "FORMULA_5",
+      "raw": "x A = x ⊙ M A , x B = x ⊙ M B ,(5)"
+    },
+    {
+      "id": "FORMULA_6",
+      "raw": "M k [i, j] = 1[ξ k i,j < τ ], k ∈ A, B,(6)"
+    },
+    {
+      "id": "FORMULA_7",
+      "raw": "x = f θ (x A , x B ),."
+    },
+    {
+      "id": "FORMULA_8",
+      "raw": "D LR (x) = Gσvar(↑ 1 s (↓ s (x + η))),(7)"
+    },
+    {
+      "id": "FORMULA_9",
+      "raw": "Gσvar(x)[i, j] = u,v g σ(i,j) (u, v) • x[i -u, j -v],(8)"
+    },
+    {
+      "id": "FORMULA_10",
+      "raw": "D def (x) = T(x, Φ), Φ = G σ (Per(f , p)),(9)"
+    },
+    {
+      "id": "FORMULA_11",
+      "raw": "Per(f , p) = N n=1 p n-1 • S(f n-1 • (i, j)),(10)"
+    },
+    {
+      "id": "FORMULA_12",
+      "raw": "Φ final = α • tanh(Φ)"
+    },
+    {
+      "id": "FORMULA_13",
+      "raw": "D noise (x) = Bi p (Poi(max(0, x + η))),(11)"
+    },
+    {
+      "id": "FORMULA_14",
+      "raw": "Method PSNR (XY) ↑ SSIM (XY) ↑ PSNR (XZ) ↑ SSIM (XZ) ↑ Dataset: CARE [4]"
+    },
+    {
+      "id": "FORMULA_15",
+      "raw": "Dice = 2|A ∩ B| |A| + |B|"
+    },
+    {
+      "id": "FORMULA_16",
+      "raw": "P SN R = 10 log 10 MAX 2 I M SE"
+    },
+    {
+      "id": "FORMULA_17",
+      "raw": "Method Dice ↑ % of |J Φ | ≤ 0 Dataset: IXI [32]"
+    }
+  ]
+}
