@@ -44,7 +44,7 @@ To run this project, you need a Python environment with GPU support (highly reco
 
 ### 1. Clone the Repository
 ```bash
-git clone https://github.com/Batuminien/Academic-Qwen-RAG.git
+git clone https://github.com/Batuminien/AcademicTextGenerator.git
 cd Academic-Qwen-RAG
 ```
 
