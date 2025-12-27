@@ -93,15 +93,20 @@ python rag_inference.py
 ```
 Academic-Qwen-RAG/
 ├── data/
-│   ├── jsons/              # Place your raw paper JSON files here
-│   ├── chunks/             # Generated structured chunks (chunks.jsonl)
-│   └── index/              # Generated vector index and metadata
+│   ├── jsons/                             # Place your raw paper JSON files here
+│   ├── chunks/                            # Generated structured chunks (chunks.jsonl)
+│   ├── index/                             # Generated vector index and metadata
+│   └── pdf_links_matching.json            # Map file with paper names to their links.
 ├── scripts/
-│   ├── build_chunks.py     # Script: preprocessing and citation resolution
-│   ├── build_index.py      # Script: embedding and indexing
-│   └── rag_inference.py    # Script: retrieval and Generation (Main Entry)
-├── requirements.txt        # Python dependencies
-└── README.md               # Project documentation
+│   ├── build_chunks.py                    # Script: preprocessing and citation resolution
+│   ├── build_index.py                     # Script: embedding and indexing
+│   └── rag_inference.py                   # Script: retrieval and Generation (Main Entry)
+├── ipynb_code_files/
+│   ├── build_chunks.ipynb                 # Script: preprocessing and citation resolution
+│   ├── build_index.ipynb                  # Script: embedding and indexing
+│   └── rag_inference.ipynb                # Script: retrieval and Generation (Main Entry)
+├── requirements.txt                       # Python dependencies
+└── README.md                              # Project documentation
 ```
 
 ## Models Used
