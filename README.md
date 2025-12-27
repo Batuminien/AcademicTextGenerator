@@ -56,17 +56,23 @@ pip install -r requirements.txt
 
 ## Configuration
 The scripts currently use path variables that need to be updated to match your local directory structure. Open the files and locate the configuration sections at the top:
-* **build_chunks.py**:
+* **build_chunks.py/.ipynb**:
   * Update *data_dir*: Path to your folder containing raw JSON papers.
+  * Update *links_path*: Path to your *pdf_links_matching.json* file. (Already exists in this repo.)
   * Update *output_path*: Where the processed *.jsonl* file should be saved
-* **build_index.py**:
+* **build_index.py/.ipynb**:
   * Update *CHUNKS_PATH*: Point this to the output file from step 1.
   * Update *INDEX_DIR*: Directory where the HNSW index binary will be saved.
 * **rag_inference.py**:
-  * Update *BASE_DIR* or *INDEX_PATH*: Ensure it points to the index directory created in step 2.
+  * Update *BASE_DIR* and *INDEX_PATH*: Ensure it points to the index directory created in step 2.
 
 ##Usage Pipeline
 The project follows a linear Extract, Transform, Load & Inference pipeline:
+
+###IMPORTANT NOTE FOR USAGE
+This code was created by performing chunking and indexing on approximately 10,000 PDFs. This process generated *chunks.jsonl*, *metadatas.jsonl*, and *hnsw_index.bin* files. However, since these files are between 1-2.5GB in size, they were not included here. Instead, these files were uploaded to HuggingFace (forza61/academic-rag-data). The code was also updated to automatically retrieve these files from HuggingFace if it cannot find them in the relevant locations.
+
+The 10,000 PDF files were not uploaded to the repository or HuggingFace because chunk and index files created using these PDFs have already been automatically prepared and made available for use. If you want to run the *build_chunks.py/.ipynb file*, we added 25 different article files to */data/jsons*, one from each of 25 different categories. You can perform tests using these articles.
 
 ### Step 1: Chunking
 Parses raw JSONs, resolves references, and creates semantic chunks.
