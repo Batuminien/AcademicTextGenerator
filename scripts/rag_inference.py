@@ -15,8 +15,33 @@ from IPython.display import Markdown, display
 
 BASE_DIR = "/content/drive/MyDrive/NLP/codes/data"
 INDEX_DIR = f"{BASE_DIR}/index"
-INDEX_PATH = f"{INDEX_DIR}/hnsw_index.bin"
-META_PATH = f"{INDEX_DIR}/metadatas.jsonl"
+os.makedirs("INDEX_DIR", exist_ok=True)
+
+REPO_ID = "forza61/academic-rag-data"
+
+def download_data():
+    print("Data files are being checked...")
+    
+    #Download HNSW index
+    if not os.path.exists(f"{INDEX_DIR}/hnsw_index.bin"):
+        print("Downloading HNSW index...")
+        hf_hub_download(
+            repo_id=REPO_ID,
+            filename="hnsw_index.bin",
+            repo_type="dataset",
+            local_dir=INDEX_DIR
+        )
+
+    #Download metadata
+    if not os.path.exists(f"{INDEX_DIR}/metadatas.jsonl"):
+        print("Downloading Metadata...")
+        hf_hub_download(
+            repo_id=REPO_ID,
+            filename="metadatas.jsonl",
+            repo_type="dataset",
+            local_dir=INDEX_DIR
+        )
+    print("Datas are ready.")
 
 #Embedding Model: Used for encoding the user query
 EMBEDDING_MODEL_ID = "BAAI/bge-m3"
@@ -413,6 +438,8 @@ def clean_and_display_report_qwen(query, use_rag=True, top_k=5):
     display(Markdown(markdown_report))
 
 if __name__ == "__main__":
+    #Download index and metadatas
+    download_data()
     #Load systems
     init_retrieval_system()
     init_llm_system()

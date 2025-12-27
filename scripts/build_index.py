@@ -10,8 +10,38 @@ import hnswlib
 
 #BAAI/bge-m3 is a SOTA embedding model supporting long context as 8192 token limit.
 EMBEDDING_MODEL_NAME = "BAAI/bge-m3"
-CHUNKS_PATH = "/content/drive/MyDrive/NLP/codes/data/chunks/chunks.jsonl"
-INDEX_DIR = "/content/drive/MyDrive/NLP/codes/data/index"
+BASE_DIR = "/data"
+CHUNKS_PATH = "f{BASE_DIR}/chunks/chunks.jsonl"
+INDEX_DIR = f"{BASE_DIR}/index"
+
+REPO_ID = "forza61/academic-rag-data"
+FILENAME = "chunks.jsonl"
+
+def download_chunks():
+    """
+    If chunks.jsonl doesn't exist locally, it downloads it from Hugging Face.
+    """
+    path = Path(CHUNKS_PATH)
+    if not path.exists():
+        print(f"'{CHUNKS PATH}' not found. Downloading from Hugging Face...")
+        
+        # Klasör yoksa oluştur
+        path.parent.mkdir(parents=True, exist_ok=True)
+        
+        try:
+            downloaded_path = hf_hub_download(
+                repo_id=HF_REPO_ID,
+                filename=HF_FILENAME,
+                repo_type="dataset",
+                local_dir=path.parent, #Download to chunks folder
+                local_dir_use_symlinks=False
+            )
+            print(f"Download successful:: {downloaded_path}")
+        except Exception as e:
+            print(f"An error occurred during the download: {e}")
+            raise e
+    else:
+        print(f"The chunks file already exists: {CHUNKS_PATH}")
 
 def load_chunks(chunks_path: str):
     """
@@ -28,7 +58,7 @@ def load_chunks(chunks_path: str):
     metadatas = []
 
     path = Path(chunks_path)
-    assert path.exists(), f"Chunks file not found: {path}"
+    #assert path.exists(), f"Chunks file not found: {path}"
 
     with path.open("r", encoding="utf-8") as f:
         #Enumerate gives us a line index, but we mainly use it for progress tracking here
@@ -179,6 +209,8 @@ def save_metadata(metadatas, labels, index_dir: str):
             f.write(json.dumps(meta_out, ensure_ascii=False) + "\n")
 
 def main():
+    download_chunks()
+    
     print("Step 1: Loading chunks")
     texts, metadatas = load_chunks(CHUNKS_PATH)
 
