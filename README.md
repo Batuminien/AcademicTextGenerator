@@ -70,9 +70,9 @@ The scripts currently use path variables that need to be updated to match your l
 The project follows a linear Extract, Transform, Load & Inference pipeline:
 
 ### IMPORTANT NOTE FOR USAGE
-This code was created by performing chunking and indexing on approximately 10,000 PDFs. This process generated *chunks.jsonl*, *metadatas.jsonl*, and *hnsw_index.bin* files. However, since these files are between 1-2.5GB in size, they were not included here. Instead, these files were uploaded to HuggingFace (forza61/academic-rag-data). The code was also updated to automatically retrieve these files from HuggingFace if it cannot find them in the relevant locations.
+**This code was created by performing chunking and indexing on approximately 10,000 PDFs. This process generated *chunks.jsonl*, *metadatas.jsonl*, and *hnsw_index.bin* files. However, since these files are between 1-2.5GB in size, they were not included here. Instead, these files were uploaded to HuggingFace (forza61/academic-rag-data). The code was also updated to automatically retrieve these files from HuggingFace if it cannot find them in the relevant locations.**
 
-The 10,000 PDF files were not uploaded to the repository or HuggingFace because chunk and index files created using these PDFs have already been automatically prepared and made available for use. If you want to run the *build_chunks.py/.ipynb file*, we added 25 different article files to */data/jsons*, one from each of 25 different categories. You can perform tests using these articles.
+**The 10,000 PDF files were not uploaded to the repository or HuggingFace because chunk and index files created using these PDFs have already been automatically prepared and made available for use. If you want to run the *build_chunks.py/.ipynb file*, we added 25 different article files to */data/jsons*, one from each of 25 different categories. You can perform tests using these articles.**
 
 ### Step 1: Chunking
 Parses raw JSONs, resolves references, and creates semantic chunks.
