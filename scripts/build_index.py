@@ -10,7 +10,7 @@ import hnswlib
 
 #BAAI/bge-m3 is a SOTA embedding model supporting long context as 8192 token limit.
 EMBEDDING_MODEL_NAME = "BAAI/bge-m3"
-BASE_DIR = "/data"
+BASE_DIR = "root_dir/data"
 CHUNKS_PATH = "f{BASE_DIR}/chunks/chunks.jsonl"
 INDEX_DIR = f"{BASE_DIR}/index"
 
@@ -25,7 +25,7 @@ def download_chunks():
     if not path.exists():
         print(f"'{CHUNKS PATH}' not found. Downloading from Hugging Face...")
         
-        # Klasör yoksa oluştur
+        #Create folder if it does not exist
         path.parent.mkdir(parents=True, exist_ok=True)
         
         try:

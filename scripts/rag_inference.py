@@ -13,7 +13,7 @@ from transformers import AutoTokenizer, AutoModelForCausalLM
 from collections import defaultdict
 from IPython.display import Markdown, display
 
-BASE_DIR = "/content/drive/MyDrive/NLP/codes/data"
+BASE_DIR = "root_dir/data"
 INDEX_DIR = f"{BASE_DIR}/index"
 os.makedirs("INDEX_DIR", exist_ok=True)
 
@@ -50,13 +50,6 @@ MAX_SEQ_LENGTH = 8192
 
 # Generator Model: The LLM that answers the question
 LLM_MODEL_ID = "Qwen/Qwen2.5-7B-Instruct"
-
-print(f"Paths configured:\n Index: {INDEX_PATH}\n Meta: {META_PATH}")
-
-import json
-import hnswlib
-import numpy as np
-from sentence_transformers import SentenceTransformer
 
 #We use dictionaries to act as singletons for holding loaded models to avoid reloading.
 rag_components = {

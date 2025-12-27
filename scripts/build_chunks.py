@@ -331,7 +331,7 @@ def build_all_chunks(data_dir: str, links_path: str, output_path: str) -> None:
         print(f"Error in {json_path}: {e}")
 
 build_all_chunks(
-    data_dir="/content/drive/MyDrive/NLP/codes/data/jsons",
-    links_path="/content/drive/MyDrive/NLP/codes/data/pdf_links_matching.json",
-    output_path="/content/drive/MyDrive/NLP/codes/data/chunks/chunks.jsonl"
+    data_dir="root_dir/data/jsons",
+    links_path="root_dir/data/pdf_links_matching.json",
+    output_path="root_dir/data/chunks/chunks.jsonl"
   )
