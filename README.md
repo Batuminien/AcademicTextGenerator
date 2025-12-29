@@ -36,9 +36,9 @@ graph LR
 ```
 
 ## Installation
-To run this project, you need a Python environment with GPU support (highly recommended for embeddings and LLM inference).
-It is important to run the .ipynb files on Google Colab. Because the code configured for colab directories and high GPU supports, the code may require lost of changes to run on local.
-To run the code on local, use .py files in scripts folder. But because the development and tests of the project ran on Colab, .py files couldn't be tested.  
+* To run this project, you need a Python environment with GPU support (highly recommended for embeddings and LLM inference).
+* It is important to run the .ipynb files on Google Colab. Because the code configured for colab directories and high GPU supports, the code may require lost of changes to run on local.
+* To run the code on local, use .py files in scripts folder. But because the development and tests of the project ran on Colab, .py files couldn't be tested.  
 
 ### Prerequisites
 * Python 3.10+
