@@ -101,7 +101,7 @@ python rag_inference.py
 
 ## Project Structure
 ```
-Academic-Qwen-RAG/
+AcademicTextGenerator/
 ├── data/
 │   ├── jsons/                             # Place your raw paper JSON files here
 │   ├── chunks/                            # Generated structured chunks (chunks.jsonl)
