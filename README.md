@@ -49,7 +49,7 @@ graph LR
 ### 1. Clone the Repository
 ```bash
 git clone https://github.com/Batuminien/AcademicTextGenerator.git
-cd Academic-Qwen-RAG
+cd AcademicTextGenerator
 ```
 
 ### 2. Install Dependencies
