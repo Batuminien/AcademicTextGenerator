@@ -7,12 +7,15 @@ import numpy as np
 from tqdm.auto import tqdm
 from sentence_transformers import SentenceTransformer
 import hnswlib
+from huggingface_hub import hf_hub_download
+import torch
 
 #BAAI/bge-m3 is a SOTA embedding model supporting long context as 8192 token limit.
 EMBEDDING_MODEL_NAME = "BAAI/bge-m3"
-BASE_DIR = "root_dir/data"
-CHUNKS_PATH = "f{BASE_DIR}/chunks/chunks.jsonl"
-INDEX_DIR = f"{BASE_DIR}/index"
+ROOT_DIR = Path(__file__).resolve().parents[1]  # AcademicTextGenerator/
+BASE_DIR = ROOT_DIR / "data"
+CHUNKS_PATH = BASE_DIR / "chunks" / "chunks.jsonl"
+INDEX_DIR = BASE_DIR / "index"
 
 REPO_ID = "forza61/academic-rag-data"
 FILENAME = "chunks.jsonl"
@@ -22,19 +25,19 @@ def download_chunks():
     If chunks.jsonl doesn't exist locally, it downloads it from Hugging Face.
     """
     path = Path(CHUNKS_PATH)
-    if not path.exists():
-        print(f"'{CHUNKS PATH}' not found. Downloading from Hugging Face...")
+    if not path.exists() or path.stat().st_size == 0:
+        print(f"'{CHUNKS_PATH}' not found. Downloading from Hugging Face...")
         
         #Create folder if it does not exist
         path.parent.mkdir(parents=True, exist_ok=True)
         
         try:
             downloaded_path = hf_hub_download(
-                repo_id=HF_REPO_ID,
-                filename=HF_FILENAME,
+                repo_id=REPO_ID,
+                filename=FILENAME,
                 repo_type="dataset",
-                local_dir=path.parent, #Download to chunks folder
-                local_dir_use_symlinks=False
+                local_dir=path.parent #Download to chunks folder
+
             )
             print(f"Download successful:: {downloaded_path}")
         except Exception as e:
@@ -102,35 +105,54 @@ def load_chunks(chunks_path: str):
 def build_embeddings(texts, model_name: str, batch_size: int = 256):
     """
     Generates dense vector embeddings for the given texts using a SentenceTransformer model.
-
-    Args:
-        texts: List of texts to encode.
-        model_name: HuggingFace model identifier (e.g., 'BAAI/bge-m3').
-        batch_size: Number of texts to process in parallel on the GPU.
-
-    Returns:
-        A numpy matrix of shape (num_texts, embedding_dim).
     """
-    print(f"Loading embedding model: {model_name} on CUDA...")
-    
-    #trust_remote_code=True is often required for newer architectures like BGE-M3
-    model = SentenceTransformer(model_name, device="cuda", trust_remote_code=True)
+    device = "cuda" if torch.cuda.is_available() else "cpu"
 
-    #Set max sequence length to handle longer academic paragraphs
+    # 4GB VRAM için güvenli varsayılan
+    if device == "cuda":
+        batch_size = min(batch_size, 8)
+
+    print(f"Loading embedding model: {model_name} on {device}...")
+    if device == "cuda":
+        torch.cuda.empty_cache()
+
+    model = SentenceTransformer(model_name, device=device, trust_remote_code=True)
     model.max_seq_length = 8192
 
-    print(f"Encoding {len(texts)} chunks with batch_size={batch_size}...")
-    
-    # normalize_embeddings=True is crucial for cosine similarity search
-    embeddings = model.encode(
-        texts,
-        batch_size=batch_size,
-        show_progress_bar=True,
-        convert_to_numpy=True,
-        normalize_embeddings=True,
-    )
+    def _encode(on_device: str, bs: int):
+        return model.encode(
+            texts,
+            batch_size=bs,
+            show_progress_bar=True,
+            convert_to_numpy=True,
+            normalize_embeddings=True,
+        )
 
-    return embeddings
+    print(f"Encoding {len(texts)} chunks with batch_size={batch_size}...")
+    try:
+        return _encode(device, batch_size)
+    except RuntimeError as e:
+        msg = str(e).lower()
+        if "cuda out of memory" not in msg:
+            raise
+
+        print("CUDA OOM: batch_size düşürülüyor ve tekrar deneniyor...")
+        if device == "cuda" and batch_size > 1:
+            torch.cuda.empty_cache()
+            return _encode(device, 1)
+
+        print("CUDA OOM devam ediyor: CPU'ya düşülüyor...")
+        # CPU fallback
+        device = "cpu"
+        model = SentenceTransformer(model_name, device=device, trust_remote_code=True)
+        model.max_seq_length = 8192
+        return model.encode(
+            texts,
+            batch_size=min(32, batch_size),
+            show_progress_bar=True,
+            convert_to_numpy=True,
+            normalize_embeddings=True,
+        )
 
 def build_hnsw_index(
         embeddings: np.ndarray,
@@ -180,7 +202,7 @@ def build_hnsw_index(
     # - ef: Controls the trade-off between search speed and recall during querying.
     index.set_ef(96)
 
-    index_path = index_dir / "hnsw_index.bin"
+    index_path = INDEX_DIR / "hnsw_index.bin"
     print(f"Saving HNSW index to: {index_path}")
     index.save_index(str(index_path))
 
@@ -195,7 +217,7 @@ def save_metadata(metadatas, labels, index_dir: str):
         labels: The corresponding integer labels used in the HNSW index.
         index_dir: Directory to save the metadata file.
     """
-    index_dir = Path(index_dir)
+    index_dir = Path(INDEX_DIR)
     meta_path = index_dir / "metadatas.jsonl"
 
     print(f"Saving metadata to: {meta_path}")

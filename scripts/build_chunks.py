@@ -330,8 +330,11 @@ def build_all_chunks(data_dir: str, links_path: str, output_path: str) -> None:
         #Log errors but do not stop the entire process
         print(f"Error in {json_path}: {e}")
 
+
+ROOT_DIR = Path(__file__).resolve().parents[1]  # AcademicTextGenerator/
+
 build_all_chunks(
-    data_dir="root_dir/data/jsons",
-    links_path="root_dir/data/pdf_links_matching.json",
-    output_path="root_dir/data/chunks/chunks.jsonl"
-  )
+    data_dir=str(ROOT_DIR / "data" / "jsons"),
+    links_path=str(ROOT_DIR / "data" / "pdf_links_matching.json"),
+    output_path=str(ROOT_DIR / "data" / "chunks" / "chunks.jsonl"),
+)

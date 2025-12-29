@@ -3,7 +3,7 @@ tqdm
 pandas
 hnswlib
 sentence-transformers
-torch
+torch>=2.6
 transformers
 accelerate
 einops

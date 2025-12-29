@@ -4,6 +4,7 @@ import os
 import json
 import re
 import hnswlib
+from huggingface_hub import hf_hub_download
 import numpy as np
 import torch
 from pathlib import Path
@@ -13,9 +14,13 @@ from transformers import AutoTokenizer, AutoModelForCausalLM
 from collections import defaultdict
 from IPython.display import Markdown, display
 
-BASE_DIR = "root_dir/data"
+root_dir = Path(__file__).resolve().parents[1]  # AcademicTextGenerator/
+BASE_DIR = f"{root_dir}/data"
 INDEX_DIR = f"{BASE_DIR}/index"
-os.makedirs("INDEX_DIR", exist_ok=True)
+META_PATH = f"{INDEX_DIR}/metadatas.jsonl"
+
+os.makedirs(BASE_DIR, exist_ok=True)
+os.makedirs(INDEX_DIR, exist_ok=True)
 
 REPO_ID = "forza61/academic-rag-data"
 
@@ -85,12 +90,12 @@ def init_retrieval_system():
     print(f"-> Loaded {len(metas)} metadata entries")
 
     print(f"Loading HNSW index (Dim={EMBEDDING_DIM})...")
-    if not os.path.exists(INDEX_PATH):
-        raise FileNotFoundError(f"Index file not found at {INDEX_PATH}")
+    if not os.path.exists(INDEX_DIR):
+        raise FileNotFoundError(f"Index file not found at {INDEX_DIR}")
 
     #Initialize HNSW index
     index = hnswlib.Index(space="cosine", dim=EMBEDDING_DIM)
-    index.load_index(INDEX_PATH)
+    index.load_index(INDEX_DIR)
     index.set_ef(128)
     rag_components["hnsw_index"] = index
     print(f"-> Index loaded with {index.get_current_count()} elements.")
